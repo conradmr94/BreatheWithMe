@@ -44,20 +44,22 @@ struct SleepView: View {
             }
             
             VStack(spacing: 0) {
-                // Top section
-                if !isRunning {
-                    VStack(spacing: 12) {
+                // Top section with fixed height
+                VStack(spacing: 12) {
+                    if !isRunning {
                         Text("Sleep")
                             .font(.system(size: 34, weight: .light, design: .default))
                             .foregroundColor(.white.opacity(0.9))
-                            .padding(.top, 70)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                         
                         Text("Drift away peacefully")
                             .font(.system(size: 16, weight: .regular, design: .default))
                             .foregroundColor(.white.opacity(0.6))
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                     }
-                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
+                .frame(height: 120)
+                .padding(.top, 30)
                 
                 Spacer()
                 
@@ -222,6 +224,7 @@ struct SleepView: View {
                         .transition(.opacity)
                     }
                 }
+                .frame(height: 155)
                 .padding(.bottom, 60)
             }
         }

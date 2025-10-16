@@ -54,20 +54,22 @@ struct BreatheView: View {
             .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Top section
-                if !isBreathing {
-                    VStack(spacing: 12) {
+                // Top section with fixed height
+                VStack(spacing: 12) {
+                    if !isBreathing {
                         Text("Breathe")
                             .font(.system(size: 34, weight: .light, design: .default))
                             .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
-                            .padding(.top, 70)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                         
                         Text("Find your calm")
                             .font(.system(size: 16, weight: .regular, design: .default))
                             .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                     }
-                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
+                .frame(height: 120)
+                .padding(.top, 30)
                 
                 Spacer()
                 
@@ -138,14 +140,14 @@ struct BreatheView: View {
                                         .transition(.opacity)
                                 } else {
                                     VStack(spacing: 12) {
+                                        Image(systemName: "wind.circle")
+                                            .font(.system(size: 42, weight: .thin))
+                                            .foregroundColor(.white)
+                                        
                                         Text("START")
-                                            .font(.system(size: 18, weight: .medium, design: .default))
+                                            .font(.system(size: 16, weight: .medium, design: .default))
                                             .foregroundColor(.white)
                                             .tracking(2)
-                                        
-                                        Image(systemName: "play.circle")
-                                            .font(.system(size: 36, weight: .thin))
-                                            .foregroundColor(.white)
                                     }
                                 }
                             }
@@ -222,9 +224,11 @@ struct BreatheView: View {
                         .transition(.opacity)
                     }
                 }
+                .frame(height: 155)
                 .padding(.bottom, 60)
             }
         }
+        .preferredColorScheme(.light)
     }
     
     func toggleBreathing() {

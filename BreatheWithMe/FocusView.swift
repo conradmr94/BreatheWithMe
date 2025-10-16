@@ -10,7 +10,7 @@ import SwiftUI
 struct FocusView: View {
     @State private var isRunning = false
     @State private var isPaused = false
-    @State private var timeRemaining: Int = 25 * 60 // 25 minutes in seconds
+    @State private var timeRemaining: Int = 1500
     @State private var currentMode: PomodoroMode = .work
     @State private var completedPomodoros: Int = 0
     @State private var timer: Timer?
@@ -22,9 +22,9 @@ struct FocusView: View {
         
         var duration: Int {
             switch self {
-            case .work: return 25 * 60
-            case .shortBreak: return 5 * 60
-            case .longBreak: return 15 * 60
+            case .work: return 1500
+            case .shortBreak: return 300
+            case .longBreak: return 900
             }
         }
         
@@ -67,23 +67,24 @@ struct FocusView: View {
                 endPoint: .bottom
             )
             .ignoresSafeArea()
-            .animation(.easeInOut(duration: 0.5), value: currentMode)
             
             VStack(spacing: 0) {
-                // Top section
-                if !isRunning {
-                    VStack(spacing: 12) {
+                // Top section with fixed height
+                VStack(spacing: 12) {
+                    if !isRunning {
                         Text(currentMode.title)
                             .font(.system(size: 34, weight: .light, design: .default))
                             .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
-                            .padding(.top, 70)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                         
                         Text(currentMode.subtitle)
                             .font(.system(size: 16, weight: .regular, design: .default))
                             .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                     }
-                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
+                .frame(height: 120)
+                .padding(.top, 30)
                 
                 Spacer()
                 
@@ -131,25 +132,34 @@ struct FocusView: View {
                                        radius: 30, x: 0, y: 10)
                             
                             VStack(spacing: 12) {
-                                Text(formatTime(timeRemaining))
-                                    .font(.system(size: 52, weight: .thin, design: .default))
-                                    .foregroundColor(.white)
-                                    .monospacedDigit()
-                                
-                                if !isRunning {
-                                    Image(systemName: "play.circle")
-                                        .font(.system(size: 36, weight: .thin))
+                                if isRunning {
+                                    Text(formatTime(timeRemaining))
+                                        .font(.system(size: 52, weight: .thin, design: .default))
                                         .foregroundColor(.white)
-                                } else if isPaused {
-                                    Text("PAUSED")
-                                        .font(.system(size: 14, weight: .medium, design: .default))
-                                        .foregroundColor(.white.opacity(0.8))
-                                        .tracking(1.5)
+                                        .monospacedDigit()
+                                    
+                                    if isPaused {
+                                        Text("PAUSED")
+                                            .font(.system(size: 14, weight: .medium, design: .default))
+                                            .foregroundColor(.white.opacity(0.8))
+                                            .tracking(1.5)
+                                    } else {
+                                        Text(currentMode.title.uppercased())
+                                            .font(.system(size: 14, weight: .medium, design: .default))
+                                            .foregroundColor(.white.opacity(0.8))
+                                            .tracking(1.5)
+                                    }
                                 } else {
-                                    Text(currentMode.title.uppercased())
-                                        .font(.system(size: 14, weight: .medium, design: .default))
-                                        .foregroundColor(.white.opacity(0.8))
-                                        .tracking(1.5)
+                                    VStack(spacing: 12) {
+                                        Image(systemName: "timer")
+                                            .font(.system(size: 42, weight: .thin))
+                                            .foregroundColor(.white)
+                                        
+                                        Text("START")
+                                            .font(.system(size: 16, weight: .medium, design: .default))
+                                            .foregroundColor(.white)
+                                            .tracking(2)
+                                    }
                                 }
                             }
                         }
@@ -172,12 +182,12 @@ struct FocusView: View {
                                     Text(isAutoCycleMode ? "End Cycle" : "Reset")
                                         .font(.system(size: 16, weight: .regular, design: .default))
                                 }
-                                .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
                                 .padding(.horizontal, 24)
                                 .padding(.vertical, 12)
                                 .background(
                                     RoundedRectangle(cornerRadius: 20)
-                                        .fill(Color.white.opacity(0.6))
+                                        .fill(Color(red: 1.0, green: 1.0, blue: 1.0, opacity: 0.7))
                                 )
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -204,7 +214,7 @@ struct FocusView: View {
                                                    Color(red: currentMode.color.red,
                                                          green: currentMode.color.green,
                                                          blue: currentMode.color.blue) :
-                                                   Color(red: 0.5, green: 0.6, blue: 0.7))
+                                                   Color(red: 0.4, green: 0.5, blue: 0.6))
                                     .padding(.horizontal, 24)
                                     .padding(.vertical, 10)
                                     .background(
@@ -212,8 +222,8 @@ struct FocusView: View {
                                             .fill(isAutoCycleMode ? 
                                                   Color(red: currentMode.color.red,
                                                         green: currentMode.color.green,
-                                                        blue: currentMode.color.blue).opacity(0.2) :
-                                                  Color.white.opacity(0.5))
+                                                        blue: currentMode.color.blue).opacity(0.25) :
+                                                  Color(red: 1.0, green: 1.0, blue: 1.0, opacity: 0.6))
                                     )
                                 }
                                 .buttonStyle(PlainButtonStyle())
@@ -224,7 +234,7 @@ struct FocusView: View {
                                         Button(action: { selectMode(.work) }) {
                                             Text("Work")
                                                 .font(.system(size: 14, weight: .medium, design: .default))
-                                                .foregroundColor(currentMode == .work ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
+                                                .foregroundColor(currentMode == .work ? Color.white : Color(red: 0.4, green: 0.5, blue: 0.6))
                                                 .padding(.horizontal, 20)
                                                 .padding(.vertical, 10)
                                                 .background(
@@ -233,7 +243,7 @@ struct FocusView: View {
                                                               Color(red: currentMode.color.red,
                                                                     green: currentMode.color.green,
                                                                     blue: currentMode.color.blue) :
-                                                              Color.white.opacity(0.5))
+                                                              Color(red: 1.0, green: 1.0, blue: 1.0, opacity: 0.6))
                                                 )
                                         }
                                         .buttonStyle(PlainButtonStyle())
@@ -241,7 +251,7 @@ struct FocusView: View {
                                         Button(action: { selectMode(.shortBreak) }) {
                                             Text("Break")
                                                 .font(.system(size: 14, weight: .medium, design: .default))
-                                                .foregroundColor(currentMode == .shortBreak ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
+                                                .foregroundColor(currentMode == .shortBreak ? Color.white : Color(red: 0.4, green: 0.5, blue: 0.6))
                                                 .padding(.horizontal, 20)
                                                 .padding(.vertical, 10)
                                                 .background(
@@ -250,7 +260,7 @@ struct FocusView: View {
                                                               Color(red: currentMode.color.red,
                                                                     green: currentMode.color.green,
                                                                     blue: currentMode.color.blue) :
-                                                              Color.white.opacity(0.5))
+                                                              Color(red: 1.0, green: 1.0, blue: 1.0, opacity: 0.6))
                                                 )
                                         }
                                         .buttonStyle(PlainButtonStyle())
@@ -258,7 +268,7 @@ struct FocusView: View {
                                         Button(action: { selectMode(.longBreak) }) {
                                             Text("Long Break")
                                                 .font(.system(size: 14, weight: .medium, design: .default))
-                                                .foregroundColor(currentMode == .longBreak ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
+                                                .foregroundColor(currentMode == .longBreak ? Color.white : Color(red: 0.4, green: 0.5, blue: 0.6))
                                                 .padding(.horizontal, 20)
                                                 .padding(.vertical, 10)
                                                 .background(
@@ -267,7 +277,7 @@ struct FocusView: View {
                                                               Color(red: currentMode.color.red,
                                                                     green: currentMode.color.green,
                                                                     blue: currentMode.color.blue) :
-                                                              Color.white.opacity(0.5))
+                                                              Color(red: 1.0, green: 1.0, blue: 1.0, opacity: 0.6))
                                                 )
                                         }
                                         .buttonStyle(PlainButtonStyle())
@@ -278,9 +288,11 @@ struct FocusView: View {
                         }
                     }
                 }
+                .frame(height: 155)
                 .padding(.bottom, 60)
             }
         }
+        .preferredColorScheme(.light)
     }
     
     var progress: CGFloat {
@@ -376,16 +388,18 @@ struct FocusView: View {
             cyclePosition = 1 // Restart cycle
         }
         
-        // Set mode based on cycle position
-        switch cyclePosition {
-        case 1, 3, 5, 7: // Work sessions
-            currentMode = .work
-        case 2, 4, 6: // Short breaks
-            currentMode = .shortBreak
-        case 8: // Long break
-            currentMode = .longBreak
-        default:
-            currentMode = .work
+        // Set mode based on cycle position with animation
+        withAnimation(.easeInOut(duration: 0.5)) {
+            switch cyclePosition {
+            case 1, 3, 5, 7: // Work sessions
+                currentMode = .work
+            case 2, 4, 6: // Short breaks
+                currentMode = .shortBreak
+            case 8: // Long break
+                currentMode = .longBreak
+            default:
+                currentMode = .work
+            }
         }
         
         timeRemaining = currentMode.duration
