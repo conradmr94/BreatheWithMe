@@ -15,6 +15,7 @@ struct BreatheView: View {
     @State private var remainingTime: Int = 0
     @State private var selectedDuration: Int = 60
     @State private var timer: Timer?
+    @State private var totalElapsedTime: Double = 0
     
     let durations = [30, 60, 120, 300]
     
@@ -33,9 +34,9 @@ struct BreatheView: View {
         var duration: Double {
             switch self {
             case .inhale: return 4.0
-            case .holdIn: return 4.0
+            case .holdIn: return 2.0
             case .exhale: return 4.0
-            case .holdOut: return 4.0
+            case .holdOut: return 2.0
             }
         }
     }
@@ -242,15 +243,28 @@ struct BreatheView: View {
     func startBreathing() {
         isBreathing = true
         remainingTime = selectedDuration
+        totalElapsedTime = 0
         currentPhase = .inhale
-        animateBreathing()
         
-        // Timer for countdown
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            if remainingTime > 0 {
-                remainingTime -= 1
-            } else {
-                stopBreathing()
+        // Trigger the initial animation immediately
+        updateBreathingAnimation()
+        
+        // Timer updates at 0.1 second intervals for smooth phase transitions
+        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            self.totalElapsedTime += 0.1
+            
+            // Update the breathing phase based on cycle position
+            self.updateCurrentPhase()
+            
+            // Update remaining time (calculate as whole seconds)
+            let newRemainingTime = max(0, self.selectedDuration - Int(self.totalElapsedTime))
+            if newRemainingTime != self.remainingTime {
+                self.remainingTime = newRemainingTime
+            }
+            
+            // Stop when time runs out
+            if self.remainingTime <= 0 {
+                self.stopBreathing()
             }
         }
     }
@@ -262,49 +276,51 @@ struct BreatheView: View {
         scale = 1.0
         opacity = 1.0
         currentPhase = .inhale
+        totalElapsedTime = 0
     }
     
-    func animateBreathing() {
-        guard isBreathing else { return }
+    func updateCurrentPhase() {
+        // Calculate position within the breathing cycle
+        // Cycle is 12 seconds total: inhale(4s) -> holdIn(2s) -> exhale(4s) -> holdOut(2s)
+        let cycleDuration: Double = 12.0
+        let timeInCycle = totalElapsedTime.truncatingRemainder(dividingBy: cycleDuration)
         
+        let newPhase: BreathingPhase
+        if timeInCycle < 4.0 {
+            newPhase = .inhale
+        } else if timeInCycle < 6.0 {
+            newPhase = .holdIn
+        } else if timeInCycle < 10.0 {
+            newPhase = .exhale
+        } else {
+            newPhase = .holdOut
+        }
+        
+        // Only update animation when phase actually changes
+        if newPhase != currentPhase {
+            currentPhase = newPhase
+            updateBreathingAnimation()
+        }
+    }
+    
+    func updateBreathingAnimation() {
         switch currentPhase {
         case .inhale:
-            scale = 1.4
-            opacity = 1.0
-            DispatchQueue.main.asyncAfter(deadline: .now() + currentPhase.duration) {
-                if self.isBreathing {
-                    self.currentPhase = .holdIn
-                    self.animateBreathing()
-                }
+            withAnimation(.easeInOut(duration: currentPhase.duration)) {
+                scale = 1.4
+                opacity = 1.0
             }
-            
         case .holdIn:
-            // Keep current scale
-            DispatchQueue.main.asyncAfter(deadline: .now() + currentPhase.duration) {
-                if self.isBreathing {
-                    self.currentPhase = .exhale
-                    self.animateBreathing()
-                }
-            }
-            
+            // Keep current scale (no animation needed)
+            break
         case .exhale:
-            scale = 0.8
-            opacity = 0.6
-            DispatchQueue.main.asyncAfter(deadline: .now() + currentPhase.duration) {
-                if self.isBreathing {
-                    self.currentPhase = .holdOut
-                    self.animateBreathing()
-                }
+            withAnimation(.easeInOut(duration: currentPhase.duration)) {
+                scale = 0.8
+                opacity = 0.6
             }
-            
         case .holdOut:
-            // Keep current scale
-            DispatchQueue.main.asyncAfter(deadline: .now() + currentPhase.duration) {
-                if self.isBreathing {
-                    self.currentPhase = .inhale
-                    self.animateBreathing()
-                }
-            }
+            // Keep current scale (no animation needed)
+            break
         }
     }
     
