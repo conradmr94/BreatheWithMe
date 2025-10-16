@@ -11,8 +11,13 @@ A minimalist iOS wellness app combining guided breathing exercises, Pomodoro foc
 
 ### Focus
 - **Pomodoro Timer**: Classic 25-minute work sessions with scheduled breaks
-- **Smart Break System**: Automatic alternation between short (5 min) and long (15 min) breaks
-- **Session Tracking**: Count your completed Pomodoros
+- **Auto-Cycle Mode**: Automatically cycles through the complete Pomodoro pattern:
+  - 4 work sessions (25 min each)
+  - Short breaks (5 min) after the first 3 work sessions
+  - Long break (15 min) after the 4th work session
+  - Repeats continuously until you end the cycle
+- **Manual Mode**: Choose between Work, Break, or Long Break manually
+- **Session Tracking**: Count your completed Pomodoros and track cycle progress
 - **Visual Progress**: Circular progress indicator with color-coded modes
 
 ### Sleep
@@ -76,9 +81,20 @@ A minimalist iOS wellness app combining guided breathing exercises, Pomodoro foc
 4. Tap "Stop" to end your session early
 
 ### Focus Mode
-1. Choose between Work, Break, or Long Break
+**Auto-Cycle Mode (Recommended):**
+1. Enable "Auto-cycle mode" toggle
 2. Tap the timer circle to start
-3. The timer will count down and track your progress
+3. The app will automatically cycle through:
+   - Work sessions (25 min)
+   - Short breaks (5 min) after sessions 1, 2, 3
+   - Long break (15 min) after session 4
+   - Repeats the entire cycle
+4. Tap "End Cycle" to stop at any time
+
+**Manual Mode:**
+1. Keep "Auto-cycle mode" disabled
+2. Choose between Work, Break, or Long Break
+3. Tap the timer circle to start
 4. Tap to pause/resume, or use Reset to start over
 
 ### Sleep Mode

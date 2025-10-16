@@ -14,6 +14,8 @@ struct FocusView: View {
     @State private var currentMode: PomodoroMode = .work
     @State private var completedPomodoros: Int = 0
     @State private var timer: Timer?
+    @State private var cyclePosition: Int = 1 // Position in the 1-8 cycle
+    @State private var isAutoCycleMode: Bool = true
     
     enum PomodoroMode {
         case work, shortBreak, longBreak
@@ -160,18 +162,6 @@ struct FocusView: View {
                 
                 // Bottom controls
                 VStack(spacing: 24) {
-                    // Pomodoro counter
-                    HStack(spacing: 8) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 16))
-                            .foregroundColor(Color(red: currentMode.color.red,
-                                                   green: currentMode.color.green,
-                                                   blue: currentMode.color.blue))
-                        Text("\(completedPomodoros) Pomodoros completed")
-                            .font(.system(size: 15, weight: .regular, design: .default))
-                            .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
-                    }
-                    
                     // Control buttons
                     HStack(spacing: 16) {
                         if isRunning {
@@ -179,7 +169,7 @@ struct FocusView: View {
                                 HStack(spacing: 8) {
                                     Image(systemName: "stop.fill")
                                         .font(.system(size: 14))
-                                    Text("Reset")
+                                    Text(isAutoCycleMode ? "End Cycle" : "Reset")
                                         .font(.system(size: 16, weight: .regular, design: .default))
                                 }
                                 .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
@@ -192,58 +182,98 @@ struct FocusView: View {
                             }
                             .buttonStyle(PlainButtonStyle())
                         } else {
-                            // Mode selector when not running
-                            HStack(spacing: 12) {
-                                Button(action: { selectMode(.work) }) {
-                                    Text("Work")
-                                        .font(.system(size: 14, weight: .medium, design: .default))
-                                        .foregroundColor(currentMode == .work ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
-                                        .padding(.horizontal, 20)
-                                        .padding(.vertical, 10)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 18)
-                                                .fill(currentMode == .work ? 
-                                                      Color(red: currentMode.color.red,
-                                                            green: currentMode.color.green,
-                                                            blue: currentMode.color.blue) :
-                                                      Color.white.opacity(0.5))
-                                        )
+                            VStack(spacing: 12) {
+                                // Auto-cycle toggle
+                                Button(action: { 
+                                    withAnimation {
+                                        isAutoCycleMode.toggle()
+                                        if isAutoCycleMode {
+                                            cyclePosition = 1
+                                            currentMode = .work
+                                            timeRemaining = currentMode.duration
+                                        }
+                                    }
+                                }) {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: isAutoCycleMode ? "checkmark.circle.fill" : "circle")
+                                            .font(.system(size: 16))
+                                        Text("Auto-cycle mode")
+                                            .font(.system(size: 15, weight: .medium, design: .default))
+                                    }
+                                    .foregroundColor(isAutoCycleMode ? 
+                                                   Color(red: currentMode.color.red,
+                                                         green: currentMode.color.green,
+                                                         blue: currentMode.color.blue) :
+                                                   Color(red: 0.5, green: 0.6, blue: 0.7))
+                                    .padding(.horizontal, 24)
+                                    .padding(.vertical, 10)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 20)
+                                            .fill(isAutoCycleMode ? 
+                                                  Color(red: currentMode.color.red,
+                                                        green: currentMode.color.green,
+                                                        blue: currentMode.color.blue).opacity(0.2) :
+                                                  Color.white.opacity(0.5))
+                                    )
                                 }
                                 .buttonStyle(PlainButtonStyle())
                                 
-                                Button(action: { selectMode(.shortBreak) }) {
-                                    Text("Break")
-                                        .font(.system(size: 14, weight: .medium, design: .default))
-                                        .foregroundColor(currentMode == .shortBreak ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
-                                        .padding(.horizontal, 20)
-                                        .padding(.vertical, 10)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 18)
-                                                .fill(currentMode == .shortBreak ? 
-                                                      Color(red: currentMode.color.red,
-                                                            green: currentMode.color.green,
-                                                            blue: currentMode.color.blue) :
-                                                      Color.white.opacity(0.5))
-                                        )
+                                // Mode selector when not in auto-cycle mode
+                                if !isAutoCycleMode {
+                                    HStack(spacing: 12) {
+                                        Button(action: { selectMode(.work) }) {
+                                            Text("Work")
+                                                .font(.system(size: 14, weight: .medium, design: .default))
+                                                .foregroundColor(currentMode == .work ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
+                                                .padding(.horizontal, 20)
+                                                .padding(.vertical, 10)
+                                                .background(
+                                                    RoundedRectangle(cornerRadius: 18)
+                                                        .fill(currentMode == .work ? 
+                                                              Color(red: currentMode.color.red,
+                                                                    green: currentMode.color.green,
+                                                                    blue: currentMode.color.blue) :
+                                                              Color.white.opacity(0.5))
+                                                )
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                        
+                                        Button(action: { selectMode(.shortBreak) }) {
+                                            Text("Break")
+                                                .font(.system(size: 14, weight: .medium, design: .default))
+                                                .foregroundColor(currentMode == .shortBreak ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
+                                                .padding(.horizontal, 20)
+                                                .padding(.vertical, 10)
+                                                .background(
+                                                    RoundedRectangle(cornerRadius: 18)
+                                                        .fill(currentMode == .shortBreak ? 
+                                                              Color(red: currentMode.color.red,
+                                                                    green: currentMode.color.green,
+                                                                    blue: currentMode.color.blue) :
+                                                              Color.white.opacity(0.5))
+                                                )
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                        
+                                        Button(action: { selectMode(.longBreak) }) {
+                                            Text("Long Break")
+                                                .font(.system(size: 14, weight: .medium, design: .default))
+                                                .foregroundColor(currentMode == .longBreak ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
+                                                .padding(.horizontal, 20)
+                                                .padding(.vertical, 10)
+                                                .background(
+                                                    RoundedRectangle(cornerRadius: 18)
+                                                        .fill(currentMode == .longBreak ? 
+                                                              Color(red: currentMode.color.red,
+                                                                    green: currentMode.color.green,
+                                                                    blue: currentMode.color.blue) :
+                                                              Color.white.opacity(0.5))
+                                                )
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                    }
+                                    .transition(.opacity)
                                 }
-                                .buttonStyle(PlainButtonStyle())
-                                
-                                Button(action: { selectMode(.longBreak) }) {
-                                    Text("Long Break")
-                                        .font(.system(size: 14, weight: .medium, design: .default))
-                                        .foregroundColor(currentMode == .longBreak ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
-                                        .padding(.horizontal, 20)
-                                        .padding(.vertical, 10)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 18)
-                                                .fill(currentMode == .longBreak ? 
-                                                      Color(red: currentMode.color.red,
-                                                            green: currentMode.color.green,
-                                                            blue: currentMode.color.blue) :
-                                                      Color.white.opacity(0.5))
-                                        )
-                                }
-                                .buttonStyle(PlainButtonStyle())
                             }
                         }
                     }
@@ -298,24 +328,63 @@ struct FocusView: View {
         isPaused = false
         timer?.invalidate()
         timer = nil
+        
+        if isAutoCycleMode {
+            // Reset to beginning of cycle
+            cyclePosition = 1
+            currentMode = .work
+        }
+        
         timeRemaining = currentMode.duration
     }
     
     func completeSession() {
         timer?.invalidate()
         timer = nil
-        isRunning = false
-        isPaused = false
         
         if currentMode == .work {
             completedPomodoros += 1
-            // Suggest next mode
-            if completedPomodoros % 4 == 0 {
-                currentMode = .longBreak
-            } else {
-                currentMode = .shortBreak
+        }
+        
+        if isAutoCycleMode {
+            // Automatically advance to next phase in cycle
+            advanceCycle()
+            // Automatically start the next session
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                self.startTimer()
             }
         } else {
+            isRunning = false
+            isPaused = false
+            // Manual mode - suggest next mode
+            if currentMode == .work {
+                if completedPomodoros % 4 == 0 {
+                    currentMode = .longBreak
+                } else {
+                    currentMode = .shortBreak
+                }
+            } else {
+                currentMode = .work
+            }
+            timeRemaining = currentMode.duration
+        }
+    }
+    
+    func advanceCycle() {
+        cyclePosition += 1
+        if cyclePosition > 8 {
+            cyclePosition = 1 // Restart cycle
+        }
+        
+        // Set mode based on cycle position
+        switch cyclePosition {
+        case 1, 3, 5, 7: // Work sessions
+            currentMode = .work
+        case 2, 4, 6: // Short breaks
+            currentMode = .shortBreak
+        case 8: // Long break
+            currentMode = .longBreak
+        default:
             currentMode = .work
         }
         
