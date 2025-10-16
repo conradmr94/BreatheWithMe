@@ -33,9 +33,9 @@ struct BreatheView: View {
         var duration: Double {
             switch self {
             case .inhale: return 4.0
-            case .holdIn: return 4.0
+            case .holdIn: return 2.0
             case .exhale: return 4.0
-            case .holdOut: return 4.0
+            case .holdOut: return 2.0
             }
         }
     }
