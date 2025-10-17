@@ -279,6 +279,8 @@ struct BreatheView: View {
         
         // Trigger the initial animation immediately
         updateBreathingAnimation()
+
+        playTransitionSound()
         
         // Timer updates at 0.1 second intervals for smooth phase transitions
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
