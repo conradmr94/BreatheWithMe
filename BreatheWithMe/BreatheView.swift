@@ -28,23 +28,19 @@ struct BreatheView: View {
     }
     
     enum BreathingPhase {
-        case inhale, holdIn, exhale, holdOut
+        case inhale, exhale
         
         var text: String {
             switch self {
             case .inhale: return "Breathe In"
-            case .holdIn: return "Hold"
             case .exhale: return "Breathe Out"
-            case .holdOut: return "Hold"
             }
         }
         
         var duration: Double {
             switch self {
             case .inhale: return 4.0
-            case .holdIn: return 2.0
             case .exhale: return 4.0
-            case .holdOut: return 2.0
             }
         }
     }
@@ -191,7 +187,7 @@ struct BreatheView: View {
                         }
                         .transition(.opacity)
                     } else {
-                        VStack(spacing: 16) {
+                        VStack(spacing: 8) {
                             // Bell sound toggle
                             Button(action: {
                                 withAnimation(.easeInOut(duration: 0.3)) {
@@ -208,7 +204,7 @@ struct BreatheView: View {
                                                Color(red: 0.65, green: 0.8, blue: 0.92) :
                                                Color(red: 0.4, green: 0.5, blue: 0.6))
                                 .padding(.horizontal, 20)
-                                .padding(.vertical, 10)
+                                .padding(.vertical, 8)
                                 .background(
                                     RoundedRectangle(cornerRadius: 20)
                                         .fill(bellSoundEnabled ? 
@@ -222,6 +218,7 @@ struct BreatheView: View {
                                 .font(.system(size: 13, weight: .medium, design: .default))
                                 .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
                                 .tracking(1.5)
+                                .padding(.top, 4)
                             
                             HStack(spacing: 12) {
                                 ForEach(durations, id: \.self) { duration in
@@ -259,7 +256,7 @@ struct BreatheView: View {
                         .transition(.opacity)
                     }
                 }
-                .frame(height: 210)
+                .frame(height: 155)
                 .padding(.bottom, 60)
             }
         }
@@ -315,19 +312,15 @@ struct BreatheView: View {
     
     func updateCurrentPhase() {
         // Calculate position within the breathing cycle
-        // Cycle is 12 seconds total: inhale(4s) -> holdIn(2s) -> exhale(4s) -> holdOut(2s)
-        let cycleDuration: Double = 12.0
+        // Cycle is 8 seconds total: inhale(4s) -> exhale(4s)
+        let cycleDuration: Double = 8.0
         let timeInCycle = totalElapsedTime.truncatingRemainder(dividingBy: cycleDuration)
         
         let newPhase: BreathingPhase
         if timeInCycle < 4.0 {
             newPhase = .inhale
-        } else if timeInCycle < 6.0 {
-            newPhase = .holdIn
-        } else if timeInCycle < 10.0 {
-            newPhase = .exhale
         } else {
-            newPhase = .holdOut
+            newPhase = .exhale
         }
         
         // Only update animation when phase actually changes
@@ -345,17 +338,11 @@ struct BreatheView: View {
                 scale = 1.4
                 opacity = 1.0
             }
-        case .holdIn:
-            // Keep current scale (no animation needed)
-            break
         case .exhale:
             withAnimation(.easeInOut(duration: currentPhase.duration)) {
                 scale = 0.8
                 opacity = 0.6
             }
-        case .holdOut:
-            // Keep current scale (no animation needed)
-            break
         }
     }
     
@@ -409,11 +396,11 @@ struct BreatheView: View {
         // Only play if bell sound is enabled
         guard bellSoundEnabled else { return }
         
-        // Generate a soft, gentle gong sound
+        // Generate a very soft, gentle gong sound that fades with the breath
         let sampleRate: Double = 44100.0
-        let duration: Double = 2.0 // Longer for natural gong decay
-        let fundamentalFreq: Double = 200.0 // Low, warm frequency
-        let volume: Float = 0.12 // Very soft volume
+        let duration: Double = 3.5 // Longer to blend with breath transition
+        let fundamentalFreq: Double = 180.0 // Even lower, warmer frequency
+        let volume: Float = 0.08 // Much softer volume
         
         let frameCount = Int(duration * sampleRate)
         
@@ -426,26 +413,35 @@ struct BreatheView: View {
         // Gong overtones (inharmonic partials typical of gongs - less harmonic than bells)
         // Format: (frequency multiplier, amplitude, decay rate)
         let partials: [(freq: Double, amp: Double, decay: Double)] = [
-            (1.0, 1.0, 0.8),      // Fundamental - slow decay
-            (1.6, 0.6, 1.0),      // Inharmonic low
-            (2.3, 0.4, 1.2),      // Inharmonic
-            (3.1, 0.25, 1.5),     // Inharmonic
-            (4.4, 0.15, 2.0),     // Inharmonic high
-            (5.8, 0.08, 2.5)      // Very high, quick fade
+            (1.0, 1.0, 0.5),      // Fundamental - very slow decay
+            (1.6, 0.5, 0.7),      // Inharmonic low
+            (2.3, 0.3, 0.9),      // Inharmonic
+            (3.1, 0.18, 1.2),     // Inharmonic
+            (4.4, 0.1, 1.5),      // Inharmonic high
+            (5.8, 0.05, 2.0)      // Very high, quicker fade
         ]
         
-        // Generate gong sound with soft attack and long decay
+        // Generate gong sound with soft attack and long, gentle decay
         for i in 0..<frameCount {
             let time = Double(i) / sampleRate
+            let progress = Double(i) / Double(frameCount)
             var sample: Double = 0.0
             
-            // Soft attack envelope (gongs don't strike instantly)
-            let attackTime = 0.02
+            // Soft, gradual attack envelope
+            let attackTime = 0.1
             var attackEnvelope: Double = 1.0
             if time < attackTime {
-                // Smooth attack
+                // Very smooth attack
                 let t = time / attackTime
                 attackEnvelope = t * t * (3.0 - 2.0 * t) // Smooth step function
+            }
+            
+            // Gentle fade-out envelope to blend with breath
+            var fadeOutEnvelope: Double = 1.0
+            if progress > 0.4 {
+                // Start fading out after 40% to blend naturally
+                let fadeProgress = (progress - 0.4) / 0.6
+                fadeOutEnvelope = 1.0 - (fadeProgress * fadeProgress) // Quadratic fade-out
             }
             
             // Add all partials
@@ -461,8 +457,8 @@ struct BreatheView: View {
                 sample += sin(2.0 * .pi * freq * time) * amp * decayEnvelope * attackEnvelope
             }
             
-            // Normalize and apply master volume
-            channelData[i] = Float(sample) * volume * 0.2 // Very soft
+            // Apply all envelopes and master volume
+            channelData[i] = Float(sample) * volume * Float(fadeOutEnvelope) * 0.15 // Extra soft
         }
         
         // Play the sound using the audio engine
