@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AVFoundation
 
 struct BreatheView: View {
     @State private var isBreathing = false
@@ -16,8 +17,15 @@ struct BreatheView: View {
     @State private var selectedDuration: Int = 60
     @State private var timer: Timer?
     @State private var totalElapsedTime: Double = 0
+    @State private var bellSoundEnabled: Bool = true
+    private let audioEngine = AVAudioEngine()
+    private let playerNode = AVAudioPlayerNode()
     
     let durations = [30, 60, 120, 300]
+    
+    init() {
+        setupAudioEngine()
+    }
     
     enum BreathingPhase {
         case inhale, holdIn, exhale, holdOut
@@ -184,6 +192,32 @@ struct BreatheView: View {
                         .transition(.opacity)
                     } else {
                         VStack(spacing: 16) {
+                            // Bell sound toggle
+                            Button(action: {
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    bellSoundEnabled.toggle()
+                                }
+                            }) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: bellSoundEnabled ? "bell.fill" : "bell.slash")
+                                        .font(.system(size: 16))
+                                    Text("Transition Sounds")
+                                        .font(.system(size: 15, weight: .medium, design: .default))
+                                }
+                                .foregroundColor(bellSoundEnabled ? 
+                                               Color(red: 0.65, green: 0.8, blue: 0.92) :
+                                               Color(red: 0.4, green: 0.5, blue: 0.6))
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 20)
+                                        .fill(bellSoundEnabled ? 
+                                              Color(red: 0.65, green: 0.8, blue: 0.92).opacity(0.25) :
+                                              Color.white.opacity(0.6))
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            
                             Text("DURATION")
                                 .font(.system(size: 13, weight: .medium, design: .default))
                                 .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
@@ -225,7 +259,7 @@ struct BreatheView: View {
                         .transition(.opacity)
                     }
                 }
-                .frame(height: 155)
+                .frame(height: 210)
                 .padding(.bottom, 60)
             }
         }
@@ -300,6 +334,7 @@ struct BreatheView: View {
         if newPhase != currentPhase {
             currentPhase = newPhase
             updateBreathingAnimation()
+            playTransitionSound()
         }
     }
     
@@ -340,6 +375,102 @@ struct BreatheView: View {
             return String(format: "%d:%02d", mins, secs)
         } else {
             return "\(secs)"
+        }
+    }
+    
+    func setupAudioEngine() {
+        // Configure audio session
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            print("Failed to setup audio session: \(error)")
+        }
+        
+        // Attach player node to engine
+        audioEngine.attach(playerNode)
+        
+        // Connect player to main mixer
+        let mainMixer = audioEngine.mainMixerNode
+        let format = AVAudioFormat(standardFormatWithSampleRate: 44100.0, channels: 1)!
+        audioEngine.connect(playerNode, to: mainMixer, format: format)
+        
+        // Prepare and start the engine
+        audioEngine.prepare()
+        do {
+            try audioEngine.start()
+            print("✅ Audio engine started for breath transitions")
+        } catch {
+            print("❌ Failed to start audio engine: \(error)")
+        }
+    }
+    
+    func playTransitionSound() {
+        // Only play if bell sound is enabled
+        guard bellSoundEnabled else { return }
+        
+        // Generate a soft, gentle gong sound
+        let sampleRate: Double = 44100.0
+        let duration: Double = 2.0 // Longer for natural gong decay
+        let fundamentalFreq: Double = 200.0 // Low, warm frequency
+        let volume: Float = 0.12 // Very soft volume
+        
+        let frameCount = Int(duration * sampleRate)
+        
+        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1) else { return }
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frameCount)) else { return }
+        
+        buffer.frameLength = AVAudioFrameCount(frameCount)
+        guard let channelData = buffer.floatChannelData?[0] else { return }
+        
+        // Gong overtones (inharmonic partials typical of gongs - less harmonic than bells)
+        // Format: (frequency multiplier, amplitude, decay rate)
+        let partials: [(freq: Double, amp: Double, decay: Double)] = [
+            (1.0, 1.0, 0.8),      // Fundamental - slow decay
+            (1.6, 0.6, 1.0),      // Inharmonic low
+            (2.3, 0.4, 1.2),      // Inharmonic
+            (3.1, 0.25, 1.5),     // Inharmonic
+            (4.4, 0.15, 2.0),     // Inharmonic high
+            (5.8, 0.08, 2.5)      // Very high, quick fade
+        ]
+        
+        // Generate gong sound with soft attack and long decay
+        for i in 0..<frameCount {
+            let time = Double(i) / sampleRate
+            var sample: Double = 0.0
+            
+            // Soft attack envelope (gongs don't strike instantly)
+            let attackTime = 0.02
+            var attackEnvelope: Double = 1.0
+            if time < attackTime {
+                // Smooth attack
+                let t = time / attackTime
+                attackEnvelope = t * t * (3.0 - 2.0 * t) // Smooth step function
+            }
+            
+            // Add all partials
+            for partial in partials {
+                let freq = fundamentalFreq * partial.freq
+                let amp = partial.amp
+                let decay = partial.decay
+                
+                // Very gentle exponential decay for each partial
+                let decayEnvelope = exp(-decay * time)
+                
+                // Generate sine wave with attack and decay
+                sample += sin(2.0 * .pi * freq * time) * amp * decayEnvelope * attackEnvelope
+            }
+            
+            // Normalize and apply master volume
+            channelData[i] = Float(sample) * volume * 0.2 // Very soft
+        }
+        
+        // Play the sound using the audio engine
+        playerNode.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
+        
+        // Make sure the player node is playing
+        if !playerNode.isPlaying {
+            playerNode.play()
         }
     }
 }
