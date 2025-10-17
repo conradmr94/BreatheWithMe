@@ -34,7 +34,6 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         case thunder = "Thunder"
         case forest = "Forest"
         case cafe = "Cafe"
-        case fan = "Fan"
         case city = "City"
         case fire = "Fire"
         case birds = "Birds"
@@ -52,7 +51,6 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             case .thunder: return "Thunder"
             case .forest: return "Forest"
             case .cafe: return "Cafe"
-            case .fan: return "Fan"
             case .city: return "City"
             case .fire: return "Fire"
             case .birds: return "Birds"
@@ -72,7 +70,6 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             case .thunder: return "cloud.bolt"
             case .forest: return "tree"
             case .cafe: return "cup.and.saucer"
-            case .fan: return "fan"
             case .city: return "building.2"
             case .fire: return "flame"
             case .birds: return "bird"
@@ -89,7 +86,7 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     
     private func isRealAudioType(_ type: NoiseType) -> Bool {
         switch type {
-        case .rain, .ocean, .wind, .thunder, .forest, .cafe, .fan, .city, .fire, .birds:
+        case .rain, .ocean, .wind, .thunder, .forest, .cafe, .city, .fire, .birds:
             return true
         case .white, .pink, .brown, .blue, .green:
             return false
@@ -170,7 +167,6 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         case .thunder: return "thunder.mp3"
         case .forest: return "forest.mp3"
         case .cafe: return "cafe.mp3"
-        case .fan: return "fan.mp3"
         case .city: return "city.mp3"
         case .fire: return "fire.mp3"
         case .birds: return "birds.mp3"
@@ -222,14 +218,12 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             generateForestPlaceholder(channelData: channelData, frameCount: frameCount)
         case .cafe:
             generateCafePlaceholder(channelData: channelData, frameCount: frameCount)
-        case .fan:
-            generateFanPlaceholder(channelData: channelData, frameCount: frameCount)
         case .city:
-            generateCafePlaceholder(channelData: channelData, frameCount: frameCount) // Use cafe placeholder for city
+            generateCityPlaceholder(channelData: channelData, frameCount: frameCount)
         case .fire:
-            generateFanPlaceholder(channelData: channelData, frameCount: frameCount) // Use fan placeholder for fire
+            generateFirePlaceholder(channelData: channelData, frameCount: frameCount)
         case .birds:
-            generateForestPlaceholder(channelData: channelData, frameCount: frameCount) // Use forest placeholder for birds
+            generateBirdsPlaceholder(channelData: channelData, frameCount: frameCount)
         default:
             break
         }
@@ -391,14 +385,12 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             generateForestNoise(channelData: channelData, frameCount: frameCount)
         case .cafe:
             generateCafeNoise(channelData: channelData, frameCount: frameCount)
-        case .fan:
-            generateFanNoise(channelData: channelData, frameCount: frameCount)
         case .city:
-            generateCafeNoise(channelData: channelData, frameCount: frameCount) // Use cafe noise for city
+            generateCityNoise(channelData: channelData, frameCount: frameCount)
         case .fire:
-            generateFanNoise(channelData: channelData, frameCount: frameCount) // Use fan noise for fire
+            generateFireNoise(channelData: channelData, frameCount: frameCount)
         case .birds:
-            generateForestNoise(channelData: channelData, frameCount: frameCount) // Use forest noise for birds
+            generateBirdsNoise(channelData: channelData, frameCount: frameCount)
         case .white:
             generateWhiteNoise(channelData: channelData, frameCount: frameCount)
         case .pink:
@@ -468,12 +460,33 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
     }
     
-    private func generateFanNoise(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
-        // Simple fan hum
+    private func generateCityNoise(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
+        // City ambiance: traffic and urban sounds with varied frequencies
         for i in 0..<frameCount {
             let time = Float(i) / Float(sampleRate)
-            let fan = sin(time * 2.0) * 0.1 + sin(time * 4.0) * 0.05
-            channelData[i] = fan * 0.3
+            let traffic = sin(time * 1.5) * 0.08 + sin(time * 5.0) * 0.04
+            let urban = Float.random(in: -0.03...0.03)
+            channelData[i] = (traffic + urban) * 0.25
+        }
+    }
+    
+    private func generateFireNoise(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
+        // Fire crackling: noise bursts with low rumble
+        for i in 0..<frameCount {
+            let time = Float(i) / Float(sampleRate)
+            let crackle = Float.random(in: -0.15...0.15) * abs(sin(time * 6.0))
+            let rumble = sin(time * 1.5) * 0.05
+            channelData[i] = (crackle + rumble) * 0.3
+        }
+    }
+    
+    private func generateBirdsNoise(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
+        // Bird chirping: high frequency modulated sounds
+        for i in 0..<frameCount {
+            let time = Float(i) / Float(sampleRate)
+            let chirp1 = sin(time * 8.0) * abs(sin(time * 0.3)) * 0.08
+            let chirp2 = sin(time * 12.0) * abs(sin(time * 0.5)) * 0.06
+            channelData[i] = (chirp1 + chirp2) * 0.3
         }
     }
     
@@ -560,12 +573,33 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
     }
     
-    private func generateFanPlaceholder(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
-        // Placeholder fan sound - in real implementation, load actual fan audio
+    private func generateCityPlaceholder(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
+        // Placeholder city sound - in real implementation, load actual city audio
         for i in 0..<frameCount {
             let time = Float(i) / Float(sampleRate)
-            let fan = sin(time * 2.0) * 0.1 + sin(time * 4.0) * 0.05
-            channelData[i] = fan * 0.2
+            let traffic = sin(time * 1.5) * 0.08 + sin(time * 5.0) * 0.04
+            let urban = Float.random(in: -0.03...0.03)
+            channelData[i] = (traffic + urban) * 0.2
+        }
+    }
+    
+    private func generateFirePlaceholder(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
+        // Placeholder fire sound - in real implementation, load actual fire audio
+        for i in 0..<frameCount {
+            let time = Float(i) / Float(sampleRate)
+            let crackle = Float.random(in: -0.15...0.15) * abs(sin(time * 6.0))
+            let rumble = sin(time * 1.5) * 0.05
+            channelData[i] = (crackle + rumble) * 0.2
+        }
+    }
+    
+    private func generateBirdsPlaceholder(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
+        // Placeholder birds sound - in real implementation, load actual birds audio
+        for i in 0..<frameCount {
+            let time = Float(i) / Float(sampleRate)
+            let chirp1 = sin(time * 8.0) * abs(sin(time * 0.3)) * 0.08
+            let chirp2 = sin(time * 12.0) * abs(sin(time * 0.5)) * 0.06
+            channelData[i] = (chirp1 + chirp2) * 0.2
         }
     }
     
