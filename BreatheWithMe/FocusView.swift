@@ -91,8 +91,9 @@ struct FocusView: View {
                         
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .center)
                 .frame(height: 120)
-                .padding(.top, 30)
+                .padding(.top, 50)
                 
                 Spacer()
                 
@@ -380,7 +381,6 @@ struct FocusView: View {
                         }
                     }
                 }
-                .frame(height: 220)
                 .padding(.bottom, 60)
             }
         }
@@ -407,7 +407,7 @@ struct FocusView: View {
                 }
             }
         )
-        .preferredColorScheme(.light)
+        .ignoresSafeArea(.container, edges: .top)
     }
     
     var progress: CGFloat {
@@ -559,8 +559,6 @@ struct FocusView: View {
         let secs = seconds % 60
         return String(format: "%02d:%02d", mins, secs)
     }
-    
-    // Voice features removed
 }
 
 

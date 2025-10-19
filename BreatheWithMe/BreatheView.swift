@@ -72,8 +72,9 @@ struct BreatheView: View {
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .center)
                 .frame(height: 120)
-                .padding(.top, 30)
+                .padding(.top, 50)
                 
                 Spacer()
                 
@@ -312,6 +313,7 @@ struct BreatheView: View {
                 .padding(.bottom, 60)
             }
         }
+        .ignoresSafeArea(.container, edges: .top)
         .preferredColorScheme(.light)
     }
     
