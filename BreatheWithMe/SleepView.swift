@@ -9,12 +9,11 @@ import SwiftUI
 
 struct SleepView: View {
     @State private var isRunning = false
-    @State private var timeRemaining: Int = 30 * 60 // 30 minutes in seconds
-    @State private var selectedDuration: Int = 30
+    @State private var elapsedSeconds: Int = 0
     @State private var timer: Timer?
     @State private var pulseScale: CGFloat = 1.0
     
-    let durations = [15, 30, 45, 60]
+    // Removed SLEEP TIMER controls
     
     var body: some View {
         ZStack {
@@ -123,7 +122,7 @@ struct SleepView: View {
                             // Content
                             VStack(spacing: 12) {
                                 if isRunning {
-                                    Text(formatTime(timeRemaining))
+                                    Text(formatTime(elapsedSeconds))
                                         .font(.system(size: 52, weight: .thin, design: .default))
                                         .foregroundColor(Color(red: 0.3, green: 0.35, blue: 0.5))
                                         .monospacedDigit()
@@ -175,53 +174,6 @@ struct SleepView: View {
                             .buttonStyle(PlainButtonStyle())
                         }
                         .transition(.opacity)
-                    } else {
-                        VStack(spacing: 16) {
-                            Text("SLEEP TIMER")
-                                .font(.system(size: 13, weight: .medium, design: .default))
-                                .foregroundColor(.white.opacity(0.6))
-                                .tracking(1.5)
-                            
-                            HStack(spacing: 12) {
-                                ForEach(durations, id: \.self) { duration in
-                                    Button(action: {
-                                        withAnimation(.easeInOut(duration: 0.2)) {
-                                            selectedDuration = duration
-                                            timeRemaining = duration * 60
-                                        }
-                                    }) {
-                                        VStack(spacing: 4) {
-                                            Text("\(duration)")
-                                                .font(.system(size: 22, weight: .light, design: .default))
-                                            Text("min")
-                                                .font(.system(size: 11, weight: .regular, design: .default))
-                                        }
-                                        .frame(width: 75, height: 75)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 38)
-                                                .fill(selectedDuration == duration ? 
-                                                      Color(red: 0.5, green: 0.55, blue: 0.75).opacity(0.4) : 
-                                                      Color.white.opacity(0.1))
-                                        )
-                                        .foregroundColor(
-                                            selectedDuration == duration ?
-                                            .white : .white.opacity(0.5)
-                                        )
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 38)
-                                                .stroke(
-                                                    selectedDuration == duration ?
-                                                    Color(red: 0.6, green: 0.65, blue: 0.85).opacity(0.6) :
-                                                    Color.clear,
-                                                    lineWidth: 2
-                                                )
-                                        )
-                                    }
-                                    .buttonStyle(PlainButtonStyle())
-                                }
-                            }
-                        }
-                        .transition(.opacity)
                     }
                 }
                 .frame(height: 155)
@@ -241,14 +193,11 @@ struct SleepView: View {
     
     func startTimer() {
         isRunning = true
+        elapsedSeconds = 0
         startPulseAnimation()
         
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            if timeRemaining > 0 {
-                timeRemaining -= 1
-            } else {
-                stopTimer()
-            }
+            elapsedSeconds += 1
         }
     }
     
@@ -256,7 +205,7 @@ struct SleepView: View {
         isRunning = false
         timer?.invalidate()
         timer = nil
-        timeRemaining = selectedDuration * 60
+        elapsedSeconds = 0
         pulseScale = 1.0
     }
     

@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AVFoundation
 
 struct BreatheView: View {
     @State private var isBreathing = false
@@ -18,14 +17,14 @@ struct BreatheView: View {
     @State private var timer: Timer?
     @State private var totalElapsedTime: Double = 0
     @State private var bellSoundEnabled: Bool = true
-    private let audioEngine = AVAudioEngine()
-    private let playerNode = AVAudioPlayerNode()
+    private let bellPlayer = BellPlayer()
+    @State private var breathInterval: Double = 4.0
+    @State private var isAdjustingInterval: Bool = false
+    @State private var lastDragAngle: Double? = nil
     
     let durations = [30, 60, 120, 300]
     
-    init() {
-        setupAudioEngine()
-    }
+    // default init
     
     enum BreathingPhase {
         case inhale, exhale
@@ -99,7 +98,7 @@ struct BreatheView: View {
                             .scaleEffect(isBreathing ? scale * (1.0 + Double(index) * 0.1) : 1.0)
                             .opacity(isBreathing ? opacity * (1.0 - Double(index) * 0.15) : 0.4)
                             .animation(
-                                isBreathing ? .easeInOut(duration: currentPhase.duration) : .easeInOut(duration: 0.5),
+                                isBreathing ? .easeInOut(duration: breathInterval) : .easeInOut(duration: 0.5),
                                 value: scale
                             )
                     }
@@ -122,7 +121,7 @@ struct BreatheView: View {
                                 .scaleEffect(isBreathing ? scale : 1.0)
                                 .shadow(color: Color(red: 0.5, green: 0.65, blue: 0.8).opacity(0.3), radius: 30, x: 0, y: 10)
                                 .animation(
-                                    isBreathing ? .easeInOut(duration: currentPhase.duration) : .easeInOut(duration: 0.5),
+                                    isBreathing ? .easeInOut(duration: breathInterval) : .easeInOut(duration: 0.5),
                                     value: scale
                                 )
                             
@@ -132,7 +131,7 @@ struct BreatheView: View {
                                 .frame(width: 180, height: 180)
                                 .scaleEffect(isBreathing ? scale : 1.0)
                                 .animation(
-                                    isBreathing ? .easeInOut(duration: currentPhase.duration) : .easeInOut(duration: 0.5),
+                                    isBreathing ? .easeInOut(duration: breathInterval) : .easeInOut(duration: 0.5),
                                     value: scale
                                 )
                             
@@ -149,10 +148,17 @@ struct BreatheView: View {
                                             .font(.system(size: 42, weight: .thin))
                                             .foregroundColor(.white)
                                         
-                                        Text("START")
-                                            .font(.system(size: 16, weight: .medium, design: .default))
-                                            .foregroundColor(.white)
-                                            .tracking(2)
+                                        if isAdjustingInterval {
+                                            Text("\(formatIntervalNumber(breathInterval))")
+                                                .font(.system(size: 16, weight: .medium, design: .default))
+                                                .foregroundColor(.white)
+                                                .tracking(2)
+                                        } else {
+                                            Text("START")
+                                                .font(.system(size: 16, weight: .medium, design: .default))
+                                                .foregroundColor(.white)
+                                                .tracking(2)
+                                        }
                                     }
                                 }
                             }
@@ -160,6 +166,52 @@ struct BreatheView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
+                .overlay(
+                    GeometryReader { proxy in
+                        // Outer interactive ring for one-finger spin
+                        let size = proxy.size
+                        let center = CGPoint(x: size.width / 2.0, y: size.height / 2.0)
+                        let outerDiameter: CGFloat = 260
+                        let innerDiameter: CGFloat = 220
+                        ZStack {
+                            // Visual feedback ring (only visible while adjusting)
+                            Circle()
+                                .stroke(isAdjustingInterval ? Color.white.opacity(0.25) : Color.clear, lineWidth: 36)
+                                .frame(width: outerDiameter, height: outerDiameter)
+                                .position(x: center.x, y: center.y)
+                        }
+                        .contentShape({ () -> Path in
+                            var path = Path()
+                            path.addEllipse(in: CGRect(x: center.x - outerDiameter/2, y: center.y - outerDiameter/2, width: outerDiameter, height: outerDiameter))
+                            path.addEllipse(in: CGRect(x: center.x - innerDiameter/2, y: center.y - innerDiameter/2, width: innerDiameter, height: innerDiameter))
+                            return path
+                        }(), eoFill: true)
+                        .gesture(
+                            DragGesture(minimumDistance: 0, coordinateSpace: .local)
+                                .onChanged { value in
+                                    guard !isBreathing else { return }
+                                    isAdjustingInterval = true
+                                    let dx = value.location.x - center.x
+                                    let dy = value.location.y - center.y
+                                    let angle = Double(atan2(dy, dx))
+                                    if let last = lastDragAngle {
+                                        var delta = angle - last
+                                        if delta > .pi { delta -= 2 * .pi }
+                                        if delta < -.pi { delta += 2 * .pi }
+                                        let secondsPerRevolution = 4.0 // 360° spin adjusts by 4 seconds
+                                        let deltaSeconds = delta / (2 * .pi) * secondsPerRevolution
+                                        breathInterval = max(2.0, breathInterval + deltaSeconds)
+                                    }
+                                    lastDragAngle = angle
+                                }
+                                .onEnded { _ in
+                                    lastDragAngle = nil
+                                    isAdjustingInterval = false
+                                }
+                        )
+                        .allowsHitTesting(!isBreathing)
+                    }
+                )
                 .frame(height: 450)
                 
                 Spacer()
@@ -279,8 +331,7 @@ struct BreatheView: View {
         
         // Trigger the initial animation immediately
         updateBreathingAnimation()
-
-        playTransitionSound()
+        if bellSoundEnabled { bellPlayer.playBell() }
         
         // Timer updates at 0.1 second intervals for smooth phase transitions
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
@@ -314,12 +365,12 @@ struct BreatheView: View {
     
     func updateCurrentPhase() {
         // Calculate position within the breathing cycle
-        // Cycle is 8 seconds total: inhale(4s) -> exhale(4s)
-        let cycleDuration: Double = 8.0
+        // Dynamic cycle: inhale(breathInterval) -> exhale(breathInterval)
+        let cycleDuration: Double = breathInterval * 2.0
         let timeInCycle = totalElapsedTime.truncatingRemainder(dividingBy: cycleDuration)
         
         let newPhase: BreathingPhase
-        if timeInCycle < 4.0 {
+        if timeInCycle < breathInterval {
             newPhase = .inhale
         } else {
             newPhase = .exhale
@@ -329,19 +380,19 @@ struct BreatheView: View {
         if newPhase != currentPhase {
             currentPhase = newPhase
             updateBreathingAnimation()
-            playTransitionSound()
+            if bellSoundEnabled { bellPlayer.playBell() }
         }
     }
     
     func updateBreathingAnimation() {
         switch currentPhase {
         case .inhale:
-            withAnimation(.easeInOut(duration: currentPhase.duration)) {
+            withAnimation(.easeInOut(duration: breathInterval)) {
                 scale = 1.4
                 opacity = 1.0
             }
         case .exhale:
-            withAnimation(.easeInOut(duration: currentPhase.duration)) {
+            withAnimation(.easeInOut(duration: breathInterval)) {
                 scale = 0.8
                 opacity = 0.6
             }
@@ -367,110 +418,16 @@ struct BreatheView: View {
         }
     }
     
-    func setupAudioEngine() {
-        // Configure audio session
-        do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
-            try AVAudioSession.sharedInstance().setActive(true)
-        } catch {
-            print("Failed to setup audio session: \(error)")
-        }
-        
-        // Attach player node to engine
-        audioEngine.attach(playerNode)
-        
-        // Connect player to main mixer
-        let mainMixer = audioEngine.mainMixerNode
-        let format = AVAudioFormat(standardFormatWithSampleRate: 44100.0, channels: 1)!
-        audioEngine.connect(playerNode, to: mainMixer, format: format)
-        
-        // Prepare and start the engine
-        audioEngine.prepare()
-        do {
-            try audioEngine.start()
-            print("✅ Audio engine started for breath transitions")
-        } catch {
-            print("❌ Failed to start audio engine: \(error)")
+    func formatIntervalNumber(_ seconds: Double) -> String {
+        let rounded = (seconds * 10).rounded() / 10
+        if abs(rounded.rounded() - rounded) < 0.0001 {
+            return "\(Int(rounded))"
+        } else {
+            return String(format: "%.1f", rounded)
         }
     }
     
-    func playTransitionSound() {
-        // Only play if bell sound is enabled
-        guard bellSoundEnabled else { return }
-        
-        // Generate a very soft, gentle gong sound that fades with the breath
-        let sampleRate: Double = 44100.0
-        let duration: Double = 3.5 // Longer to blend with breath transition
-        let fundamentalFreq: Double = 180.0 // Even lower, warmer frequency
-        let volume: Float = 0.08 // Much softer volume
-        
-        let frameCount = Int(duration * sampleRate)
-        
-        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1) else { return }
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frameCount)) else { return }
-        
-        buffer.frameLength = AVAudioFrameCount(frameCount)
-        guard let channelData = buffer.floatChannelData?[0] else { return }
-        
-        // Gong overtones (inharmonic partials typical of gongs - less harmonic than bells)
-        // Format: (frequency multiplier, amplitude, decay rate)
-        let partials: [(freq: Double, amp: Double, decay: Double)] = [
-            (1.0, 1.0, 0.5),      // Fundamental - very slow decay
-            (1.6, 0.5, 0.7),      // Inharmonic low
-            (2.3, 0.3, 0.9),      // Inharmonic
-            (3.1, 0.18, 1.2),     // Inharmonic
-            (4.4, 0.1, 1.5),      // Inharmonic high
-            (5.8, 0.05, 2.0)      // Very high, quicker fade
-        ]
-        
-        // Generate gong sound with soft attack and long, gentle decay
-        for i in 0..<frameCount {
-            let time = Double(i) / sampleRate
-            let progress = Double(i) / Double(frameCount)
-            var sample: Double = 0.0
-            
-            // Soft, gradual attack envelope
-            let attackTime = 0.1
-            var attackEnvelope: Double = 1.0
-            if time < attackTime {
-                // Very smooth attack
-                let t = time / attackTime
-                attackEnvelope = t * t * (3.0 - 2.0 * t) // Smooth step function
-            }
-            
-            // Gentle fade-out envelope to blend with breath
-            var fadeOutEnvelope: Double = 1.0
-            if progress > 0.4 {
-                // Start fading out after 40% to blend naturally
-                let fadeProgress = (progress - 0.4) / 0.6
-                fadeOutEnvelope = 1.0 - (fadeProgress * fadeProgress) // Quadratic fade-out
-            }
-            
-            // Add all partials
-            for partial in partials {
-                let freq = fundamentalFreq * partial.freq
-                let amp = partial.amp
-                let decay = partial.decay
-                
-                // Very gentle exponential decay for each partial
-                let decayEnvelope = exp(-decay * time)
-                
-                // Generate sine wave with attack and decay
-                sample += sin(2.0 * .pi * freq * time) * amp * decayEnvelope * attackEnvelope
-            }
-            
-            // Apply all envelopes and master volume
-            channelData[i] = Float(sample) * volume * Float(fadeOutEnvelope) * 0.15 // Extra soft
-        }
-        
-        // Play the sound using the audio engine
-        playerNode.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
-        
-        // Make sure the player node is playing
-        if !playerNode.isPlaying {
-            playerNode.play()
-        }
-    }
+    // sound is provided by BellPlayer
 }
 
 #Preview {

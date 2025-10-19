@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AVFoundation
 
 struct FocusView: View {
     @State private var isRunning = false
@@ -17,6 +18,7 @@ struct FocusView: View {
     @State private var cyclePosition: Int = 1 // Position in the 1-8 cycle
     @State private var isAutoCycleMode: Bool = true
     @StateObject private var noiseGenerator = NoiseGenerator()
+    private let bellPlayer = BellPlayer()
     @State private var showNoiseSettings = false
     
     enum PomodoroMode {
@@ -178,81 +180,89 @@ struct FocusView: View {
                 
                 // Bottom controls
                 VStack(spacing: 24) {
-                    // Noise settings (only show when not running)
-                    if !isRunning {
-                        VStack(spacing: 12) {
-                            // Noise toggle
-                            Button(action: {
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    noiseGenerator.isEnabled.toggle()
-                                }
-                            }) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: noiseGenerator.isEnabled ? "speaker.wave.2.fill" : "speaker.slash")
-                                        .font(.system(size: 16))
-                                    Text("Focus Sounds")
-                                        .font(.system(size: 15, weight: .medium, design: .default))
-                                }
-                                .foregroundColor(noiseGenerator.isEnabled ? 
-                                               Color(red: currentMode.color.red,
-                                                     green: currentMode.color.green,
-                                                     blue: currentMode.color.blue) :
-                                               Color(red: 0.4, green: 0.5, blue: 0.6))
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 10)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 20)
-                                        .fill(noiseGenerator.isEnabled ? 
-                                              Color(red: currentMode.color.red,
-                                                    green: currentMode.color.green,
-                                                    blue: currentMode.color.blue).opacity(0.25) :
-                                              Color(red: 1.0, green: 1.0, blue: 1.0, opacity: 0.6))
-                                )
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            
-                            // Noise type selector (only show if noise is enabled)
-                            if noiseGenerator.isEnabled {
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 8) {
-                                        ForEach(NoiseGenerator.NoiseType.allCases, id: \.self) { noiseType in
-                                            Button(action: {
-                                                withAnimation(.easeInOut(duration: 0.2)) {
-                                                    noiseGenerator.setNoiseType(noiseType)
-                                                }
-                                                // Show info message for color noise types
-                                                if [.white, .pink, .brown, .blue, .green].contains(noiseType) {
-                                                    noiseGenerator.showInfoForNoiseType(noiseType)
-                                                }
-                                            }) {
-                                                VStack(spacing: 4) {
-                                                    Image(systemName: noiseType.icon)
-                                                        .font(.system(size: 18))
-                                                    Text(noiseType.rawValue)
-                                                        .font(.system(size: 11, weight: .medium))
-                                                }
-                                                .foregroundColor(noiseGenerator.selectedNoiseType == noiseType ? 
-                                                               .white : Color(red: 0.4, green: 0.5, blue: 0.6))
-                                                .frame(width: 60, height: 50)
-                                                .background(
-                                                    RoundedRectangle(cornerRadius: 12)
-                                                        .fill(noiseGenerator.selectedNoiseType == noiseType ? 
-                                                              Color(red: currentMode.color.red,
-                                                                    green: currentMode.color.green,
-                                                                    blue: currentMode.color.blue) :
-                                                              Color(red: 1.0, green: 1.0, blue: 1.0, opacity: 0.6))
-                                                )
-                                            }
-                                            .buttonStyle(PlainButtonStyle())
-                                        }
+                    // Noise settings (always visible)
+                    VStack(spacing: 12) {
+                        // Noise toggle
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                if noiseGenerator.isEnabled {
+                                    noiseGenerator.isEnabled = false
+                                    if isRunning {
+                                        noiseGenerator.stopNoise()
                                     }
-                                    .padding(.horizontal, 16)
+                                } else {
+                                    noiseGenerator.isEnabled = true
+                                    if isRunning {
+                                        noiseGenerator.startNoise()
+                                    }
                                 }
-                                .transition(.opacity.combined(with: .move(edge: .bottom)))
                             }
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: noiseGenerator.isEnabled ? "speaker.wave.2.fill" : "speaker.slash")
+                                    .font(.system(size: 16))
+                                Text("Focus Sounds")
+                                    .font(.system(size: 15, weight: .medium, design: .default))
+                            }
+                            .foregroundColor(noiseGenerator.isEnabled ? 
+                                           Color(red: currentMode.color.red,
+                                                 green: currentMode.color.green,
+                                                 blue: currentMode.color.blue) :
+                                           Color(red: 0.4, green: 0.5, blue: 0.6))
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 20)
+                                    .fill(noiseGenerator.isEnabled ? 
+                                          Color(red: currentMode.color.red,
+                                                green: currentMode.color.green,
+                                                blue: currentMode.color.blue).opacity(0.25) :
+                                          Color(red: 1.0, green: 1.0, blue: 1.0, opacity: 0.6))
+                            )
                         }
-                        .transition(.opacity)
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        // Noise type selector (only show if noise is enabled)
+                        if noiseGenerator.isEnabled {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(NoiseGenerator.NoiseType.allCases, id: \.self) { noiseType in
+                                        Button(action: {
+                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                noiseGenerator.setNoiseType(noiseType)
+                                            }
+                                            // Show info message for color noise types
+                                            if [.white, .pink, .brown, .blue, .green].contains(noiseType) {
+                                                noiseGenerator.showInfoForNoiseType(noiseType)
+                                            }
+                                        }) {
+                                            VStack(spacing: 4) {
+                                                Image(systemName: noiseType.icon)
+                                                    .font(.system(size: 18))
+                                                Text(noiseType.rawValue)
+                                                    .font(.system(size: 11, weight: .medium))
+                                            }
+                                            .foregroundColor(noiseGenerator.selectedNoiseType == noiseType ? 
+                                                           .white : Color(red: 0.4, green: 0.5, blue: 0.6))
+                                            .frame(width: 60, height: 50)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 12)
+                                                    .fill(noiseGenerator.selectedNoiseType == noiseType ? 
+                                                          Color(red: currentMode.color.red,
+                                                                green: currentMode.color.green,
+                                                                blue: currentMode.color.blue) :
+                                                          Color(red: 1.0, green: 1.0, blue: 1.0, opacity: 0.6))
+                                            )
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                            }
+                            .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        }
                     }
+                    .transition(.opacity)
                     
                     // Control buttons
                     HStack(spacing: 16) {
@@ -314,7 +324,7 @@ struct FocusView: View {
                                 if !isAutoCycleMode {
                                     HStack(spacing: 12) {
                                         Button(action: { selectMode(.work) }) {
-                                            Text("Work")
+                                            Text("Focus")
                                                 .font(.system(size: 14, weight: .medium, design: .default))
                                                 .foregroundColor(currentMode == .work ? Color.white : Color(red: 0.4, green: 0.5, blue: 0.6))
                                                 .padding(.horizontal, 20)
@@ -331,7 +341,7 @@ struct FocusView: View {
                                         .buttonStyle(PlainButtonStyle())
                                         
                                         Button(action: { selectMode(.shortBreak) }) {
-                                            Text("Break")
+                                            Text("Rest")
                                                 .font(.system(size: 14, weight: .medium, design: .default))
                                                 .foregroundColor(currentMode == .shortBreak ? Color.white : Color(red: 0.4, green: 0.5, blue: 0.6))
                                                 .padding(.horizontal, 20)
@@ -348,7 +358,7 @@ struct FocusView: View {
                                         .buttonStyle(PlainButtonStyle())
                                         
                                         Button(action: { selectMode(.longBreak) }) {
-                                            Text("Long Break")
+                                            Text("Long Rest")
                                                 .font(.system(size: 14, weight: .medium, design: .default))
                                                 .foregroundColor(currentMode == .longBreak ? Color.white : Color(red: 0.4, green: 0.5, blue: 0.6))
                                                 .padding(.horizontal, 20)
@@ -370,7 +380,7 @@ struct FocusView: View {
                         }
                     }
                 }
-                .frame(height: 155)
+                .frame(height: 220)
                 .padding(.bottom, 60)
             }
         }
@@ -419,6 +429,9 @@ struct FocusView: View {
     func startTimer() {
         isRunning = true
         isPaused = false
+        
+        // Play start bell
+        bellPlayer.playBell()
         
         // Start noise if enabled
         if noiseGenerator.isEnabled {
@@ -486,6 +499,8 @@ struct FocusView: View {
         if isAutoCycleMode {
             // Automatically advance to next phase in cycle
             advanceCycle()
+            // Play end bell (end of previous session)
+            bellPlayer.playBell()
             // Automatically start the next session
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 self.startTimer()
@@ -493,6 +508,8 @@ struct FocusView: View {
         } else {
             isRunning = false
             isPaused = false
+            // Play end bell
+            bellPlayer.playBell()
             // Manual mode - suggest next mode
             if currentMode == .work {
                 if completedPomodoros % 4 == 0 {
@@ -542,6 +559,8 @@ struct FocusView: View {
         let secs = seconds % 60
         return String(format: "%02d:%02d", mins, secs)
     }
+    
+    // Voice features removed
 }
 
 

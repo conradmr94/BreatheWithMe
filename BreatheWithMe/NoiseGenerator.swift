@@ -147,7 +147,7 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         do {
             let audioPlayer = try AVAudioPlayer(contentsOf: url)
             audioPlayer.numberOfLoops = -1 // Loop indefinitely
-            audioPlayer.volume = 0.2 // Lower volume for ambient sounds
+            audioPlayer.volume = 0.5 // Lower volume for ambient sounds
             audioPlayer.delegate = self // Set delegate to handle interruptions
             audioPlayer.prepareToPlay()
             audioPlayers[type] = audioPlayer
