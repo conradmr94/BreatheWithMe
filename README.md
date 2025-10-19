@@ -107,4 +107,7 @@ A minimalist iOS wellness app combining guided breathing exercises, Pomodoro foc
 
 Built with SwiftUI
 
-The profile page should keep stats for the Breathe, Focus, and Sleep features. Breathe stats should include how many completed sessions and how much total time spent in breathing cycles. Focus should include how many sessions have been completed (a session is one 25-minute focus session) and how much total focus time and total rest time. Sleep stats should include the total hours/minutes/seconds of sleep (i.e., the sum of times between when the user has pressed "START" on the sleep page and then stopped).
+# TODO:
+- 4-7-8 breathing method
+- Change duration on Breathe page
+- The profile page should keep stats for the Breathe, Focus, and Sleep features. Breathe stats should include how many completed sessions and how much total time spent in breathing cycles. Focus should include how many sessions have been completed (a session is one 25-minute focus session) and how much total focus time and total rest time. Sleep stats should include the total hours/minutes/seconds of sleep (i.e., the sum of times between when the user has pressed "START" on the sleep page and then stopped).
