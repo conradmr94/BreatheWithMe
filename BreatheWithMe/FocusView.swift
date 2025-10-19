@@ -183,20 +183,10 @@ struct FocusView: View {
                 VStack(spacing: 24) {
                     // Noise settings (always visible)
                     VStack(spacing: 12) {
-                        // Noise toggle
+                        // Open noise settings modal
                         Button(action: {
                             withAnimation(.easeInOut(duration: 0.3)) {
-                                if noiseGenerator.isEnabled {
-                                    noiseGenerator.isEnabled = false
-                                    if isRunning {
-                                        noiseGenerator.stopNoise()
-                                    }
-                                } else {
-                                    noiseGenerator.isEnabled = true
-                                    if isRunning {
-                                        noiseGenerator.startNoise()
-                                    }
-                                }
+                                showNoiseSettings = true
                             }
                         }) {
                             HStack(spacing: 8) {
@@ -223,8 +213,8 @@ struct FocusView: View {
                         }
                         .buttonStyle(PlainButtonStyle())
                         
-                        // Noise type selector (only show if noise is enabled)
-                        if noiseGenerator.isEnabled {
+                        // Noise type selector moved to modal
+                        if false {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 8) {
                                     ForEach(NoiseGenerator.NoiseType.allCases, id: \.self) { noiseType in
@@ -407,6 +397,30 @@ struct FocusView: View {
                 }
             }
         )
+        .overlay(
+            Group {
+                if showNoiseSettings {
+                    ZStack {
+                        Color.black.opacity(0.4)
+                            .ignoresSafeArea()
+                            .transition(.opacity)
+                            .onTapGesture {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showNoiseSettings = false
+                                }
+                            }
+                        NoiseOptionsModal(
+                            isPresented: $showNoiseSettings,
+                            noiseGenerator: noiseGenerator,
+                            accentColor: Color(red: currentMode.color.red, green: currentMode.color.green, blue: currentMode.color.blue),
+                            isRunning: isRunning
+                        )
+                        .transition(.scale.combined(with: .opacity))
+                    }
+                    .zIndex(2)
+                }
+            }
+        )
         .ignoresSafeArea(.container, edges: .top)
     }
     
@@ -561,6 +575,97 @@ struct FocusView: View {
     }
 }
 
+// MARK: - Modal for Focus Sounds
+struct NoiseOptionsModal: View {
+    @Binding var isPresented: Bool
+    @ObservedObject var noiseGenerator: NoiseGenerator
+    let accentColor: Color
+    let isRunning: Bool
+
+    private let columns: [GridItem] = [
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12)
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Focus Sounds")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                Spacer()
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) { isPresented = false }
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(Color.black.opacity(0.25))
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+
+            Toggle(isOn: Binding(
+                get: { noiseGenerator.isEnabled },
+                set: { value in
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        noiseGenerator.isEnabled = value
+                    }
+                    if value {
+                        if isRunning { noiseGenerator.startNoise() }
+                    } else {
+                        if isRunning { noiseGenerator.stopNoise() }
+                    }
+                }
+            )) {
+                Text("Enable Focus Sounds")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+            }
+            .toggleStyle(SwitchToggleStyle(tint: accentColor))
+
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 12) {
+                    ForEach(NoiseGenerator.NoiseType.allCases, id: \.self) { noiseType in
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                noiseGenerator.setNoiseType(noiseType)
+                            }
+                            if [.white, .pink, .brown, .blue, .green].contains(noiseType) {
+                                noiseGenerator.showInfoForNoiseType(noiseType)
+                            }
+                        }) {
+                            VStack(spacing: 6) {
+                                Image(systemName: noiseType.icon)
+                                    .font(.system(size: 20))
+                                Text(noiseType.description)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .foregroundColor(noiseGenerator.selectedNoiseType == noiseType ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(noiseGenerator.selectedNoiseType == noiseType ? accentColor : Color.white.opacity(0.95))
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+                .padding(.top, 4)
+            }
+            .frame(maxHeight: 260)
+        }
+        .padding(16)
+        .frame(maxWidth: 340)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
+        )
+    }
+}
 
 #Preview {
     FocusView()
