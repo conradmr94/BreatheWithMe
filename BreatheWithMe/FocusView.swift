@@ -9,6 +9,7 @@ import SwiftUI
 import AVFoundation
 
 struct FocusView: View {
+    @State private var showProfile: Bool = false
     @State private var isRunning = false
     @State private var isPaused = false
     @State private var timeRemaining: Int = 1500
@@ -372,6 +373,27 @@ struct FocusView: View {
                     }
                 }
                 .padding(.bottom, 60)
+            }
+        }
+        .swipeDownToOpenProfile {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+                showProfile = true
+            }
+        }
+        .topSlideCover(isPresented: $showProfile) {
+            ProfileView(onDismiss: {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+                    showProfile = false
+                }
+            })
+            .preferredColorScheme(.light)
+        }
+        .apply { view in
+            if #available(iOS 16.0, *) {
+                view
+                    .toolbar(showProfile ? .hidden : .visible, for: .tabBar)
+            } else {
+                view
             }
         }
         .overlay(

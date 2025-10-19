@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct BreatheView: View {
+    @State private var showProfile: Bool = false
     @State private var isBreathing = false
     @State private var scale: CGFloat = 1.0
     @State private var opacity: Double = 0.8
@@ -315,6 +316,27 @@ struct BreatheView: View {
         }
         .ignoresSafeArea(.container, edges: .top)
         .preferredColorScheme(.light)
+        .swipeDownToOpenProfile {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+                showProfile = true
+            }
+        }
+        .topSlideCover(isPresented: $showProfile) {
+            ProfileView(onDismiss: {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+                    showProfile = false
+                }
+            })
+            .preferredColorScheme(.light)
+        }
+        .apply { view in
+            if #available(iOS 16.0, *) {
+                view
+                    .toolbar(showProfile ? .hidden : .visible, for: .tabBar)
+            } else {
+                view
+            }
+        }
     }
     
     func toggleBreathing() {

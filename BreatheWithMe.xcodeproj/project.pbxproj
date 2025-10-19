@@ -14,6 +14,9 @@
 		A1000024000000000000001 /* FocusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000025000000000000001 /* FocusView.swift */; };
 		A1000026000000000000001 /* SleepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000027000000000000001 /* SleepView.swift */; };
 		A1000028000000000000001 /* NoiseGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000029000000000000001 /* NoiseGenerator.swift */; };
+		A1000053000000000000001 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000054000000000000001 /* ProfileView.swift */; };
+		A1000055000000000000001 /* SwipeDownToOpenProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000056000000000000001 /* SwipeDownToOpenProfile.swift */; };
+		A1000057000000000000001 /* TopSlideCover.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000058000000000000001 /* TopSlideCover.swift */; };
 		A1000030000000000000001 /* rain.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1000031000000000000001 /* rain.mp3 */; };
 		A1000032000000000000001 /* ocean.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1000033000000000000001 /* ocean.mp3 */; };
 		A1000034000000000000001 /* wind.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1000035000000000000001 /* wind.mp3 */; };
@@ -25,6 +28,9 @@
 		A1000046000000000000001 /* fire.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1000047000000000000001 /* fire.mp3 */; };
 		A1000048000000000000001 /* birds.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1000049000000000000001 /* birds.mp3 */; };
 		A1000052000000000000001 /* BellPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000051000000000000001 /* BellPlayer.swift */; };
+ 		A1000061000000000000001 /* BreatheStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000060000000000000001 /* BreatheStatsView.swift */; };
+ 		A1000063000000000000001 /* FocusStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000062000000000000001 /* FocusStatsView.swift */; };
+ 		A1000065000000000000001 /* SleepStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000064000000000000001 /* SleepStatsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +42,9 @@
 		A1000025000000000000001 /* FocusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusView.swift; sourceTree = "<group>"; };
 		A1000027000000000000001 /* SleepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepView.swift; sourceTree = "<group>"; };
 		A1000029000000000000001 /* NoiseGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoiseGenerator.swift; sourceTree = "<group>"; };
+		A1000054000000000000001 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		A1000056000000000000001 /* SwipeDownToOpenProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeDownToOpenProfile.swift; sourceTree = "<group>"; };
+		A1000058000000000000001 /* TopSlideCover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopSlideCover.swift; sourceTree = "<group>"; };
 		A1000031000000000000001 /* rain.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = rain.mp3; sourceTree = "<group>"; };
 		A1000033000000000000001 /* ocean.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = ocean.mp3; sourceTree = "<group>"; };
 		A1000035000000000000001 /* wind.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = wind.mp3; sourceTree = "<group>"; };
@@ -48,6 +57,9 @@
 		A1000049000000000000001 /* birds.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = birds.mp3; sourceTree = "<group>"; };
 		A1000050000000000000001 /* AudioFiles */ = {isa = PBXFileReference; lastKnownFileType = folder; path = AudioFiles; sourceTree = "<group>"; };
 		A1000051000000000000001 /* BellPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BellPlayer.swift; sourceTree = "<group>"; };
+ 		A1000060000000000000001 /* BreatheStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreatheStatsView.swift; sourceTree = "<group>"; };
+ 		A1000062000000000000001 /* FocusStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusStatsView.swift; sourceTree = "<group>"; };
+ 		A1000064000000000000001 /* SleepStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepStatsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -79,6 +91,12 @@
 				A1000027000000000000001 /* SleepView.swift */,
 				A1000029000000000000001 /* NoiseGenerator.swift */,
 				A1000051000000000000001 /* BellPlayer.swift */,
+				A1000054000000000000001 /* ProfileView.swift */,
+ 				A1000060000000000000001 /* BreatheStatsView.swift */,
+ 				A1000062000000000000001 /* FocusStatsView.swift */,
+ 				A1000064000000000000001 /* SleepStatsView.swift */,
+				A1000056000000000000001 /* SwipeDownToOpenProfile.swift */,
+				A1000058000000000000001 /* TopSlideCover.swift */,
 				A1000006000000000000001 /* Assets.xcassets */,
 				A1000050000000000000001 /* AudioFiles */,
 			);
@@ -196,6 +214,12 @@
 				A1000028000000000000001 /* NoiseGenerator.swift in Sources */,
 				A1000001000000000000001 /* BreatheWithMeApp.swift in Sources */,
 				A1000052000000000000001 /* BellPlayer.swift in Sources */,
+				A1000053000000000000001 /* ProfileView.swift in Sources */,
+				A1000055000000000000001 /* SwipeDownToOpenProfile.swift in Sources */,
+				A1000057000000000000001 /* TopSlideCover.swift in Sources */,
+ 				A1000061000000000000001 /* BreatheStatsView.swift in Sources */,
+ 				A1000063000000000000001 /* FocusStatsView.swift in Sources */,
+ 				A1000065000000000000001 /* SleepStatsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

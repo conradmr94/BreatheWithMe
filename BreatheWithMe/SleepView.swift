@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct SleepView: View {
+    @State private var showProfile: Bool = false
     @State private var isRunning = false
     @State private var elapsedSeconds: Int = 0
     @State private var timer: Timer?
@@ -183,6 +184,27 @@ struct SleepView: View {
         }
         .ignoresSafeArea(.container, edges: .top)
         .preferredColorScheme(.dark)
+        .swipeDownToOpenProfile {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+                showProfile = true
+            }
+        }
+        .topSlideCover(isPresented: $showProfile) {
+            ProfileView(onDismiss: {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+                    showProfile = false
+                }
+            })
+            .preferredColorScheme(.light)
+        }
+        .apply { view in
+            if #available(iOS 16.0, *) {
+                view
+                    .toolbar(showProfile ? .hidden : .visible, for: .tabBar)
+            } else {
+                view
+            }
+        }
     }
     
     func toggleTimer() {
