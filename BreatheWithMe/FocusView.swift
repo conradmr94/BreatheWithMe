@@ -8,6 +8,41 @@
 import SwiftUI
 import AVFoundation
 
+// MARK: - Data Model
+struct FocusStats: Codable {
+    var focusSessionsCompleted: Int = 0
+    var totalFocusTimeSeconds: Int = 0
+    var totalRestTimeSeconds: Int = 0
+    
+    var totalFocusTimeFormatted: String {
+        let hours = totalFocusTimeSeconds / 3600
+        let minutes = (totalFocusTimeSeconds % 3600) / 60
+        let seconds = totalFocusTimeSeconds % 60
+        
+        if hours > 0 {
+            return String(format: "%dh %dm", hours, minutes)
+        } else if minutes > 0 {
+            return String(format: "%dm %ds", minutes, seconds)
+        } else {
+            return "\(seconds)s"
+        }
+    }
+    
+    var totalRestTimeFormatted: String {
+        let hours = totalRestTimeSeconds / 3600
+        let minutes = (totalRestTimeSeconds % 3600) / 60
+        let seconds = totalRestTimeSeconds % 60
+        
+        if hours > 0 {
+            return String(format: "%dh %dm", hours, minutes)
+        } else if minutes > 0 {
+            return String(format: "%dm %ds", minutes, seconds)
+        } else {
+            return "\(seconds)s"
+        }
+    }
+}
+
 struct FocusView: View {
     @State private var showProfile: Bool = false
     @State private var isRunning = false
@@ -21,6 +56,24 @@ struct FocusView: View {
     @StateObject private var noiseGenerator = NoiseGenerator()
     private let bellPlayer = BellPlayer()
     @State private var showNoiseSettings = false
+    
+    // Statistics tracking
+    @AppStorage("focusStats") private var focusStatsData: Data = Data()
+    @State private var sessionStartTime: Date?
+    
+    private var focusStats: FocusStats {
+        get {
+            if let decoded = try? JSONDecoder().decode(FocusStats.self, from: focusStatsData) {
+                return decoded
+            }
+            return FocusStats()
+        }
+        set {
+            if let encoded = try? JSONEncoder().encode(newValue) {
+                focusStatsData = encoded
+            }
+        }
+    }
     
     enum PomodoroMode {
         case work, shortBreak, longBreak
@@ -465,6 +518,7 @@ struct FocusView: View {
     func startTimer() {
         isRunning = true
         isPaused = false
+        sessionStartTime = Date()
         
         // Play start bell
         bellPlayer.playBell()
@@ -500,10 +554,14 @@ struct FocusView: View {
     }
     
     func resetTimer() {
+        // Track statistics before resetting
+        trackSessionTime()
+        
         isRunning = false
         isPaused = false
         timer?.invalidate()
         timer = nil
+        sessionStartTime = nil
         
         // Stop noise
         if noiseGenerator.isEnabled {
@@ -519,6 +577,32 @@ struct FocusView: View {
         timeRemaining = currentMode.duration
     }
     
+    private func trackSessionTime() {
+        // Track statistics - always track time, only count as completed if session lasted at least 30 seconds
+        if let startTime = sessionStartTime {
+            let sessionDuration = Int(Date().timeIntervalSince(startTime))
+            if sessionDuration > 0 {
+                var stats = focusStats
+                
+                // Always add time spent
+                if currentMode == .work {
+                    stats.totalFocusTimeSeconds += sessionDuration
+                    // Only count as completed session if it lasted at least 30 seconds
+                    if sessionDuration >= 30 {
+                        stats.focusSessionsCompleted += 1
+                    }
+                } else {
+                    stats.totalRestTimeSeconds += sessionDuration
+                }
+                
+                // Update the stored data directly
+                if let encoded = try? JSONEncoder().encode(stats) {
+                    focusStatsData = encoded
+                }
+            }
+        }
+    }
+    
     func completeSession() {
         timer?.invalidate()
         timer = nil
@@ -527,6 +611,9 @@ struct FocusView: View {
         if noiseGenerator.isEnabled {
             noiseGenerator.stopNoise()
         }
+        
+        // Track statistics
+        trackSessionTime()
         
         if currentMode == .work {
             completedPomodoros += 1

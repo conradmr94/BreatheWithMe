@@ -7,6 +7,26 @@
 
 import SwiftUI
 
+// MARK: - Data Model
+struct BreatheStats: Codable {
+    var sessionsCompleted: Int = 0
+    var totalTimeSeconds: Int = 0
+    
+    var totalTimeFormatted: String {
+        let hours = totalTimeSeconds / 3600
+        let minutes = (totalTimeSeconds % 3600) / 60
+        let seconds = totalTimeSeconds % 60
+        
+        if hours > 0 {
+            return String(format: "%dh %dm", hours, minutes)
+        } else if minutes > 0 {
+            return String(format: "%dm %ds", minutes, seconds)
+        } else {
+            return "\(seconds)s"
+        }
+    }
+}
+
 struct BreatheView: View {
     @State private var showProfile: Bool = false
     @State private var isBreathing = false
@@ -22,6 +42,24 @@ struct BreatheView: View {
     @State private var breathInterval: Double = 4.0
     @State private var isAdjustingInterval: Bool = false
     @State private var lastDragAngle: Double? = nil
+    
+    // Statistics tracking
+    @AppStorage("breatheStats") private var breatheStatsData: Data = Data()
+    @State private var sessionStartTime: Date?
+    
+    private var breatheStats: BreatheStats {
+        get {
+            if let decoded = try? JSONDecoder().decode(BreatheStats.self, from: breatheStatsData) {
+                return decoded
+            }
+            return BreatheStats()
+        }
+        set {
+            if let encoded = try? JSONEncoder().encode(newValue) {
+                breatheStatsData = encoded
+            }
+        }
+    }
 
     // Show/hide the duration picker window
     @State private var showDurationPicker: Bool = false
@@ -433,6 +471,7 @@ struct BreatheView: View {
         remainingTime = selectedDuration
         totalElapsedTime = 0
         currentPhase = .inhale
+        sessionStartTime = Date()
         
         updateBreathingAnimation()
         if bellSoundEnabled { bellPlayer.playBell() }
@@ -458,7 +497,30 @@ struct BreatheView: View {
         scale = 1.0
         opacity = 1.0
         currentPhase = .inhale
+        
+        // Track statistics - always track time, only count as completed if session lasted at least 10 seconds
+        if let startTime = sessionStartTime {
+            let sessionDuration = Int(Date().timeIntervalSince(startTime))
+            if sessionDuration > 0 {
+                var stats = breatheStats
+                
+                // Always add time spent
+                stats.totalTimeSeconds += sessionDuration
+                
+                // Only count as completed session if it lasted at least 10 seconds
+                if sessionDuration >= 10 {
+                    stats.sessionsCompleted += 1
+                }
+                
+                // Update the stored data directly
+                if let encoded = try? JSONEncoder().encode(stats) {
+                    breatheStatsData = encoded
+                }
+            }
+        }
+        
         totalElapsedTime = 0
+        sessionStartTime = nil
     }
     
     func updateCurrentPhase() {

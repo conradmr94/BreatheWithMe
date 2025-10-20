@@ -6,23 +6,43 @@
 import SwiftUI
 
 struct BreatheStatsView: View {
+    @AppStorage("breatheStats") private var breatheStatsData: Data = Data()
+    
+    private var breatheStats: BreatheStats {
+        get {
+            if let decoded = try? JSONDecoder().decode(BreatheStats.self, from: breatheStatsData) {
+                return decoded
+            }
+            return BreatheStats()
+        }
+        set {
+            if let encoded = try? JSONEncoder().encode(newValue) {
+                breatheStatsData = encoded
+            }
+        }
+    }
+    
     var body: some View {
         VStack(spacing: 16) {
             Text("Breathe Stats")
                 .font(.system(size: 28, weight: .semibold))
                 .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
 
-            // Placeholder content; wire to real stats later
+            // Real statistics display
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Text("Completed Sessions")
                     Spacer()
-                    Text("—")
+                    Text("\(breatheStats.sessionsCompleted)")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
                 }
                 HStack {
                     Text("Total Time")
                     Spacer()
-                    Text("—")
+                    Text(breatheStats.totalTimeFormatted)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
                 }
             }
             .font(.system(size: 17, weight: .regular))

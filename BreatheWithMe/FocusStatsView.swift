@@ -6,6 +6,22 @@
 import SwiftUI
 
 struct FocusStatsView: View {
+    @AppStorage("focusStats") private var focusStatsData: Data = Data()
+    
+    private var focusStats: FocusStats {
+        get {
+            if let decoded = try? JSONDecoder().decode(FocusStats.self, from: focusStatsData) {
+                return decoded
+            }
+            return FocusStats()
+        }
+        set {
+            if let encoded = try? JSONEncoder().encode(newValue) {
+                focusStatsData = encoded
+            }
+        }
+    }
+    
     var body: some View {
         VStack(spacing: 16) {
             Text("Focus Stats")
@@ -16,17 +32,23 @@ struct FocusStatsView: View {
                 HStack {
                     Text("Completed Focus Sessions")
                     Spacer()
-                    Text("—")
+                    Text("\(focusStats.focusSessionsCompleted)")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
                 }
                 HStack {
                     Text("Total Focus Time")
                     Spacer()
-                    Text("—")
+                    Text(focusStats.totalFocusTimeFormatted)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
                 }
                 HStack {
                     Text("Total Rest Time")
                     Spacer()
-                    Text("—")
+                    Text(focusStats.totalRestTimeFormatted)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
                 }
             }
             .font(.system(size: 17, weight: .regular))
