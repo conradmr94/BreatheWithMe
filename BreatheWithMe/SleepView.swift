@@ -3,7 +3,7 @@
 //  BreatheWithMe
 //
 //  Created on 10/15/2025.
-//
+
 
 import SwiftUI
 
@@ -13,8 +13,9 @@ struct SleepView: View {
     @State private var elapsedSeconds: Int = 0
     @State private var timer: Timer?
     @State private var pulseScale: CGFloat = 1.0
-    
-    // Removed SLEEP TIMER controls
+
+    // NEW: HealthKit VM
+    @StateObject private var vm = SleepViewModel()
     
     var body: some View {
         ZStack {
@@ -32,7 +33,7 @@ struct SleepView: View {
             
             // Twinkling stars
             if !isRunning {
-                ForEach(0..<20, id: \.self) { index in
+                ForEach(0..<20, id: \.self) { _ in
                     Circle()
                         .fill(Color.white.opacity(Double.random(in: 0.3...0.7)))
                         .frame(width: CGFloat.random(in: 1...3), height: CGFloat.random(in: 1...3))
@@ -44,7 +45,7 @@ struct SleepView: View {
             }
             
             VStack(spacing: 0) {
-                // Top section with fixed height
+                // Top section
                 VStack(spacing: 12) {
                     if !isRunning {
                         Text("Sleep")
@@ -88,7 +89,6 @@ struct SleepView: View {
                     // Moon circle
                     Button(action: toggleTimer) {
                         ZStack {
-                            // Main moon
                             Circle()
                                 .fill(
                                     RadialGradient(
@@ -106,20 +106,9 @@ struct SleepView: View {
                                 .scaleEffect(isRunning ? pulseScale : 1.0)
                             
                             // Moon craters
-                            Circle()
-                                .fill(Color(red: 0.7, green: 0.72, blue: 0.8).opacity(0.3))
-                                .frame(width: 30, height: 30)
-                                .offset(x: -40, y: -20)
-                            
-                            Circle()
-                                .fill(Color(red: 0.7, green: 0.72, blue: 0.8).opacity(0.2))
-                                .frame(width: 20, height: 20)
-                                .offset(x: 30, y: 15)
-                            
-                            Circle()
-                                .fill(Color(red: 0.7, green: 0.72, blue: 0.8).opacity(0.25))
-                                .frame(width: 25, height: 25)
-                                .offset(x: 10, y: -35)
+                            Circle().fill(Color(red: 0.7, green: 0.72, blue: 0.8).opacity(0.3)).frame(width: 30, height: 30).offset(x: -40, y: -20)
+                            Circle().fill(Color(red: 0.7, green: 0.72, blue: 0.8).opacity(0.2)).frame(width: 20, height: 20).offset(x: 30, y: 15)
+                            Circle().fill(Color(red: 0.7, green: 0.72, blue: 0.8).opacity(0.25)).frame(width: 25, height: 25).offset(x: 10, y: -35)
                             
                             // Content
                             VStack(spacing: 12) {
@@ -133,7 +122,6 @@ struct SleepView: View {
                                         Image(systemName: "moon.stars.fill")
                                             .font(.system(size: 42, weight: .thin))
                                             .foregroundColor(Color(red: 0.4, green: 0.45, blue: 0.6))
-                                        
                                         Text("START")
                                             .font(.system(size: 16, weight: .medium, design: .default))
                                             .foregroundColor(Color(red: 0.4, green: 0.45, blue: 0.6))
@@ -147,11 +135,9 @@ struct SleepView: View {
                 }
                 .frame(height: 450)
                 .onAppear {
-                    if isRunning {
-                        startPulseAnimation()
-                    }
+                    if isRunning { startPulseAnimation() }
                 }
-                
+
                 Spacer()
                 
                 // Bottom section
@@ -185,46 +171,36 @@ struct SleepView: View {
         .ignoresSafeArea(.container, edges: .top)
         .preferredColorScheme(.dark)
         .swipeDownToOpenProfile {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-                showProfile = true
-            }
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) { showProfile = true }
         }
         .topSlideCover(isPresented: $showProfile) {
             ProfileView(onDismiss: {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-                    showProfile = false
-                }
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) { showProfile = false }
             })
             .preferredColorScheme(.light)
         }
         .apply { view in
             if #available(iOS 16.0, *) {
-                view
-                    .toolbar(showProfile ? .hidden : .visible, for: .tabBar)
+                view.toolbar(showProfile ? .hidden : .visible, for: .tabBar)
             } else {
                 view
             }
         }
-    }
-    
-    func toggleTimer() {
-        if isRunning {
-            stopTimer()
-        } else {
-            startTimer()
+        .onAppear {
+            vm.onAppear()
         }
     }
     
+    // --- Existing timer logic unchanged ---
+    func toggleTimer() { isRunning ? stopTimer() : startTimer() }
     func startTimer() {
         isRunning = true
         elapsedSeconds = 0
         startPulseAnimation()
-        
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             elapsedSeconds += 1
         }
     }
-    
     func stopTimer() {
         isRunning = false
         timer?.invalidate()
@@ -232,16 +208,11 @@ struct SleepView: View {
         elapsedSeconds = 0
         pulseScale = 1.0
     }
-    
     func startPulseAnimation() {
-        withAnimation(
-            Animation.easeInOut(duration: 4.0)
-                .repeatForever(autoreverses: true)
-        ) {
+        withAnimation(.easeInOut(duration: 4.0).repeatForever(autoreverses: true)) {
             pulseScale = 1.08
         }
     }
-    
     func formatTime(_ seconds: Int) -> String {
         let mins = seconds / 60
         let secs = seconds % 60
@@ -249,7 +220,7 @@ struct SleepView: View {
     }
 }
 
+
 #Preview {
     SleepView()
 }
-

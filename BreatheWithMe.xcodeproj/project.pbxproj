@@ -14,9 +14,6 @@
 		A1000024000000000000001 /* FocusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000025000000000000001 /* FocusView.swift */; };
 		A1000026000000000000001 /* SleepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000027000000000000001 /* SleepView.swift */; };
 		A1000028000000000000001 /* NoiseGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000029000000000000001 /* NoiseGenerator.swift */; };
-		A1000053000000000000001 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000054000000000000001 /* ProfileView.swift */; };
-		A1000055000000000000001 /* SwipeDownToOpenProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000056000000000000001 /* SwipeDownToOpenProfile.swift */; };
-		A1000057000000000000001 /* TopSlideCover.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000058000000000000001 /* TopSlideCover.swift */; };
 		A1000030000000000000001 /* rain.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1000031000000000000001 /* rain.mp3 */; };
 		A1000032000000000000001 /* ocean.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1000033000000000000001 /* ocean.mp3 */; };
 		A1000034000000000000001 /* wind.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1000035000000000000001 /* wind.mp3 */; };
@@ -28,9 +25,14 @@
 		A1000046000000000000001 /* fire.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1000047000000000000001 /* fire.mp3 */; };
 		A1000048000000000000001 /* birds.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1000049000000000000001 /* birds.mp3 */; };
 		A1000052000000000000001 /* BellPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000051000000000000001 /* BellPlayer.swift */; };
- 		A1000061000000000000001 /* BreatheStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000060000000000000001 /* BreatheStatsView.swift */; };
- 		A1000063000000000000001 /* FocusStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000062000000000000001 /* FocusStatsView.swift */; };
- 		A1000065000000000000001 /* SleepStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000064000000000000001 /* SleepStatsView.swift */; };
+		A1000053000000000000001 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000054000000000000001 /* ProfileView.swift */; };
+		A1000055000000000000001 /* SwipeDownToOpenProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000056000000000000001 /* SwipeDownToOpenProfile.swift */; };
+		A1000057000000000000001 /* TopSlideCover.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000058000000000000001 /* TopSlideCover.swift */; };
+		A1000061000000000000001 /* BreatheStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000060000000000000001 /* BreatheStatsView.swift */; };
+		A1000063000000000000001 /* FocusStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000062000000000000001 /* FocusStatsView.swift */; };
+		A1000065000000000000001 /* SleepStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000064000000000000001 /* SleepStatsView.swift */; };
+		C9E6F5F52EA9BB9700047E58 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9E6F5F42EA9BB9100047E58 /* HealthKitManager.swift */; };
+		C9E6F5F72EA9BBA800047E58 /* SleepViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9E6F5F62EA9BBA300047E58 /* SleepViewModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -42,9 +44,6 @@
 		A1000025000000000000001 /* FocusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusView.swift; sourceTree = "<group>"; };
 		A1000027000000000000001 /* SleepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepView.swift; sourceTree = "<group>"; };
 		A1000029000000000000001 /* NoiseGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoiseGenerator.swift; sourceTree = "<group>"; };
-		A1000054000000000000001 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
-		A1000056000000000000001 /* SwipeDownToOpenProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeDownToOpenProfile.swift; sourceTree = "<group>"; };
-		A1000058000000000000001 /* TopSlideCover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopSlideCover.swift; sourceTree = "<group>"; };
 		A1000031000000000000001 /* rain.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = rain.mp3; sourceTree = "<group>"; };
 		A1000033000000000000001 /* ocean.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = ocean.mp3; sourceTree = "<group>"; };
 		A1000035000000000000001 /* wind.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = wind.mp3; sourceTree = "<group>"; };
@@ -55,11 +54,16 @@
 		A1000045000000000000001 /* city.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = city.mp3; sourceTree = "<group>"; };
 		A1000047000000000000001 /* fire.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = fire.mp3; sourceTree = "<group>"; };
 		A1000049000000000000001 /* birds.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = birds.mp3; sourceTree = "<group>"; };
-		A1000050000000000000001 /* AudioFiles */ = {isa = PBXFileReference; lastKnownFileType = folder; path = AudioFiles; sourceTree = "<group>"; };
 		A1000051000000000000001 /* BellPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BellPlayer.swift; sourceTree = "<group>"; };
- 		A1000060000000000000001 /* BreatheStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreatheStatsView.swift; sourceTree = "<group>"; };
- 		A1000062000000000000001 /* FocusStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusStatsView.swift; sourceTree = "<group>"; };
- 		A1000064000000000000001 /* SleepStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepStatsView.swift; sourceTree = "<group>"; };
+		A1000054000000000000001 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		A1000056000000000000001 /* SwipeDownToOpenProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeDownToOpenProfile.swift; sourceTree = "<group>"; };
+		A1000058000000000000001 /* TopSlideCover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopSlideCover.swift; sourceTree = "<group>"; };
+		A1000060000000000000001 /* BreatheStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreatheStatsView.swift; sourceTree = "<group>"; };
+		A1000062000000000000001 /* FocusStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusStatsView.swift; sourceTree = "<group>"; };
+		A1000064000000000000001 /* SleepStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepStatsView.swift; sourceTree = "<group>"; };
+		C9E6F5F42EA9BB9100047E58 /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
+		C9E6F5F62EA9BBA300047E58 /* SleepViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepViewModel.swift; sourceTree = "<group>"; };
+		C9E6F5F82EA9BC4400047E58 /* BreatheWithMe.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BreatheWithMe.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -84,6 +88,9 @@
 		A1000010000000000000001 /* BreatheWithMe */ = {
 			isa = PBXGroup;
 			children = (
+				C9E6F5F82EA9BC4400047E58 /* BreatheWithMe.entitlements */,
+				C9E6F5F62EA9BBA300047E58 /* SleepViewModel.swift */,
+				C9E6F5F42EA9BB9100047E58 /* HealthKitManager.swift */,
 				A1000002000000000000001 /* BreatheWithMeApp.swift */,
 				A1000004000000000000001 /* ContentView.swift */,
 				A1000023000000000000001 /* BreatheView.swift */,
@@ -92,15 +99,23 @@
 				A1000029000000000000001 /* NoiseGenerator.swift */,
 				A1000051000000000000001 /* BellPlayer.swift */,
 				A1000054000000000000001 /* ProfileView.swift */,
- 				A1000060000000000000001 /* BreatheStatsView.swift */,
- 				A1000062000000000000001 /* FocusStatsView.swift */,
- 				A1000064000000000000001 /* SleepStatsView.swift */,
+				A1000060000000000000001 /* BreatheStatsView.swift */,
+				A1000062000000000000001 /* FocusStatsView.swift */,
+				A1000064000000000000001 /* SleepStatsView.swift */,
 				A1000056000000000000001 /* SwipeDownToOpenProfile.swift */,
 				A1000058000000000000001 /* TopSlideCover.swift */,
 				A1000006000000000000001 /* Assets.xcassets */,
 				A1000050000000000000001 /* AudioFiles */,
 			);
 			path = BreatheWithMe;
+			sourceTree = "<group>";
+		};
+		A1000011000000000000001 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A1000007000000000000001 /* BreatheWithMe.app */,
+			);
+			name = Products;
 			sourceTree = "<group>";
 		};
 		A1000050000000000000001 /* AudioFiles */ = {
@@ -118,14 +133,6 @@
 				A1000049000000000000001 /* birds.mp3 */,
 			);
 			path = AudioFiles;
-			sourceTree = "<group>";
-		};
-		A1000011000000000000001 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				A1000007000000000000001 /* BreatheWithMe.app */,
-			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -156,7 +163,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1500;
-				LastUpgradeCheck = 1500;
+				LastUpgradeCheck = 1640;
 				TargetAttributes = {
 					A1000012000000000000001 = {
 						CreatedOnToolsVersion = 15.0;
@@ -217,9 +224,11 @@
 				A1000053000000000000001 /* ProfileView.swift in Sources */,
 				A1000055000000000000001 /* SwipeDownToOpenProfile.swift in Sources */,
 				A1000057000000000000001 /* TopSlideCover.swift in Sources */,
- 				A1000061000000000000001 /* BreatheStatsView.swift in Sources */,
- 				A1000063000000000000001 /* FocusStatsView.swift in Sources */,
- 				A1000065000000000000001 /* SleepStatsView.swift in Sources */,
+				A1000061000000000000001 /* BreatheStatsView.swift in Sources */,
+				A1000063000000000000001 /* FocusStatsView.swift in Sources */,
+				C9E6F5F72EA9BBA800047E58 /* SleepViewModel.swift in Sources */,
+				C9E6F5F52EA9BB9700047E58 /* HealthKitManager.swift in Sources */,
+				A1000065000000000000001 /* SleepStatsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -261,6 +270,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = U337CM2P6M;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -324,6 +334,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = U337CM2P6M;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -350,10 +361,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = BreatheWithMe/BreatheWithMe.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = U337CM2P6M;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -361,6 +372,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "This app uses HealthKit to track your sleep patterns and provide personalized breathing exercises based on your health data.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -379,10 +391,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = BreatheWithMe/BreatheWithMe.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = U337CM2P6M;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -390,6 +402,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "This app uses HealthKit to track your sleep patterns and provide personalized breathing exercises based on your health data.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
