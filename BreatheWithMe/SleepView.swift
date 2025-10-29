@@ -13,9 +13,12 @@ struct SleepView: View {
     @State private var elapsedSeconds: Int = 0
     @State private var timer: Timer?
     @State private var pulseScale: CGFloat = 1.0
+    @State private var showNoiseSettings = false
 
     // NEW: HealthKit VM
     @StateObject private var vm = SleepViewModel()
+    // NEW: Noise Generator for ambient sounds
+    @StateObject private var noiseGenerator = NoiseGenerator()
     
     var body: some View {
         ZStack {
@@ -142,6 +145,36 @@ struct SleepView: View {
                 
                 // Bottom section
                 VStack(spacing: 24) {
+                    // Noise settings (always visible)
+                    VStack(spacing: 12) {
+                        // Open noise settings modal
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showNoiseSettings = true
+                            }
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: noiseGenerator.isEnabled ? "speaker.wave.2.fill" : "speaker.slash")
+                                    .font(.system(size: 16))
+                                Text("Sleep Sounds")
+                                    .font(.system(size: 15, weight: .medium, design: .default))
+                            }
+                            .foregroundColor(noiseGenerator.isEnabled ? 
+                                           Color(red: 0.4, green: 0.5, blue: 0.8) :
+                                           Color.white.opacity(0.6))
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 20)
+                                    .fill(noiseGenerator.isEnabled ? 
+                                          Color(red: 0.4, green: 0.5, blue: 0.8).opacity(0.25) :
+                                          Color.white.opacity(0.1))
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .transition(.opacity)
+                    
                     if isRunning {
                         VStack(spacing: 12) {
                             Text("Relax and let go")
@@ -186,6 +219,52 @@ struct SleepView: View {
                 view
             }
         }
+        .overlay(
+            // Info message popup for color noise
+            Group {
+                if noiseGenerator.showInfoMessage {
+                    VStack {
+                        Spacer()
+                        Text(noiseGenerator.infoMessage)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.black.opacity(0.8))
+                            )
+                            .padding(.horizontal, 40)
+                            .padding(.bottom, 100)
+                            .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    }
+                }
+            }
+        )
+        .overlay(
+            Group {
+                if showNoiseSettings {
+                    ZStack {
+                        Color.black.opacity(0.4)
+                            .ignoresSafeArea()
+                            .transition(.opacity)
+                            .onTapGesture {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showNoiseSettings = false
+                                }
+                            }
+                        SleepNoiseOptionsModal(
+                            isPresented: $showNoiseSettings,
+                            noiseGenerator: noiseGenerator,
+                            isRunning: isRunning
+                        )
+                        .transition(.scale.combined(with: .opacity))
+                    }
+                    .zIndex(2)
+                }
+            }
+        )
         .onAppear {
             vm.onAppear()
         }
@@ -197,6 +276,12 @@ struct SleepView: View {
         isRunning = true
         elapsedSeconds = 0
         startPulseAnimation()
+        
+        // Start noise if enabled
+        if noiseGenerator.isEnabled {
+            noiseGenerator.startNoise()
+        }
+        
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             elapsedSeconds += 1
         }
@@ -207,6 +292,11 @@ struct SleepView: View {
         timer = nil
         elapsedSeconds = 0
         pulseScale = 1.0
+        
+        // Stop noise
+        if noiseGenerator.isEnabled {
+            noiseGenerator.stopNoise()
+        }
     }
     func startPulseAnimation() {
         withAnimation(.easeInOut(duration: 4.0).repeatForever(autoreverses: true)) {
@@ -220,6 +310,97 @@ struct SleepView: View {
     }
 }
 
+
+// MARK: - Modal for Sleep Sounds
+struct SleepNoiseOptionsModal: View {
+    @Binding var isPresented: Bool
+    @ObservedObject var noiseGenerator: NoiseGenerator
+    let isRunning: Bool
+
+    private let columns: [GridItem] = [
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12)
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Sleep Sounds")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                Spacer()
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) { isPresented = false }
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(Color.black.opacity(0.25))
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+
+            Toggle(isOn: Binding(
+                get: { noiseGenerator.isEnabled },
+                set: { value in
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        noiseGenerator.isEnabled = value
+                    }
+                    if value {
+                        if isRunning { noiseGenerator.startNoise() }
+                    } else {
+                        if isRunning { noiseGenerator.stopNoise() }
+                    }
+                }
+            )) {
+                Text("Enable Sleep Sounds")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+            }
+            .toggleStyle(SwitchToggleStyle(tint: Color(red: 0.4, green: 0.5, blue: 0.8)))
+
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 12) {
+                    ForEach(NoiseGenerator.NoiseType.allCases, id: \.self) { noiseType in
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                noiseGenerator.setNoiseType(noiseType)
+                            }
+                            if [.white, .pink, .brown, .blue, .green].contains(noiseType) {
+                                noiseGenerator.showInfoForNoiseType(noiseType)
+                            }
+                        }) {
+                            VStack(spacing: 6) {
+                                Image(systemName: noiseType.icon)
+                                    .font(.system(size: 20))
+                                Text(noiseType.description)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .foregroundColor(noiseGenerator.selectedNoiseType == noiseType ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(noiseGenerator.selectedNoiseType == noiseType ? Color(red: 0.4, green: 0.5, blue: 0.8) : Color.white.opacity(0.95))
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+                .padding(.top, 4)
+            }
+            .frame(maxHeight: 260)
+        }
+        .padding(16)
+        .frame(maxWidth: 340)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
+        )
+    }
+}
 
 #Preview {
     SleepView()
