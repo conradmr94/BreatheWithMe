@@ -12,13 +12,40 @@ struct ProfileView: View {
     // Profile picture state
     @State private var profileImage: UIImage?
     @State private var showImagePicker = false
+    @State private var showDefaultPictureOptions = false
+    @State private var selectedDefaultIcon: String?
+    
+    // Profile name state
+    @State private var userName: String = "Profile"
+    @State private var isEditingName = false
+    @State private var tempUserName: String = ""
+    
+    // Default profile picture options
+    let defaultIcons = [
+        "person.circle.fill",
+        "face.smiling.fill",
+        "figure.mind.and.body",
+        "heart.circle.fill",
+        "sun.max.fill",
+        "moon.stars.fill",
+        "leaf.fill",
+        "flame.fill"
+    ]
 
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 24) {
                     // Profile Picture
-                    Button(action: { showImagePicker = true }) {
+                    Menu {
+                        Button(action: { showImagePicker = true }) {
+                            Label("Choose from Photos", systemImage: "photo.on.rectangle")
+                        }
+                        
+                        Button(action: { showDefaultPictureOptions = true }) {
+                            Label("Choose Default Icon", systemImage: "person.crop.circle.badge.checkmark")
+                        }
+                    } label: {
                         ZStack(alignment: .bottomTrailing) {
                             if let profileImage = profileImage {
                                 Image(uiImage: profileImage)
@@ -31,7 +58,7 @@ struct ProfileView: View {
                                             .stroke(Color(red: 0.5, green: 0.6, blue: 0.7), lineWidth: 3)
                                     )
                             } else {
-                                Image(systemName: "person.circle.fill")
+                                Image(systemName: selectedDefaultIcon ?? "person.circle.fill")
                                     .resizable()
                                     .scaledToFit()
                                     .frame(width: 120, height: 120)
@@ -53,9 +80,44 @@ struct ProfileView: View {
                     .buttonStyle(PlainButtonStyle())
 
                     VStack(spacing: 8) {
-                        Text("Profile")
-                            .font(.system(size: 34, weight: .light, design: .default))
-                            .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                        if isEditingName {
+                            HStack(spacing: 8) {
+                                TextField("Enter your name", text: $tempUserName)
+                                    .font(.system(size: 28, weight: .light, design: .default))
+                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                    .multilineTextAlignment(.center)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .frame(maxWidth: 250)
+                                
+                                Button(action: {
+                                    if !tempUserName.trimmingCharacters(in: .whitespaces).isEmpty {
+                                        userName = tempUserName
+                                        saveUserName(tempUserName)
+                                    }
+                                    isEditingName = false
+                                }) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.system(size: 28))
+                                        .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                }
+                            }
+                        } else {
+                            Button(action: {
+                                tempUserName = userName
+                                isEditingName = true
+                            }) {
+                                HStack(spacing: 6) {
+                                    Text(userName)
+                                        .font(.system(size: 34, weight: .light, design: .default))
+                                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                    
+                                    Image(systemName: "pencil.circle")
+                                        .font(.system(size: 20))
+                                        .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                }
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
                         
                         Text(statsManager.motivationalMessage)
                             .font(.system(size: 15, weight: .medium))
@@ -241,11 +303,25 @@ struct ProfileView: View {
             }
             .onAppear {
                 loadProfileImage()
+                loadUserName()
+                loadSelectedIcon()
             }
             .sheet(isPresented: $showImagePicker) {
                 ImagePicker(image: $profileImage, onImageSelected: { image in
                     saveProfileImage(image)
                 })
+            }
+            .sheet(isPresented: $showDefaultPictureOptions) {
+                DefaultIconPicker(
+                    selectedIcon: $selectedDefaultIcon,
+                    icons: defaultIcons,
+                    onSelect: { icon in
+                        selectedDefaultIcon = icon
+                        profileImage = nil // Clear custom image
+                        saveSelectedIcon(icon)
+                        showDefaultPictureOptions = false
+                    }
+                )
             }
             .background(
                 LinearGradient(
@@ -293,6 +369,97 @@ struct ProfileView: View {
     private func saveProfileImage(_ image: UIImage) {
         if let imageData = image.jpegData(compressionQuality: 0.8) {
             UserDefaults.standard.set(imageData, forKey: "profileImage")
+            // Clear selected icon when custom image is set
+            UserDefaults.standard.removeObject(forKey: "selectedDefaultIcon")
+        }
+    }
+    
+    // MARK: - Default Icon Persistence
+    private func loadSelectedIcon() {
+        if let icon = UserDefaults.standard.string(forKey: "selectedDefaultIcon") {
+            selectedDefaultIcon = icon
+        }
+    }
+    
+    private func saveSelectedIcon(_ icon: String) {
+        UserDefaults.standard.set(icon, forKey: "selectedDefaultIcon")
+        // Clear custom image when icon is selected
+        UserDefaults.standard.removeObject(forKey: "profileImage")
+    }
+    
+    // MARK: - User Name Persistence
+    private func loadUserName() {
+        if let name = UserDefaults.standard.string(forKey: "userName"), !name.isEmpty {
+            userName = name
+        }
+    }
+    
+    private func saveUserName(_ name: String) {
+        UserDefaults.standard.set(name, forKey: "userName")
+    }
+}
+
+// MARK: - Default Icon Picker
+struct DefaultIconPicker: View {
+    @Binding var selectedIcon: String?
+    let icons: [String]
+    let onSelect: (String) -> Void
+    @Environment(\.presentationMode) var presentationMode
+    
+    let columns = [
+        GridItem(.adaptive(minimum: 80))
+    ]
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 20) {
+                    ForEach(icons, id: \.self) { icon in
+                        Button(action: {
+                            onSelect(icon)
+                        }) {
+                            VStack(spacing: 8) {
+                                Image(systemName: icon)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 60, height: 60)
+                                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                    .padding()
+                                    .background(
+                                        Circle()
+                                            .fill(selectedIcon == icon ? Color(red: 0.5, green: 0.6, blue: 0.7).opacity(0.2) : Color.clear)
+                                    )
+                                    .overlay(
+                                        Circle()
+                                            .stroke(selectedIcon == icon ? Color(red: 0.5, green: 0.6, blue: 0.7) : Color.clear, lineWidth: 2)
+                                    )
+                            }
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Choose Icon")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(red: 0.95, green: 0.97, blue: 1.0),
+                        Color(red: 0.9, green: 0.94, blue: 0.98)
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+            )
         }
     }
 }
