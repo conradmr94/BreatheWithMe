@@ -10,6 +10,8 @@ import SwiftUI
 struct ActivityCalendarView: View {
     @StateObject private var statsManager = UserStatsManager()
     @State private var selectedMonth = Date()
+    @State private var selectedDate: Date?
+    @State private var showingDayStats = false
     
     private let calendar = Calendar.current
     private let daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -110,6 +112,10 @@ struct ActivityCalendarView: View {
                                     activityCount: sessionCountOn(date: date),
                                     isCurrentMonth: calendar.isDate(date, equalTo: selectedMonth, toGranularity: .month)
                                 )
+                                .onTapGesture {
+                                    selectedDate = date
+                                    showingDayStats = true
+                                }
                             } else {
                                 Color.clear
                                     .frame(height: 50)
@@ -216,6 +222,11 @@ struct ActivityCalendarView: View {
         )
         .navigationTitle("Activity Calendar")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showingDayStats) {
+            if let date = selectedDate {
+                DayStatsDetailView(date: date, statsManager: statsManager)
+            }
+        }
     }
     
     // MARK: - Helper Properties
@@ -317,6 +328,288 @@ struct ActivityCalendarView: View {
         return statsManager.sessionHistory.filter { session in
             calendar.isDate(session.date, inSameDayAs: dayStart)
         }.count
+    }
+}
+
+// MARK: - Day Stats Detail View
+struct DayStatsDetailView: View {
+    let date: Date
+    @ObservedObject var statsManager: UserStatsManager
+    @Environment(\.dismiss) var dismiss
+    
+    private let calendar = Calendar.current
+    
+    private var sessionsForDay: [SessionRecord] {
+        statsManager.sessionHistory.filter { session in
+            calendar.isDate(session.date, inSameDayAs: date)
+        }.sorted { $0.date > $1.date }
+    }
+    
+    private var totalTimeSeconds: Int {
+        sessionsForDay.reduce(0) { $0 + $1.durationSeconds }
+    }
+    
+    private var sessionsByType: [(type: SessionRecord.ActivityType, count: Int, time: Int)] {
+        let breathe = sessionsForDay.filter { $0.activityType == .breathe }
+        let focus = sessionsForDay.filter { $0.activityType == .focus }
+        let rest = sessionsForDay.filter { $0.activityType == .rest }
+        let sleep = sessionsForDay.filter { $0.activityType == .sleep }
+        
+        return [
+            (.breathe, breathe.count, breathe.reduce(0) { $0 + $1.durationSeconds }),
+            (.focus, focus.count, focus.reduce(0) { $0 + $1.durationSeconds }),
+            (.rest, rest.count, rest.reduce(0) { $0 + $1.durationSeconds }),
+            (.sleep, sleep.count, sleep.reduce(0) { $0 + $1.durationSeconds })
+        ].filter { $0.count > 0 }
+    }
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Date header
+                    VStack(spacing: 8) {
+                        Text(formatDate(date))
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                        
+                        if calendar.isDateInToday(date) {
+                            Text("Today")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(Color(red: 0.5, green: 0.6, blue: 0.7).opacity(0.1))
+                                )
+                        }
+                    }
+                    .padding(.top, 20)
+                    
+                    // Summary card
+                    VStack(spacing: 16) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Total Sessions")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                Text("\(sessionsForDay.count)")
+                                    .font(.system(size: 32, weight: .bold))
+                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                            }
+                            
+                            Spacer()
+                            
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text("Total Time")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                Text(formatTime(seconds: totalTimeSeconds))
+                                    .font(.system(size: 32, weight: .bold))
+                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                            }
+                        }
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.white)
+                            .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
+                    )
+                    .padding(.horizontal, 20)
+                    
+                    // Activity breakdown
+                    if !sessionsByType.isEmpty {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Activity Breakdown")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                            
+                            ForEach(sessionsByType, id: \.type) { item in
+                                HStack {
+                                    Image(systemName: iconForActivity(item.type))
+                                        .font(.system(size: 20))
+                                        .foregroundColor(colorForActivity(item.type))
+                                        .frame(width: 32)
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(item.type.rawValue)
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                        Text("\(item.count) session\(item.count == 1 ? "" : "s")")
+                                            .font(.system(size: 13, weight: .regular))
+                                            .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Text(formatTime(seconds: item.time))
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+                                }
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(colorForActivity(item.type).opacity(0.08))
+                                )
+                            }
+                        }
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.white)
+                                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
+                        )
+                        .padding(.horizontal, 20)
+                    }
+                    
+                    // Individual sessions
+                    if !sessionsForDay.isEmpty {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Session History")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                            
+                            ForEach(sessionsForDay) { session in
+                                HStack {
+                                    Image(systemName: iconForActivity(session.activityType))
+                                        .font(.system(size: 18))
+                                        .foregroundColor(colorForActivity(session.activityType))
+                                        .frame(width: 28)
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(session.activityType.rawValue)
+                                            .font(.system(size: 15, weight: .medium))
+                                            .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                        Text(formatSessionTime(session.date))
+                                            .font(.system(size: 13, weight: .regular))
+                                            .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Text(formatTime(seconds: session.durationSeconds))
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+                                }
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(red: 0.95, green: 0.97, blue: 1.0))
+                                )
+                            }
+                        }
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.white)
+                                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
+                        )
+                        .padding(.horizontal, 20)
+                    } else {
+                        // No activity message
+                        VStack(spacing: 12) {
+                            Image(systemName: "calendar.badge.exclamationmark")
+                                .font(.system(size: 48))
+                                .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                            
+                            Text("No Activity")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+                            
+                            Text("No sessions recorded on this day")
+                                .font(.system(size: 15, weight: .regular))
+                                .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                        }
+                        .padding(.vertical, 40)
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.white)
+                                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
+                        )
+                        .padding(.horizontal, 20)
+                    }
+                }
+                .padding(.bottom, 20)
+            }
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(red: 0.95, green: 0.97, blue: 1.0),
+                        Color(red: 0.9, green: 0.94, blue: 0.98)
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+            )
+            .navigationTitle("Day Stats")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                }
+            }
+        }
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE, MMM d"
+        return formatter.string(from: date)
+    }
+    
+    private func formatSessionTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h:mm a"
+        return formatter.string(from: date)
+    }
+    
+    private func formatTime(seconds: Int) -> String {
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        let secs = seconds % 60
+        
+        if hours > 0 {
+            return String(format: "%dh %dm", hours, minutes)
+        } else if minutes > 0 {
+            return String(format: "%dm", minutes)
+        } else {
+            return "\(secs)s"
+        }
+    }
+    
+    private func iconForActivity(_ type: SessionRecord.ActivityType) -> String {
+        switch type {
+        case .breathe:
+            return "wind"
+        case .focus:
+            return "timer"
+        case .rest:
+            return "cup.and.saucer.fill"
+        case .sleep:
+            return "moon.fill"
+        }
+    }
+    
+    private func colorForActivity(_ type: SessionRecord.ActivityType) -> Color {
+        switch type {
+        case .breathe:
+            return Color(red: 0.4, green: 0.7, blue: 0.9)
+        case .focus:
+            return Color(red: 0.9, green: 0.5, blue: 0.3)
+        case .rest:
+            return Color(red: 0.5, green: 0.8, blue: 0.5)
+        case .sleep:
+            return Color(red: 0.6, green: 0.5, blue: 0.8)
+        }
     }
 }
 

@@ -11,6 +11,9 @@ import SwiftUI
 struct BreatheStats: Codable {
     var sessionsCompleted: Int = 0
     var totalTimeSeconds: Int = 0
+    var sessions478: Int = 0  // Count of 4-7-8 technique sessions
+    var standardSessions: Int = 0  // Count of standard breathing sessions
+    var longestSessionSeconds: Int = 0  // Longest session duration
     
     var totalTimeFormatted: String {
         let hours = totalTimeSeconds / 3600
@@ -21,6 +24,35 @@ struct BreatheStats: Codable {
             return String(format: "%dh %dm", hours, minutes)
         } else if minutes > 0 {
             return String(format: "%dm %ds", minutes, seconds)
+        } else {
+            return "\(seconds)s"
+        }
+    }
+    
+    var averageDuration: Int {
+        guard sessionsCompleted > 0 else { return 0 }
+        return totalTimeSeconds / sessionsCompleted
+    }
+    
+    var averageDurationFormatted: String {
+        let seconds = averageDuration
+        let minutes = seconds / 60
+        let remainingSeconds = seconds % 60
+        
+        if minutes > 0 {
+            return String(format: "%dm %ds", minutes, remainingSeconds)
+        } else {
+            return "\(seconds)s"
+        }
+    }
+    
+    var longestSessionFormatted: String {
+        let seconds = longestSessionSeconds
+        let minutes = seconds / 60
+        let remainingSeconds = seconds % 60
+        
+        if minutes > 0 {
+            return String(format: "%dm %ds", minutes, remainingSeconds)
         } else {
             return "\(seconds)s"
         }
@@ -514,6 +546,19 @@ struct BreatheView: View {
                 // Only count as completed session if it lasted at least 10 seconds
                 if sessionDuration >= 10 {
                     stats.sessionsCompleted += 1
+                    
+                    // Track session type (4-7-8 vs standard)
+                    if use478 {
+                        stats.sessions478 += 1
+                    } else {
+                        stats.standardSessions += 1
+                    }
+                    
+                    // Update longest session if this one is longer
+                    if sessionDuration > stats.longestSessionSeconds {
+                        stats.longestSessionSeconds = sessionDuration
+                    }
+                    
                     // Record session in UserStatsManager for streak tracking
                     userStatsManager.recordSession(activityType: .breathe, durationSeconds: sessionDuration)
                 }
