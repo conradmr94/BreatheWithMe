@@ -126,14 +126,20 @@ struct ProfileView: View {
 
                     // Main Stats Card
                     VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Label("Current Streak", systemImage: "flame.fill")
-                                .font(.system(size: 17, weight: .regular))
-                            Spacer()
-                            Text(statsManager.currentStreak == 0 ? "—" : "\(statsManager.currentStreak) \(statsManager.currentStreak == 1 ? "day" : "days")")
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundColor(statsManager.currentStreak >= 3 ? Color.orange : Color(red: 0.2, green: 0.3, blue: 0.4))
+                        NavigationLink(destination: ActivityCalendarView()) {
+                            HStack {
+                                Label("Current Streak", systemImage: "flame.fill")
+                                    .font(.system(size: 17, weight: .regular))
+                                Spacer()
+                                Text(statsManager.currentStreak == 0 ? "—" : "\(statsManager.currentStreak) \(statsManager.currentStreak == 1 ? "day" : "days")")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundColor(statsManager.currentStreak >= 3 ? Color.orange : Color(red: 0.2, green: 0.3, blue: 0.4))
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(Color(red: 0.35, green: 0.45, blue: 0.55).opacity(0.6))
+                            }
                         }
+                        .buttonStyle(PlainButtonStyle())
                         
                         Divider()
                         
