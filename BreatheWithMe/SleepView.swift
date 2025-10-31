@@ -260,9 +260,12 @@ struct SleepView: View {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) { showProfile = true }
         }
         .topSlideCover(isPresented: $showProfile) {
-            ProfileView(onDismiss: {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) { showProfile = false }
-            })
+            ProfileView(
+                onDismiss: {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) { showProfile = false }
+                },
+                isPresented: $showProfile
+            )
             .preferredColorScheme(.light)
         }
         .apply { view in

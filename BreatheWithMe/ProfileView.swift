@@ -7,6 +7,7 @@ import SwiftUI
 
 struct ProfileView: View {
     var onDismiss: (() -> Void)? = nil
+    var isPresented: Binding<Bool>? = nil
     @StateObject private var statsManager = UserStatsManager()
     
     // Profile picture state
@@ -34,10 +35,16 @@ struct ProfileView: View {
 
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Profile Picture
-                    Menu {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Invisible anchor at the top for scrolling
+                        Color.clear
+                            .frame(height: 0)
+                            .id("top")
+                        
+                        // Profile Picture
+                        Menu {
                         Button(action: { showImagePicker = true }) {
                             Label("Choose from Photos", systemImage: "photo.on.rectangle")
                         }
@@ -306,11 +313,20 @@ struct ProfileView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-            }
-            .onAppear {
-                loadProfileImage()
-                loadUserName()
-                loadSelectedIcon()
+                }
+                .onAppear {
+                    loadProfileImage()
+                    loadUserName()
+                    loadSelectedIcon()
+                    // Always scroll to top when profile opens
+                    proxy.scrollTo("top", anchor: .top)
+                }
+                .onChange(of: isPresented?.wrappedValue) { newValue in
+                    // Scroll to top whenever the profile becomes visible
+                    if newValue == true {
+                        proxy.scrollTo("top", anchor: .top)
+                    }
+                }
             }
             .sheet(isPresented: $showImagePicker) {
                 ImagePicker(image: $profileImage, onImageSelected: { image in
