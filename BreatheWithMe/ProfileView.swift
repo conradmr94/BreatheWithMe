@@ -8,16 +8,49 @@ import SwiftUI
 struct ProfileView: View {
     var onDismiss: (() -> Void)? = nil
     @StateObject private var statsManager = UserStatsManager()
+    
+    // Profile picture state
+    @State private var profileImage: UIImage?
+    @State private var showImagePicker = false
 
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 24) {
-                    Image(systemName: "person.circle.fill")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 120, height: 120)
-                        .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                    // Profile Picture
+                    Button(action: { showImagePicker = true }) {
+                        ZStack(alignment: .bottomTrailing) {
+                            if let profileImage = profileImage {
+                                Image(uiImage: profileImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 120, height: 120)
+                                    .clipShape(Circle())
+                                    .overlay(
+                                        Circle()
+                                            .stroke(Color(red: 0.5, green: 0.6, blue: 0.7), lineWidth: 3)
+                                    )
+                            } else {
+                                Image(systemName: "person.circle.fill")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 120, height: 120)
+                                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                            }
+                            
+                            // Camera icon indicator
+                            Image(systemName: "camera.circle.fill")
+                                .font(.system(size: 32))
+                                .foregroundColor(.white)
+                                .background(
+                                    Circle()
+                                        .fill(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                        .frame(width: 36, height: 36)
+                                )
+                                .offset(x: 4, y: 4)
+                        }
+                    }
+                    .buttonStyle(PlainButtonStyle())
 
                     VStack(spacing: 8) {
                         Text("Profile")
@@ -204,9 +237,15 @@ struct ProfileView: View {
                         .frame(maxWidth: 360)
                     }
                 }
-                .padding(.top, 40)
                 .padding(.horizontal, 20)
-                .padding(.bottom, 80)
+            }
+            .onAppear {
+                loadProfileImage()
+            }
+            .sheet(isPresented: $showImagePicker) {
+                ImagePicker(image: $profileImage, onImageSelected: { image in
+                    saveProfileImage(image)
+                })
             }
             .background(
                 LinearGradient(
@@ -240,6 +279,60 @@ struct ProfileView: View {
                         }
                     }
             )
+        }
+    }
+    
+    // MARK: - Profile Image Persistence
+    private func loadProfileImage() {
+        if let imageData = UserDefaults.standard.data(forKey: "profileImage"),
+           let uiImage = UIImage(data: imageData) {
+            profileImage = uiImage
+        }
+    }
+    
+    private func saveProfileImage(_ image: UIImage) {
+        if let imageData = image.jpegData(compressionQuality: 0.8) {
+            UserDefaults.standard.set(imageData, forKey: "profileImage")
+        }
+    }
+}
+
+// MARK: - Image Picker
+struct ImagePicker: UIViewControllerRepresentable {
+    @Binding var image: UIImage?
+    @Environment(\.presentationMode) var presentationMode
+    var onImageSelected: (UIImage) -> Void
+    
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.delegate = context.coordinator
+        picker.sourceType = .photoLibrary
+        return picker
+    }
+    
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: ImagePicker
+        
+        init(_ parent: ImagePicker) {
+            self.parent = parent
+        }
+        
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            if let uiImage = info[.originalImage] as? UIImage {
+                parent.image = uiImage
+                parent.onImageSelected(uiImage)
+            }
+            parent.presentationMode.wrappedValue.dismiss()
+        }
+        
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.presentationMode.wrappedValue.dismiss()
         }
     }
 }
