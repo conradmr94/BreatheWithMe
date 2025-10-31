@@ -46,6 +46,7 @@ struct BreatheView: View {
     // Statistics tracking
     @AppStorage("breatheStats") private var breatheStatsData: Data = Data()
     @State private var sessionStartTime: Date?
+    @StateObject private var userStatsManager = UserStatsManager()
     
     private var breatheStats: BreatheStats {
         get {
@@ -510,6 +511,8 @@ struct BreatheView: View {
                 // Only count as completed session if it lasted at least 10 seconds
                 if sessionDuration >= 10 {
                     stats.sessionsCompleted += 1
+                    // Record session in UserStatsManager for streak tracking
+                    userStatsManager.recordSession(activityType: .breathe, durationSeconds: sessionDuration)
                 }
                 
                 // Update the stored data directly

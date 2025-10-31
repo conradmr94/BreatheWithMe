@@ -31,6 +31,7 @@
 		A1000061000000000000001 /* BreatheStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000060000000000000001 /* BreatheStatsView.swift */; };
 		A1000063000000000000001 /* FocusStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000062000000000000001 /* FocusStatsView.swift */; };
 		A1000065000000000000001 /* SleepStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000064000000000000001 /* SleepStatsView.swift */; };
+		A1000066000000000000001 /* UserStatsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000067000000000000001 /* UserStatsManager.swift */; };
 		C9E6F5F52EA9BB9700047E58 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9E6F5F42EA9BB9100047E58 /* HealthKitManager.swift */; };
 		C9E6F5F72EA9BBA800047E58 /* SleepViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9E6F5F62EA9BBA300047E58 /* SleepViewModel.swift */; };
 /* End PBXBuildFile section */
@@ -61,6 +62,7 @@
 		A1000060000000000000001 /* BreatheStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreatheStatsView.swift; sourceTree = "<group>"; };
 		A1000062000000000000001 /* FocusStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusStatsView.swift; sourceTree = "<group>"; };
 		A1000064000000000000001 /* SleepStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepStatsView.swift; sourceTree = "<group>"; };
+		A1000067000000000000001 /* UserStatsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserStatsManager.swift; sourceTree = "<group>"; };
 		C9E6F5F42EA9BB9100047E58 /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		C9E6F5F62EA9BBA300047E58 /* SleepViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepViewModel.swift; sourceTree = "<group>"; };
 		C9E6F5F82EA9BC4400047E58 /* BreatheWithMe.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BreatheWithMe.entitlements; sourceTree = "<group>"; };
@@ -102,6 +104,7 @@
 				A1000060000000000000001 /* BreatheStatsView.swift */,
 				A1000062000000000000001 /* FocusStatsView.swift */,
 				A1000064000000000000001 /* SleepStatsView.swift */,
+				A1000067000000000000001 /* UserStatsManager.swift */,
 				A1000056000000000000001 /* SwipeDownToOpenProfile.swift */,
 				A1000058000000000000001 /* TopSlideCover.swift */,
 				A1000006000000000000001 /* Assets.xcassets */,
@@ -226,6 +229,7 @@
 				A1000057000000000000001 /* TopSlideCover.swift in Sources */,
 				A1000061000000000000001 /* BreatheStatsView.swift in Sources */,
 				A1000063000000000000001 /* FocusStatsView.swift in Sources */,
+				A1000066000000000000001 /* UserStatsManager.swift in Sources */,
 				C9E6F5F72EA9BBA800047E58 /* SleepViewModel.swift in Sources */,
 				C9E6F5F52EA9BB9700047E58 /* HealthKitManager.swift in Sources */,
 				A1000065000000000000001 /* SleepStatsView.swift in Sources */,

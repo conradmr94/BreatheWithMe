@@ -60,6 +60,7 @@ struct FocusView: View {
     // Statistics tracking
     @AppStorage("focusStats") private var focusStatsData: Data = Data()
     @State private var sessionStartTime: Date?
+    @StateObject private var userStatsManager = UserStatsManager()
     
     private var focusStats: FocusStats {
         get {
@@ -590,9 +591,15 @@ struct FocusView: View {
                     // Only count as completed session if it lasted at least 30 seconds
                     if sessionDuration >= 30 {
                         stats.focusSessionsCompleted += 1
+                        // Record session in UserStatsManager for streak tracking
+                        userStatsManager.recordSession(activityType: .focus, durationSeconds: sessionDuration)
                     }
                 } else {
                     stats.totalRestTimeSeconds += sessionDuration
+                    // Record rest sessions too
+                    if sessionDuration >= 30 {
+                        userStatsManager.recordSession(activityType: .rest, durationSeconds: sessionDuration)
+                    }
                 }
                 
                 // Update the stored data directly

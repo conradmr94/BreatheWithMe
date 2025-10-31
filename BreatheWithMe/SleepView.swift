@@ -7,6 +7,40 @@
 
 import SwiftUI
 
+// MARK: - Data Model
+struct SleepStats: Codable {
+    var sleepSessionsCompleted: Int = 0
+    var totalSleepTimeSeconds: Int = 0
+    
+    var totalSleepTimeFormatted: String {
+        let hours = totalSleepTimeSeconds / 3600
+        let minutes = (totalSleepTimeSeconds % 3600) / 60
+        
+        if hours > 0 {
+            return String(format: "%dh %dm", hours, minutes)
+        } else if minutes > 0 {
+            return String(format: "%dm", minutes)
+        } else {
+            return "\(totalSleepTimeSeconds)s"
+        }
+    }
+    
+    var averageSleepTimeFormatted: String {
+        guard sleepSessionsCompleted > 0 else { return "—" }
+        let avgSeconds = totalSleepTimeSeconds / sleepSessionsCompleted
+        let hours = avgSeconds / 3600
+        let minutes = (avgSeconds % 3600) / 60
+        
+        if hours > 0 {
+            return String(format: "%dh %dm", hours, minutes)
+        } else if minutes > 0 {
+            return String(format: "%dm", minutes)
+        } else {
+            return "\(avgSeconds)s"
+        }
+    }
+}
+
 struct SleepView: View {
     @State private var showProfile: Bool = false
     @State private var isRunning = false
@@ -14,10 +48,29 @@ struct SleepView: View {
     @State private var timer: Timer?
     @State private var pulseScale: CGFloat = 1.0
     @State private var showNoiseSettings = false
+    @State private var sessionStartTime: Date?
 
-    // NEW: HealthKit VM
+    // Statistics tracking
+    @AppStorage("sleepStats") private var sleepStatsData: Data = Data()
+    @StateObject private var userStatsManager = UserStatsManager()
+    
+    private var sleepStats: SleepStats {
+        get {
+            if let decoded = try? JSONDecoder().decode(SleepStats.self, from: sleepStatsData) {
+                return decoded
+            }
+            return SleepStats()
+        }
+        set {
+            if let encoded = try? JSONEncoder().encode(newValue) {
+                sleepStatsData = encoded
+            }
+        }
+    }
+
+    // HealthKit VM (optional enhancement)
     @StateObject private var vm = SleepViewModel()
-    // NEW: Noise Generator for ambient sounds
+    // Noise Generator for ambient sounds
     @StateObject private var noiseGenerator = NoiseGenerator()
     
     var body: some View {
@@ -270,11 +323,12 @@ struct SleepView: View {
         }
     }
     
-    // --- Existing timer logic unchanged ---
+    // --- Existing timer logic with session tracking ---
     func toggleTimer() { isRunning ? stopTimer() : startTimer() }
     func startTimer() {
         isRunning = true
         elapsedSeconds = 0
+        sessionStartTime = Date()
         startPulseAnimation()
         
         // Start noise if enabled
@@ -290,7 +344,27 @@ struct SleepView: View {
         isRunning = false
         timer?.invalidate()
         timer = nil
+        
+        // Track sleep session if it was at least 60 seconds (1 minute)
+        if let startTime = sessionStartTime, elapsedSeconds >= 60 {
+            let sessionDuration = Int(Date().timeIntervalSince(startTime))
+            
+            // Update local sleep stats
+            var stats = sleepStats
+            stats.totalSleepTimeSeconds += sessionDuration
+            stats.sleepSessionsCompleted += 1
+            
+            // Save to storage
+            if let encoded = try? JSONEncoder().encode(stats) {
+                sleepStatsData = encoded
+            }
+            
+            // Record in UserStatsManager for streak tracking
+            userStatsManager.recordSession(activityType: .sleep, durationSeconds: sessionDuration)
+        }
+        
         elapsedSeconds = 0
+        sessionStartTime = nil
         pulseScale = 1.0
         
         // Stop noise
