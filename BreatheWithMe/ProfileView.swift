@@ -230,10 +230,12 @@ struct ProfileView: View {
             }
             .contentShape(Rectangle())
             .simultaneousGesture(
-                DragGesture(minimumDistance: 20, coordinateSpace: .local)
+                DragGesture(minimumDistance: 30, coordinateSpace: .local)
                     .onEnded { value in
                         let t = value.translation
-                        if t.height < -100 && abs(t.width) < 80 {
+                        // Require a larger upward swipe (180) and stricter horizontal tolerance (50)
+                        // to prevent accidental dismissal while scrolling
+                        if t.height < -180 && abs(t.width) < 50 {
                             onDismiss?()
                         }
                     }
