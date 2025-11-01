@@ -193,10 +193,6 @@ struct FocusStatsView: View {
                                 Text("Short Breaks")
                                     .font(.system(size: 13, weight: .medium))
                                     .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
-                                
-                                Text("\(shortBreakDuration / 60) min")
-                                    .font(.system(size: 11, weight: .regular))
-                                    .foregroundColor(Color(red: 0.6, green: 0.7, blue: 0.8))
                             }
                             .frame(maxWidth: .infinity)
                             .padding()
@@ -214,10 +210,6 @@ struct FocusStatsView: View {
                                 Text("Long Breaks")
                                     .font(.system(size: 13, weight: .medium))
                                     .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
-                                
-                                Text("\(longBreakDuration / 60) min")
-                                    .font(.system(size: 11, weight: .regular))
-                                    .foregroundColor(Color(red: 0.6, green: 0.7, blue: 0.8))
                             }
                             .frame(maxWidth: .infinity)
                             .padding()

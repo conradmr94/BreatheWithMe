@@ -40,7 +40,7 @@ struct ProfileView: View {
                     VStack(spacing: 24) {
                         // Invisible anchor at the top for scrolling
                         Color.clear
-                            .frame(height: 0)
+                            .frame(height: 1)
                             .id("top")
                         
                         // Profile Picture
@@ -313,6 +313,8 @@ struct ProfileView: View {
                     }
                 }
                 .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
                 }
                 .onAppear {
                     loadProfileImage()
