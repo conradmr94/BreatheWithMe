@@ -17,6 +17,8 @@ struct FocusStats: Codable {
     var longestFocusSessionSeconds: Int = 0
     var shortBreaksCompleted: Int = 0
     var longBreaksCompleted: Int = 0
+    var totalShortBreakTimeSeconds: Int = 0
+    var totalLongBreakTimeSeconds: Int = 0
     
     var totalFocusTimeFormatted: String {
         let hours = totalFocusTimeSeconds / 3600
@@ -70,6 +72,40 @@ struct FocusStats: Codable {
     
     var averageRestDurationFormatted: String {
         let seconds = averageRestDuration
+        let minutes = seconds / 60
+        let remainingSeconds = seconds % 60
+        
+        if minutes > 0 {
+            return String(format: "%dm %ds", minutes, remainingSeconds)
+        } else {
+            return "\(seconds)s"
+        }
+    }
+    
+    var averageShortBreakDuration: Int {
+        guard shortBreaksCompleted > 0 else { return 0 }
+        return totalShortBreakTimeSeconds / shortBreaksCompleted
+    }
+    
+    var averageShortBreakDurationFormatted: String {
+        let seconds = averageShortBreakDuration
+        let minutes = seconds / 60
+        let remainingSeconds = seconds % 60
+        
+        if minutes > 0 {
+            return String(format: "%dm %ds", minutes, remainingSeconds)
+        } else {
+            return "\(seconds)s"
+        }
+    }
+    
+    var averageLongBreakDuration: Int {
+        guard longBreaksCompleted > 0 else { return 0 }
+        return totalLongBreakTimeSeconds / longBreaksCompleted
+    }
+    
+    var averageLongBreakDurationFormatted: String {
+        let seconds = averageLongBreakDuration
         let minutes = seconds / 60
         let remainingSeconds = seconds % 60
         
@@ -677,6 +713,14 @@ struct FocusView: View {
                     }
                 } else {
                     stats.totalRestTimeSeconds += sessionDuration
+                    
+                    // Track break type time
+                    if currentMode == .shortBreak {
+                        stats.totalShortBreakTimeSeconds += sessionDuration
+                    } else if currentMode == .longBreak {
+                        stats.totalLongBreakTimeSeconds += sessionDuration
+                    }
+                    
                     // Record rest sessions too
                     if sessionDuration >= 30 {
                         stats.restSessionsCompleted += 1
@@ -883,11 +927,6 @@ struct DurationSettingsModal: View {
     let isRunning: Bool
     let onDurationChanged: () -> Void
     
-    // Preset durations in minutes
-    let focusPresets = [15, 20, 25, 30, 45, 60]
-    let shortBreakPresets = [3, 5, 10, 15]
-    let longBreakPresets = [10, 15, 20, 30]
-    
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack {
@@ -905,148 +944,95 @@ struct DurationSettingsModal: View {
                 .buttonStyle(PlainButtonStyle())
             }
             
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Focus Duration
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Image(systemName: "timer")
-                                .font(.system(size: 16))
-                                .foregroundColor(Color(red: 0.9, green: 0.5, blue: 0.3))
-                            Text("Focus Duration")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
-                            Spacer()
-                            Text("\(focusDuration / 60) min")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
-                        }
-                        
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                            ForEach(focusPresets, id: \.self) { minutes in
-                                Button(action: {
-                                    focusDuration = minutes * 60
-                                    onDurationChanged()
-                                }) {
-                                    Text("\(minutes)")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(focusDuration == minutes * 60 ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 10)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 10)
-                                                .fill(focusDuration == minutes * 60 ? Color(red: 0.9, green: 0.5, blue: 0.3) : Color(red: 0.95, green: 0.97, blue: 1.0))
-                                        )
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                .disabled(isRunning)
-                                .opacity(isRunning ? 0.5 : 1.0)
-                            }
-                        }
-                    }
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(red: 0.9, green: 0.5, blue: 0.3).opacity(0.08))
-                    )
-                    
-                    // Short Break Duration
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Image(systemName: "cup.and.saucer.fill")
-                                .font(.system(size: 16))
-                                .foregroundColor(Color(red: 0.6, green: 0.8, blue: 0.7))
-                            Text("Short Break")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
-                            Spacer()
-                            Text("\(shortBreakDuration / 60) min")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
-                        }
-                        
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                            ForEach(shortBreakPresets, id: \.self) { minutes in
-                                Button(action: {
-                                    shortBreakDuration = minutes * 60
-                                    onDurationChanged()
-                                }) {
-                                    Text("\(minutes)")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(shortBreakDuration == minutes * 60 ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 10)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 10)
-                                                .fill(shortBreakDuration == minutes * 60 ? Color(red: 0.6, green: 0.8, blue: 0.7) : Color(red: 0.95, green: 0.97, blue: 1.0))
-                                        )
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                .disabled(isRunning)
-                                .opacity(isRunning ? 0.5 : 1.0)
-                            }
-                        }
-                    }
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(red: 0.6, green: 0.8, blue: 0.7).opacity(0.08))
-                    )
-                    
-                    // Long Break Duration
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Image(systemName: "pause.circle.fill")
-                                .font(.system(size: 16))
-                                .foregroundColor(Color(red: 0.7, green: 0.7, blue: 0.9))
-                            Text("Long Break")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
-                            Spacer()
-                            Text("\(longBreakDuration / 60) min")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
-                        }
-                        
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                            ForEach(longBreakPresets, id: \.self) { minutes in
-                                Button(action: {
-                                    longBreakDuration = minutes * 60
-                                    onDurationChanged()
-                                }) {
-                                    Text("\(minutes)")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(longBreakDuration == minutes * 60 ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 10)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 10)
-                                                .fill(longBreakDuration == minutes * 60 ? Color(red: 0.7, green: 0.7, blue: 0.9) : Color(red: 0.95, green: 0.97, blue: 1.0))
-                                        )
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                .disabled(isRunning)
-                                .opacity(isRunning ? 0.5 : 1.0)
-                            }
-                        }
-                    }
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(red: 0.7, green: 0.7, blue: 0.9).opacity(0.08))
-                    )
-                    
-                    if isRunning {
-                        Text("⚠️ Durations can't be changed during a session")
-                            .font(.system(size: 13, weight: .medium))
+            VStack(spacing: 16) {
+                // Focus Duration Wheel
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "timer")
+                            .font(.system(size: 16))
                             .foregroundColor(Color(red: 0.9, green: 0.5, blue: 0.3))
-                            .multilineTextAlignment(.center)
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 8)
+                        Text("Focus Duration")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
                     }
+                    
+                    FocusWheelPicker(
+                        selectedSeconds: $focusDuration,
+                        options: FocusWheelPicker.focusOptions
+                    )
+                    .frame(height: 140)
+                    .disabled(isRunning)
+                    .opacity(isRunning ? 0.5 : 1.0)
+                    .onChange(of: focusDuration) { _ in onDurationChanged() }
+                }
+                
+                // Short Break Duration Wheel
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "cup.and.saucer.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(Color(red: 0.6, green: 0.8, blue: 0.7))
+                        Text("Short Break")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                    }
+                    
+                    FocusWheelPicker(
+                        selectedSeconds: $shortBreakDuration,
+                        options: FocusWheelPicker.shortBreakOptions
+                    )
+                    .frame(height: 140)
+                    .disabled(isRunning)
+                    .opacity(isRunning ? 0.5 : 1.0)
+                    .onChange(of: shortBreakDuration) { _ in onDurationChanged() }
+                }
+                
+                // Long Break Duration Wheel
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "pause.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(Color(red: 0.7, green: 0.7, blue: 0.9))
+                        Text("Long Break")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                    }
+                    
+                    FocusWheelPicker(
+                        selectedSeconds: $longBreakDuration,
+                        options: FocusWheelPicker.longBreakOptions
+                    )
+                    .frame(height: 140)
+                    .disabled(isRunning)
+                    .opacity(isRunning ? 0.5 : 1.0)
+                    .onChange(of: longBreakDuration) { _ in onDurationChanged() }
+                }
+                
+                if isRunning {
+                    Text("⚠️ Durations can't be changed during a session")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(Color(red: 0.9, green: 0.5, blue: 0.3))
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
                 }
             }
-            .frame(maxHeight: 400)
+            
+            Button(action: { 
+                withAnimation(.easeInOut(duration: 0.2)) { 
+                    isPresented = false 
+                } 
+            }) {
+                Text("Done")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(accentColor)
+                    )
+            }
+            .buttonStyle(PlainButtonStyle())
         }
         .padding(16)
         .frame(maxWidth: 360)
@@ -1055,6 +1041,97 @@ struct DurationSettingsModal: View {
                 .fill(Color.white)
                 .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
         )
+        .onAppear {
+            // Ensure selections are on valid options
+            focusDuration = snapToNearest(focusDuration, options: FocusWheelPicker.focusOptions)
+            shortBreakDuration = snapToNearest(shortBreakDuration, options: FocusWheelPicker.shortBreakOptions)
+            longBreakDuration = snapToNearest(longBreakDuration, options: FocusWheelPicker.longBreakOptions)
+        }
+    }
+    
+    private func snapToNearest(_ value: Int, options: [Int]) -> Int {
+        options.min(by: { abs($0 - value) < abs($1 - value) }) ?? value
+    }
+}
+
+// MARK: - Focus Wheel Picker Components
+private struct FocusWheelRow: View {
+    let text: String
+    let isSelected: Bool
+    let distance: Int
+    
+    var body: some View {
+        let opacity = max(0.25, 1.0 - 0.22 * Double(distance))
+        let scale: CGFloat = isSelected ? 1.0 : max(0.9, 1.0 - 0.04 * CGFloat(distance))
+        
+        return Text(text)
+            .font(.system(size: 20, weight: isSelected ? .semibold : .regular))
+            .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4).opacity(opacity))
+            .scaleEffect(scale)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .contentShape(Rectangle())
+    }
+}
+
+private struct FocusWheelPicker: View {
+    @Binding var selectedSeconds: Int
+    let options: [Int]
+    
+    // Allowed options: 1 to 60 minutes in one-minute increments
+    static let focusOptions: [Int] = Array(stride(from: 1 * 60, through: 60 * 60, by: 60))
+    static let shortBreakOptions: [Int] = Array(stride(from: 1 * 60, through: 60 * 60, by: 60))
+    static let longBreakOptions: [Int] = Array(stride(from: 1 * 60, through: 60 * 60, by: 60))
+    
+    var body: some View {
+        let selectedIndex = options.firstIndex(of: selectedSeconds) ?? 0
+        
+        ZStack {
+            // Top/bottom fade overlay
+            LinearGradient(
+                gradient: Gradient(stops: [
+                    .init(color: .white.opacity(0.9), location: 0.0),
+                    .init(color: .white.opacity(0.0), location: 0.25),
+                    .init(color: .white.opacity(0.0), location: 0.75),
+                    .init(color: .white.opacity(0.9), location: 1.0),
+                ]),
+                startPoint: .top, endPoint: .bottom
+            )
+            .allowsHitTesting(false)
+            
+            // The actual wheel
+            Picker("", selection: Binding(
+                get: { selectedSeconds },
+                set: { newVal in
+                    if options.contains(newVal) {
+                        selectedSeconds = newVal
+                    } else {
+                        // Snap to nearest valid
+                        if let nearest = options.min(by: { abs($0 - newVal) < abs($1 - newVal) }) {
+                            selectedSeconds = nearest
+                        }
+                    }
+                }
+            )) {
+                ForEach(options.indices, id: \.self) { i in
+                    let secs = options[i]
+                    let dist = abs(i - selectedIndex)
+                    FocusWheelRow(
+                        text: label(for: secs),
+                        isSelected: i == selectedIndex,
+                        distance: dist
+                    )
+                    .tag(secs)
+                }
+            }
+            .pickerStyle(.wheel)
+            .labelsHidden()
+            .clipped()
+        }
+    }
+    
+    private func label(for seconds: Int) -> String {
+        let minutes = seconds / 60
+        return minutes == 1 ? "1 min" : "\(minutes) min"
     }
 }
 

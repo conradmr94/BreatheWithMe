@@ -9,6 +9,11 @@ struct FocusStatsView: View {
     @AppStorage("focusStats") private var focusStatsData: Data = Data()
     @StateObject private var userStatsManager = UserStatsManager()
     
+    // Read the same duration settings as FocusView
+    @AppStorage("focusDuration") private var focusDuration: Int = 1500 // 25 minutes
+    @AppStorage("shortBreakDuration") private var shortBreakDuration: Int = 300 // 5 minutes
+    @AppStorage("longBreakDuration") private var longBreakDuration: Int = 900 // 15 minutes
+    
     private var focusStats: FocusStats {
         get {
             if let decoded = try? JSONDecoder().decode(FocusStats.self, from: focusStatsData) {
@@ -85,7 +90,7 @@ struct FocusStatsView: View {
                 
                 // Average Durations
                 if focusStats.focusSessionsCompleted > 0 {
-                    HStack(spacing: 12) {
+                    VStack(spacing: 12) {
                         // Average Focus Duration
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
@@ -109,29 +114,57 @@ struct FocusStatsView: View {
                                 .fill(Color(red: 0.9, green: 0.5, blue: 0.3).opacity(0.08))
                         )
                         
-                        // Average Rest Duration
-                        if focusStats.restSessionsCompleted > 0 {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    Image(systemName: "cup.and.saucer.fill")
-                                        .font(.system(size: 18))
-                                        .foregroundColor(Color(red: 0.5, green: 0.8, blue: 0.5))
+                        // Average Break Durations
+                        HStack(spacing: 12) {
+                            // Average Short Break
+                            if focusStats.shortBreaksCompleted > 0 {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack {
+                                        Image(systemName: "cup.and.saucer.fill")
+                                            .font(.system(size: 18))
+                                            .foregroundColor(Color(red: 0.6, green: 0.8, blue: 0.7))
+                                        
+                                        Text("Avg Short")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                    }
                                     
-                                    Text("Avg Break")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                    Text(focusStats.averageShortBreakDurationFormatted)
+                                        .font(.system(size: 24, weight: .bold))
+                                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
                                 }
-                                
-                                Text(focusStats.averageRestDurationFormatted)
-                                    .font(.system(size: 24, weight: .bold))
-                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(red: 0.6, green: 0.8, blue: 0.7).opacity(0.08))
+                                )
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color(red: 0.5, green: 0.8, blue: 0.5).opacity(0.08))
-                            )
+                            
+                            // Average Long Break
+                            if focusStats.longBreaksCompleted > 0 {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack {
+                                        Image(systemName: "pause.circle.fill")
+                                            .font(.system(size: 18))
+                                            .foregroundColor(Color(red: 0.7, green: 0.7, blue: 0.9))
+                                        
+                                        Text("Avg Long")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                    }
+                                    
+                                    Text(focusStats.averageLongBreakDurationFormatted)
+                                        .font(.system(size: 24, weight: .bold))
+                                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(red: 0.7, green: 0.7, blue: 0.9).opacity(0.08))
+                                )
+                            }
                         }
                     }
                     .padding(.horizontal, 20)
@@ -161,7 +194,7 @@ struct FocusStatsView: View {
                                     .font(.system(size: 13, weight: .medium))
                                     .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
                                 
-                                Text("5 minutes")
+                                Text("\(shortBreakDuration / 60) min")
                                     .font(.system(size: 11, weight: .regular))
                                     .foregroundColor(Color(red: 0.6, green: 0.7, blue: 0.8))
                             }
@@ -182,7 +215,7 @@ struct FocusStatsView: View {
                                     .font(.system(size: 13, weight: .medium))
                                     .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
                                 
-                                Text("15 minutes")
+                                Text("\(longBreakDuration / 60) min")
                                     .font(.system(size: 11, weight: .regular))
                                     .foregroundColor(Color(red: 0.6, green: 0.7, blue: 0.8))
                             }
