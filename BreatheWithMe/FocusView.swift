@@ -841,20 +841,9 @@ struct NoiseOptionsModal: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Focus Sounds")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
-                Spacer()
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.2)) { isPresented = false }
-                }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 22))
-                        .foregroundColor(Color.black.opacity(0.25))
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
+            Text("Focus Sounds")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
 
             Toggle(isOn: Binding(
                 get: { noiseGenerator.isEnabled },
@@ -907,6 +896,23 @@ struct NoiseOptionsModal: View {
                 .padding(.top, 4)
             }
             .frame(maxHeight: 260)
+            
+            Button(action: { 
+                withAnimation(.easeInOut(duration: 0.2)) { 
+                    isPresented = false 
+                } 
+            }) {
+                Text("Done")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(accentColor)
+                    )
+            }
+            .buttonStyle(PlainButtonStyle())
         }
         .padding(16)
         .frame(maxWidth: 340)
