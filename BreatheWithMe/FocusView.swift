@@ -763,8 +763,6 @@ struct FocusView: View {
         if isAutoCycleMode {
             // Automatically advance to next phase in cycle
             advanceCycle()
-            // Play end bell (end of previous session)
-            bellPlayer.playBell()
             // Automatically start the next session
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 self.startTimer()
@@ -772,8 +770,6 @@ struct FocusView: View {
         } else {
             isRunning = false
             isPaused = false
-            // Play end bell
-            bellPlayer.playBell()
             // Manual mode - suggest next mode
             if currentMode == .work {
                 if completedPomodoros % 4 == 0 {
