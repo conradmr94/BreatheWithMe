@@ -241,7 +241,6 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         print("🎵 Starting ambient sound...")
         currentNoiseType = selectedNoiseType
         isPlaying = true
-        isEnabled = true
         
         if isRealAudioType(currentNoiseType) {
             // Use real audio file
@@ -273,7 +272,6 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         
         print("🔇 Stopping ambient sound...")
         isPlaying = false
-        isEnabled = false
         
         if isRealAudioType(currentNoiseType) {
             // Stop real audio file
