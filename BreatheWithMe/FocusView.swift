@@ -643,6 +643,11 @@ struct FocusView: View {
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             if timeRemaining > 0 {
                 timeRemaining -= 1
+                
+                // Trigger fade-out when 1 second remains
+                if timeRemaining == 1 && noiseGenerator.isEnabled {
+                    noiseGenerator.fadeOut(duration: 1.0)
+                }
             } else {
                 completeSession()
             }

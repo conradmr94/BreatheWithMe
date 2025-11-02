@@ -15,6 +15,8 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private let sampleRate: Double = 44100.0
     private var isPlaying = false
     private var audioPlayers: [NoiseType: AVAudioPlayer] = [:]
+    private var baseVolume: Float = 0.3 // Store the user's desired volume
+    private var fadeTimer: Timer?
     
     @Published var isEnabled = false
     @Published var selectedNoiseType: NoiseType = .white
@@ -245,7 +247,7 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         if isRealAudioType(currentNoiseType) {
             // Use real audio file
             if let audioPlayer = audioPlayers[currentNoiseType] {
-                audioPlayer.volume = volume
+                audioPlayer.volume = 0 // Start at 0 for fade-in
                 audioPlayer.numberOfLoops = -1 // Ensure infinite looping
                 audioPlayer.play()
                 print("✅ Real audio started: \(currentNoiseType.rawValue) (looping: \(audioPlayer.numberOfLoops))")
@@ -265,6 +267,9 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             generateAndPlayNoise()
             print("🎧 Generated noise started for type: \(currentNoiseType.rawValue)")
         }
+        
+        // Fade in the sound over 1 second
+        fadeIn(duration: 1.0)
     }
     
     func stopNoise() {
@@ -272,6 +277,10 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         
         print("🔇 Stopping ambient sound...")
         isPlaying = false
+        
+        // Cancel any ongoing fade
+        fadeTimer?.invalidate()
+        fadeTimer = nil
         
         if isRealAudioType(currentNoiseType) {
             // Stop real audio file
@@ -289,6 +298,7 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     
     func setVolume(_ newVolume: Float) {
         volume = max(0.0, min(1.0, newVolume)) // Allow full volume range
+        baseVolume = volume // Update base volume when user changes it
         
         if isRealAudioType(currentNoiseType) {
             // Set volume for real audio files
@@ -299,6 +309,93 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             // Set volume for generated noise (reduced for color noise)
             let reducedVolume = volume * 0.3 // Much lower volume for color noise
             player.volume = reducedVolume
+        }
+    }
+    
+    func fadeIn(duration: TimeInterval = 1.0) {
+        // Cancel any existing fade
+        fadeTimer?.invalidate()
+        fadeTimer = nil
+        
+        let steps = 50 // Number of volume steps
+        let stepDuration = duration / Double(steps)
+        var currentStep = 0
+        
+        // Start from 0 volume
+        applyVolume(0.0)
+        
+        fadeTimer = Timer.scheduledTimer(withTimeInterval: stepDuration, repeats: true) { [weak self] timer in
+            guard let self = self else {
+                timer.invalidate()
+                return
+            }
+            
+            currentStep += 1
+            let progress = Float(currentStep) / Float(steps)
+            let targetVolume = self.baseVolume * progress
+            
+            self.applyVolume(targetVolume)
+            
+            if currentStep >= steps {
+                timer.invalidate()
+                self.fadeTimer = nil
+                // Ensure we're at the exact target volume
+                self.applyVolume(self.baseVolume)
+            }
+        }
+    }
+    
+    func fadeOut(duration: TimeInterval = 1.0, completion: (() -> Void)? = nil) {
+        // Cancel any existing fade
+        fadeTimer?.invalidate()
+        fadeTimer = nil
+        
+        let steps = 50 // Number of volume steps
+        let stepDuration = duration / Double(steps)
+        var currentStep = 0
+        let startVolume = getCurrentVolume()
+        
+        fadeTimer = Timer.scheduledTimer(withTimeInterval: stepDuration, repeats: true) { [weak self] timer in
+            guard let self = self else {
+                timer.invalidate()
+                completion?()
+                return
+            }
+            
+            currentStep += 1
+            let progress = Float(currentStep) / Float(steps)
+            let targetVolume = startVolume * (1.0 - progress)
+            
+            self.applyVolume(targetVolume)
+            
+            if currentStep >= steps {
+                timer.invalidate()
+                self.fadeTimer = nil
+                // Ensure we're at 0 volume
+                self.applyVolume(0.0)
+                completion?()
+            }
+        }
+    }
+    
+    private func applyVolume(_ vol: Float) {
+        if isRealAudioType(currentNoiseType) {
+            // Apply volume for real audio files
+            if let audioPlayer = audioPlayers[currentNoiseType] {
+                audioPlayer.volume = vol
+            }
+        } else {
+            // Apply volume for generated noise (reduced for color noise)
+            let reducedVolume = vol * 0.3 // Much lower volume for color noise
+            player.volume = reducedVolume
+        }
+    }
+    
+    private func getCurrentVolume() -> Float {
+        if isRealAudioType(currentNoiseType) {
+            return audioPlayers[currentNoiseType]?.volume ?? baseVolume
+        } else {
+            return player.volume / 0.3 // Account for the reduction
         }
     }
     
