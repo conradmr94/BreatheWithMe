@@ -869,25 +869,6 @@ struct NoiseOptionsModal: View {
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
 
-            Toggle(isOn: Binding(
-                get: { noiseGenerator.isEnabled },
-                set: { value in
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        noiseGenerator.isEnabled = value
-                    }
-                    if value {
-                        if isRunning { noiseGenerator.startNoise() }
-                    } else {
-                        if isRunning { noiseGenerator.stopNoise() }
-                    }
-                }
-            )) {
-                Text("Enable Focus Sounds")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
-            }
-            .toggleStyle(SwitchToggleStyle(tint: accentColor))
-
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 12) {
                     ForEach(NoiseGenerator.NoiseType.allCases, id: \.self) { noiseType in
@@ -921,22 +902,56 @@ struct NoiseOptionsModal: View {
             }
             .frame(maxHeight: 260)
             
-            Button(action: { 
-                withAnimation(.easeInOut(duration: 0.2)) { 
-                    isPresented = false 
-                } 
-            }) {
-                Text("Done")
+            VStack(spacing: 12) {
+                Text("Enable focus sounds?")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.white)
+                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(accentColor)
-                    )
+                
+                HStack(spacing: 12) {
+                    Button(action: { 
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            noiseGenerator.isEnabled = false
+                        }
+                        if isRunning { noiseGenerator.stopNoise() }
+                        withAnimation(.easeInOut(duration: 0.2)) { 
+                            isPresented = false 
+                        } 
+                    }) {
+                        Text("No")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(red: 1.0, green: 1.0, blue: 1.0, opacity: 0.6))
+                            )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    
+                    Button(action: { 
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            noiseGenerator.isEnabled = true
+                        }
+                        if isRunning { noiseGenerator.startNoise() }
+                        withAnimation(.easeInOut(duration: 0.2)) { 
+                            isPresented = false 
+                        } 
+                    }) {
+                        Text("Yes")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(accentColor)
+                            )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
             }
-            .buttonStyle(PlainButtonStyle())
         }
         .padding(16)
         .frame(maxWidth: 340)
