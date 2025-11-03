@@ -54,7 +54,7 @@ struct FocusStatsView: View {
                         .font(.system(size: 15, weight: .regular))
                         .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
                 }
-                .padding(.top, 20)
+                .padding(.top, 8)
                 
                 // Overview Card - Total Sessions & Time
                 VStack(spacing: 16) {
@@ -355,7 +355,7 @@ struct FocusStatsView: View {
                     .padding(.horizontal, 20)
                 }
             }
-            .padding(.bottom, 20)
+            .padding(.bottom, 8)
         }
         .background(
             LinearGradient(

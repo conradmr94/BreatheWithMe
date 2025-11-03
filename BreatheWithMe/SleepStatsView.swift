@@ -22,6 +22,7 @@ struct SleepStatsView: View {
             Text("Sleep Stats")
                 .font(.system(size: 28, weight: .semibold))
                 .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                .padding(.top, 8)
             
             // Local Sleep Stats (always available)
             VStack(alignment: .leading, spacing: 12) {
@@ -212,10 +213,10 @@ struct SleepStatsView: View {
                         .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
                 )
             }
-
-                Spacer().frame(height: 40)
             }
-            .padding(20)
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 8)
         }
         .background(
             LinearGradient(

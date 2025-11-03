@@ -42,6 +42,7 @@ struct ProfileView: View {
                         Color.clear
                             .frame(height: 1)
                             .id("top")
+                            .padding(.top, -8)
                         
                         // Profile Picture
                         Menu {
@@ -311,8 +312,10 @@ struct ProfileView: View {
                         }
                         .frame(maxWidth: 360)
                     }
+                    .padding(.bottom, 8)
                 }
                 .padding(.horizontal, 20)
+                .padding(.top, 8)
                 }
                 .onAppear {
                     loadProfileImage()
