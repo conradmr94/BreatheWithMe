@@ -609,6 +609,30 @@ struct FocusView: View {
         .overlay(noiseSettingsOverlay)
         .overlay(durationSettingsOverlay)
         .ignoresSafeArea(.container, edges: .top)
+        .onAppear {
+            // Initialize timeRemaining from stored duration on first load
+            if !isRunning {
+                timeRemaining = duration(for: currentMode)
+            }
+        }
+        .onChange(of: focusDuration) { _ in
+            // Update timeRemaining when focusDuration changes (if not running)
+            if !isRunning && currentMode == .work {
+                timeRemaining = duration(for: currentMode)
+            }
+        }
+        .onChange(of: shortBreakDuration) { _ in
+            // Update timeRemaining when shortBreakDuration changes (if not running)
+            if !isRunning && currentMode == .shortBreak {
+                timeRemaining = duration(for: currentMode)
+            }
+        }
+        .onChange(of: longBreakDuration) { _ in
+            // Update timeRemaining when longBreakDuration changes (if not running)
+            if !isRunning && currentMode == .longBreak {
+                timeRemaining = duration(for: currentMode)
+            }
+        }
     }
     
     var progress: CGFloat {
