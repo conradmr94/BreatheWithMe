@@ -7,11 +7,21 @@
 
 import SwiftUI
 
+// MARK: - Date Item for Sheet Presentation
+struct DateItem: Identifiable {
+    let id: UUID
+    let date: Date
+    
+    init(date: Date) {
+        self.id = UUID()
+        self.date = date
+    }
+}
+
 struct ActivityCalendarView: View {
     @StateObject private var statsManager = UserStatsManager()
     @State private var selectedMonth = Date()
-    @State private var selectedDate: Date?
-    @State private var showingDayStats = false
+    @State private var selectedDateItem: DateItem?
     
     private let calendar = Calendar.current
     private let daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -178,8 +188,7 @@ struct ActivityCalendarView: View {
                                     isCurrentMonth: calendar.isDate(date, equalTo: selectedMonth, toGranularity: .month)
                                 )
                                 .onTapGesture {
-                                    selectedDate = date
-                                    showingDayStats = true
+                                    selectedDateItem = DateItem(date: date)
                                 }
                             } else {
                                 Color.clear
@@ -401,10 +410,8 @@ struct ActivityCalendarView: View {
         )
         .navigationTitle("Activity Calendar")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showingDayStats) {
-            if let date = selectedDate {
-                DayStatsDetailView(date: date, statsManager: statsManager)
-            }
+        .sheet(item: $selectedDateItem) { item in
+            DayStatsDetailView(date: item.date, statsManager: statsManager)
         }
     }
     
