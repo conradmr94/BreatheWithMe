@@ -35,6 +35,17 @@
 		A1000069000000000000001 /* ActivityCalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000068000000000000001 /* ActivityCalendarView.swift */; };
 		C9E6F5F52EA9BB9700047E58 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9E6F5F42EA9BB9100047E58 /* HealthKitManager.swift */; };
 		C9E6F5F72EA9BBA800047E58 /* SleepViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9E6F5F62EA9BBA300047E58 /* SleepViewModel.swift */; };
+		A1000070000000000000001 /* SessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000071000000000000001 /* SessionManager.swift */; };
+		A1000072000000000000001 /* SleepScoreCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000073000000000000001 /* SleepScoreCalculator.swift */; };
+		A1000074000000000000001 /* AudioEventDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000075000000000000001 /* AudioEventDetector.swift */; };
+		A1000076000000000000001 /* BreathingProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000077000000000000001 /* BreathingProtocols.swift */; };
+		A1000078000000000000001 /* SleepAnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000079000000000000001 /* SleepAnalyticsView.swift */; };
+		A1000080000000000000001 /* FocusAnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000081000000000000001 /* FocusAnalyticsView.swift */; };
+		A1000082000000000000001 /* BreathingAnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000083000000000000001 /* BreathingAnalyticsView.swift */; };
+		A1000084000000000000001 /* CrossFeatureAnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000085000000000000001 /* CrossFeatureAnalyticsView.swift */; };
+		A1000086000000000000001 /* AlarmManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000087000000000000001 /* AlarmManager.swift */; };
+		A1000088000000000000001 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000089000000000000001 /* StatsView.swift */; };
+		A1000090000000000000001 /* AnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000091000000000000001 /* AnalyticsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -68,6 +79,17 @@
 		C9E6F5F42EA9BB9100047E58 /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		C9E6F5F62EA9BBA300047E58 /* SleepViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepViewModel.swift; sourceTree = "<group>"; };
 		C9E6F5F82EA9BC4400047E58 /* BreatheWithMe.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BreatheWithMe.entitlements; sourceTree = "<group>"; };
+		A1000071000000000000001 /* SessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionManager.swift; sourceTree = "<group>"; };
+		A1000073000000000000001 /* SleepScoreCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepScoreCalculator.swift; sourceTree = "<group>"; };
+		A1000075000000000000001 /* AudioEventDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEventDetector.swift; sourceTree = "<group>"; };
+		A1000077000000000000001 /* BreathingProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreathingProtocols.swift; sourceTree = "<group>"; };
+		A1000079000000000000001 /* SleepAnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepAnalyticsView.swift; sourceTree = "<group>"; };
+		A1000081000000000000001 /* FocusAnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusAnalyticsView.swift; sourceTree = "<group>"; };
+		A1000083000000000000001 /* BreathingAnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreathingAnalyticsView.swift; sourceTree = "<group>"; };
+		A1000085000000000000001 /* CrossFeatureAnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrossFeatureAnalyticsView.swift; sourceTree = "<group>"; };
+		A1000087000000000000001 /* AlarmManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmManager.swift; sourceTree = "<group>"; };
+		A1000089000000000000001 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
+		A1000091000000000000001 /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -95,6 +117,17 @@
 				C9E6F5F82EA9BC4400047E58 /* BreatheWithMe.entitlements */,
 				C9E6F5F62EA9BBA300047E58 /* SleepViewModel.swift */,
 				C9E6F5F42EA9BB9100047E58 /* HealthKitManager.swift */,
+				A1000071000000000000001 /* SessionManager.swift */,
+				A1000073000000000000001 /* SleepScoreCalculator.swift */,
+				A1000075000000000000001 /* AudioEventDetector.swift */,
+				A1000077000000000000001 /* BreathingProtocols.swift */,
+				A1000087000000000000001 /* AlarmManager.swift */,
+				A1000089000000000000001 /* StatsView.swift */,
+				A1000091000000000000001 /* AnalyticsView.swift */,
+				A1000079000000000000001 /* SleepAnalyticsView.swift */,
+				A1000081000000000000001 /* FocusAnalyticsView.swift */,
+				A1000083000000000000001 /* BreathingAnalyticsView.swift */,
+				A1000085000000000000001 /* CrossFeatureAnalyticsView.swift */,
 				A1000002000000000000001 /* BreatheWithMeApp.swift */,
 				A1000004000000000000001 /* ContentView.swift */,
 				A1000023000000000000001 /* BreatheView.swift */,
@@ -237,6 +270,17 @@
 				C9E6F5F72EA9BBA800047E58 /* SleepViewModel.swift in Sources */,
 				C9E6F5F52EA9BB9700047E58 /* HealthKitManager.swift in Sources */,
 				A1000065000000000000001 /* SleepStatsView.swift in Sources */,
+				A1000070000000000000001 /* SessionManager.swift in Sources */,
+				A1000072000000000000001 /* SleepScoreCalculator.swift in Sources */,
+				A1000074000000000000001 /* AudioEventDetector.swift in Sources */,
+				A1000076000000000000001 /* BreathingProtocols.swift in Sources */,
+				A1000078000000000000001 /* SleepAnalyticsView.swift in Sources */,
+				A1000080000000000000001 /* FocusAnalyticsView.swift in Sources */,
+				A1000082000000000000001 /* BreathingAnalyticsView.swift in Sources */,
+				A1000084000000000000001 /* CrossFeatureAnalyticsView.swift in Sources */,
+				A1000086000000000000001 /* AlarmManager.swift in Sources */,
+				A1000088000000000000001 /* StatsView.swift in Sources */,
+				A1000090000000000000001 /* AnalyticsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -244,74 +244,47 @@ struct ProfileView: View {
 
                     // Bottom stats shortcuts
                     VStack(spacing: 10) {
-                        Text("Detailed Stats")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
-                            .frame(maxWidth: 360, alignment: .leading)
-                        
-                        VStack(spacing: 12) {
-                            NavigationLink(destination: BreatheStatsView()) {
-                                HStack {
-                                    Label("Breathe Stats", systemImage: "wind")
-                                        .font(.system(size: 15, weight: .medium))
-                                        .foregroundColor(Color(red: 0.65, green: 0.8, blue: 0.92))
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundColor(Color(red: 0.65, green: 0.8, blue: 0.92).opacity(0.6))
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .fill(Color.white)
-                                        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 6)
-                                )
+                        NavigationLink(destination: StatsView()) {
+                            HStack {
+                                Label("Stats", systemImage: "chart.bar.doc.horizontal")
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6).opacity(0.6))
                             }
-                            .buttonStyle(PlainButtonStyle())
-
-                            NavigationLink(destination: FocusStatsView()) {
-                                HStack {
-                                    Label("Focus Stats", systemImage: "timer")
-                                        .font(.system(size: 15, weight: .medium))
-                                        .foregroundColor(Color(red: 0.6, green: 0.8, blue: 0.7))
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundColor(Color(red: 0.6, green: 0.8, blue: 0.7).opacity(0.6))
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .fill(Color.white)
-                                        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 6)
-                                )
-                            }
-                            .buttonStyle(PlainButtonStyle())
-
-                            NavigationLink(destination: SleepStatsView()) {
-                                HStack {
-                                    Label("Sleep Stats", systemImage: "moon.stars.fill")
-                                        .font(.system(size: 15, weight: .medium))
-                                        .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.8))
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.8).opacity(0.6))
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .fill(Color.white)
-                                        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 6)
-                                )
-                            }
-                            .buttonStyle(PlainButtonStyle())
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(Color.white)
+                                    .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 6)
+                            )
                         }
-                        .frame(maxWidth: 360)
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        NavigationLink(destination: AnalyticsView()) {
+                            HStack {
+                                Label("Analytics", systemImage: "chart.line.uptrend.xyaxis")
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6).opacity(0.6))
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(Color.white)
+                                    .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 6)
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
+                    .frame(maxWidth: 360)
                     .padding(.bottom, 8)
                 }
                 .padding(.horizontal, 20)

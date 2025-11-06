@@ -6,6 +6,8 @@
 
 
 import SwiftUI
+import HealthKit
+import UserNotifications
 
 // MARK: - Data Model
 struct SleepStats: Codable {
@@ -49,6 +51,13 @@ struct SleepView: View {
     @State private var pulseScale: CGFloat = 1.0
     @State private var showNoiseSettings = false
     @State private var sessionStartTime: Date?
+    
+    // Alarm functionality
+    @State private var alarmEnabled = false
+    @State private var alarmTime = Date()
+    @State private var showAlarmPicker = false
+    @StateObject private var alarmManager = AlarmManager.shared
+    @State private var alarmFired = false
 
     // Statistics tracking
     @AppStorage("sleepStats") private var sleepStatsData: Data = Data()
@@ -72,6 +81,8 @@ struct SleepView: View {
     @StateObject private var vm = SleepViewModel()
     // Noise Generator for ambient sounds
     @StateObject private var noiseGenerator = NoiseGenerator()
+    // Session Manager for enhanced tracking
+    @StateObject private var sessionManager = SessionManager.shared
     
     var body: some View {
         ZStack {
@@ -198,6 +209,63 @@ struct SleepView: View {
                 
                 // Bottom section
                 VStack(spacing: 24) {
+                    // Alarm settings (when not running)
+                    if !isRunning {
+                        VStack(spacing: 12) {
+                            // Alarm toggle and time picker
+                            HStack(spacing: 16) {
+                                // Alarm toggle
+                                Button(action: {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        alarmEnabled.toggle()
+                                        if !alarmEnabled {
+                                            alarmManager.cancelAlarm()
+                                        }
+                                    }
+                                }) {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: alarmEnabled ? "alarm.fill" : "alarm")
+                                            .font(.system(size: 16))
+                                        Text(alarmEnabled ? formatAlarmTime(alarmTime) : "Set Alarm")
+                                            .font(.system(size: 15, weight: .medium, design: .default))
+                                    }
+                                    .foregroundColor(alarmEnabled ? 
+                                                   Color(red: 0.4, green: 0.5, blue: 0.8) :
+                                                   Color.white.opacity(0.6))
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 10)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 20)
+                                            .fill(alarmEnabled ? 
+                                                  Color(red: 0.4, green: 0.5, blue: 0.8).opacity(0.25) :
+                                                  Color.white.opacity(0.1))
+                                    )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                
+                                // Time picker button
+                                if alarmEnabled {
+                                    Button(action: {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            showAlarmPicker = true
+                                        }
+                                    }) {
+                                        Image(systemName: "clock")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.8))
+                                            .padding(10)
+                                            .background(
+                                                Circle()
+                                                    .fill(Color(red: 0.4, green: 0.5, blue: 0.8).opacity(0.25))
+                                            )
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
+                            }
+                        }
+                        .transition(.opacity)
+                    }
+                    
                     // Noise settings (always visible)
                     VStack(spacing: 12) {
                         // Open noise settings modal
@@ -319,6 +387,26 @@ struct SleepView: View {
                     }
                     .zIndex(2)
                 }
+                
+                // Alarm time picker modal
+                if showAlarmPicker {
+                    ZStack {
+                        Color.black.opacity(0.4)
+                            .ignoresSafeArea()
+                            .transition(.opacity)
+                            .onTapGesture {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showAlarmPicker = false
+                                }
+                            }
+                        AlarmTimePickerModal(
+                            isPresented: $showAlarmPicker,
+                            alarmTime: $alarmTime
+                        )
+                        .transition(.scale.combined(with: .opacity))
+                    }
+                    .zIndex(3)
+                }
             }
         )
         .onAppear {
@@ -332,15 +420,44 @@ struct SleepView: View {
         isRunning = true
         elapsedSeconds = 0
         sessionStartTime = Date()
+        alarmFired = false
         startPulseAnimation()
+        
+        // Schedule alarm if enabled
+        if alarmEnabled {
+            // Ensure alarm time is in the future
+            var targetAlarmTime = alarmTime
+            let now = Date()
+            if targetAlarmTime <= now {
+                // If alarm time is in the past, set it for tomorrow
+                targetAlarmTime = Calendar.current.date(byAdding: .day, value: 1, to: targetAlarmTime) ?? targetAlarmTime
+            }
+            alarmManager.scheduleAlarm(at: targetAlarmTime)
+            alarmTime = targetAlarmTime // Update stored alarm time
+            print("✅ Sleep: Alarm scheduled for \(targetAlarmTime)")
+        }
         
         // Start noise if enabled
         if noiseGenerator.isEnabled {
             noiseGenerator.startNoise()
         }
         
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+        // Check for alarm every second
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [self] _ in
             elapsedSeconds += 1
+            
+            // Check if alarm time has been reached
+            if alarmEnabled && !alarmFired {
+                let now = Date()
+                if now >= alarmTime {
+                    alarmFired = true
+                    alarmManager.playAlarmSound()
+                    // Auto-stop sleep session when alarm fires
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        stopTimer()
+                    }
+                }
+            }
         }
     }
     func stopTimer() {
@@ -348,9 +465,15 @@ struct SleepView: View {
         timer?.invalidate()
         timer = nil
         
+        // Cancel alarm if still pending
+        if alarmEnabled {
+            alarmManager.cancelAlarm()
+        }
+        
         // Track sleep session if it was at least 60 seconds (1 minute)
         if let startTime = sessionStartTime, elapsedSeconds >= 60 {
-            let sessionDuration = Int(Date().timeIntervalSince(startTime))
+            let endTime = Date()
+            let sessionDuration = Int(endTime.timeIntervalSince(startTime))
             
             // Update local sleep stats
             var stats = sleepStats
@@ -364,6 +487,69 @@ struct SleepView: View {
             
             // Record in UserStatsManager for streak tracking
             userStatsManager.recordSession(activityType: .sleep, durationSeconds: sessionDuration)
+            
+            // Calculate basic metadata
+            let goalDuration = 8 * 3600 // 8 hours default
+            let historicalBedtimes = sessionManager.sessions(ofType: .sleep, from: Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date())
+                .map { $0.start }
+            let isRegular = SleepScoreCalculator.isBedtimeRegular(
+                currentBedtime: startTime,
+                historicalBedtimes: historicalBedtimes,
+                toleranceMinutes: 30
+            )
+            
+            // Track content usage if noise was enabled
+            var contentId: String? = nil
+            var contentDuration: Int? = nil
+            if noiseGenerator.isEnabled {
+                contentId = noiseGenerator.selectedNoiseType.description
+                contentDuration = sessionDuration
+            }
+            
+            // Try to get wakeups and WASO from HealthKit (async)
+            Task { @MainActor in
+                var wakeups = 0
+                var wasoSeconds = 0
+                
+                // Fetch HealthKit data for this sleep session
+                do {
+                    let hk = HealthKitManager.shared
+                    let (hkWakeups, hkWASO) = try await hk.analyzeSleepEvents(from: startTime, to: endTime)
+                    wakeups = hkWakeups
+                    wasoSeconds = hkWASO
+                } catch {
+                    // If HealthKit fails, use defaults (0)
+                    print("⚠️ Sleep: Could not fetch HealthKit sleep events: \(error)")
+                }
+                
+                // Create enhanced session with metadata
+                var meta = EnhancedSession.SessionMetadata()
+                meta.wakeups = wakeups
+                meta.wasoSeconds = wasoSeconds
+                meta.bedtimeRegularity = isRegular
+                meta.snoreMinutes = nil // TODO: Integrate audio event detector
+                meta.contentId = contentId
+                meta.contentDuration = contentDuration
+                
+                // Calculate sleep score with HealthKit data (or defaults if not available)
+                meta.sleepScore = SleepScoreCalculator.calculateScore(
+                    durationSeconds: sessionDuration,
+                    goalDurationSeconds: goalDuration,
+                    bedtimeRegularity: isRegular,
+                    wakeups: wakeups,
+                    wasoSeconds: wasoSeconds
+                )
+                
+                let enhancedSession = EnhancedSession(
+                    type: .sleep,
+                    start: startTime,
+                    end: endTime,
+                    meta: meta
+                )
+                
+                // Save enhanced session
+                sessionManager.saveSession(enhancedSession)
+            }
         }
         
         elapsedSeconds = 0
@@ -384,6 +570,12 @@ struct SleepView: View {
         let mins = seconds / 60
         let secs = seconds % 60
         return String(format: "%02d:%02d", mins, secs)
+    }
+    
+    func formatAlarmTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 }
 
@@ -491,6 +683,72 @@ struct SleepNoiseOptionsModal: View {
             }
         }
         .padding(16)
+        .frame(maxWidth: 340)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
+        )
+    }
+}
+
+// MARK: - Alarm Time Picker Modal
+struct AlarmTimePickerModal: View {
+    @Binding var isPresented: Bool
+    @Binding var alarmTime: Date
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Set Alarm Time")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+            
+            DatePicker(
+                "Alarm Time",
+                selection: $alarmTime,
+                displayedComponents: .hourAndMinute
+            )
+            .datePickerStyle(.wheel)
+            .labelsHidden()
+            .frame(height: 200)
+            
+            HStack(spacing: 12) {
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isPresented = false
+                    }
+                }) {
+                    Text("Cancel")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.white.opacity(0.6))
+                        )
+                }
+                .buttonStyle(PlainButtonStyle())
+                
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isPresented = false
+                    }
+                }) {
+                    Text("Set")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(red: 0.4, green: 0.5, blue: 0.8))
+                        )
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .padding(24)
         .frame(maxWidth: 340)
         .background(
             RoundedRectangle(cornerRadius: 20)

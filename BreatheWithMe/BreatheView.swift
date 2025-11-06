@@ -79,6 +79,13 @@ struct BreatheView: View {
     @AppStorage("breatheStats") private var breatheStatsData: Data = Data()
     @State private var sessionStartTime: Date?
     @StateObject private var userStatsManager = UserStatsManager()
+    @StateObject private var sessionManager = SessionManager.shared
+    
+    // Stress reporting
+    @State private var showPreStressPicker = false
+    @State private var showPostStressPicker = false
+    @State private var preStressLevel: Int?
+    @State private var postStressLevel: Int?
     
     private var breatheStats: BreatheStats {
         get {
@@ -488,6 +495,58 @@ struct BreatheView: View {
                     }
                     .zIndex(3)
                 }
+                
+                // Pre-stress picker
+                if showPreStressPicker {
+                    ZStack {
+                        Color.black.opacity(0.4)
+                            .ignoresSafeArea()
+                            .transition(.opacity)
+                        StressLevelPickerModal(
+                            isPresented: $showPreStressPicker,
+                            title: "How stressed are you?",
+                            selectedLevel: Binding(
+                                get: { preStressLevel },
+                                set: { newValue in
+                                    preStressLevel = newValue
+                                    showPreStressPicker = false
+                                    // Start breathing after stress level is set
+                                    if newValue != nil {
+                                        startBreathing()
+                                    }
+                                }
+                            )
+                        )
+                        .transition(.scale.combined(with: .opacity))
+                    }
+                    .zIndex(4)
+                }
+                
+                // Post-stress picker
+                if showPostStressPicker {
+                    ZStack {
+                        Color.black.opacity(0.4)
+                            .ignoresSafeArea()
+                            .transition(.opacity)
+                        StressLevelPickerModal(
+                            isPresented: $showPostStressPicker,
+                            title: "How do you feel now?",
+                            selectedLevel: Binding(
+                                get: { postStressLevel },
+                                set: { newValue in
+                                    postStressLevel = newValue
+                                    showPostStressPicker = false
+                                    // Complete the session after post-stress is set
+                                    if newValue != nil {
+                                        stopBreathing()
+                                    }
+                                }
+                            )
+                        )
+                        .transition(.scale.combined(with: .opacity))
+                    }
+                    .zIndex(4)
+                }
             }
         )
     }
@@ -503,6 +562,12 @@ struct BreatheView: View {
     }
     
     func startBreathing() {
+        // Show pre-stress picker if not already set
+        if preStressLevel == nil {
+            showPreStressPicker = true
+            return
+        }
+        
         isBreathing = true
         remainingTime = selectedDuration
         totalElapsedTime = 0
@@ -534,9 +599,16 @@ struct BreatheView: View {
         opacity = 1.0
         currentPhase = .inhale
         
+        // Show post-stress picker if pre-stress was set (but only if we actually had a session)
+        if let startTime = sessionStartTime, preStressLevel != nil && postStressLevel == nil {
+            showPostStressPicker = true
+            return
+        }
+        
         // Track statistics - always track time, only count as completed if session lasted at least 10 seconds
         if let startTime = sessionStartTime {
-            let sessionDuration = Int(Date().timeIntervalSince(startTime))
+            let endTime = Date()
+            let sessionDuration = Int(endTime.timeIntervalSince(startTime))
             if sessionDuration > 0 {
                 var stats = breatheStats
                 
@@ -561,6 +633,36 @@ struct BreatheView: View {
                     
                     // Record session in UserStatsManager for streak tracking
                     userStatsManager.recordSession(activityType: .breathe, durationSeconds: sessionDuration)
+                    
+                    // Create enhanced session with metadata
+                    var meta = EnhancedSession.SessionMetadata()
+                    
+                    // Track protocol
+                    if use478 {
+                        meta.protocolId = "478"
+                    } else if inhaleDur == exhaleDur && holdDur == 0 {
+                        meta.protocolId = "equal"
+                    } else if exhaleDur == inhaleDur * 2 {
+                        meta.protocolId = "2_1_exhale"
+                    } else if inhaleDur == holdDur && holdDur == exhaleDur {
+                        meta.protocolId = "box_\(Int(inhaleDur))_\(Int(holdDur))_\(Int(exhaleDur))_\(Int(holdDur))"
+                    }
+                    
+                    // Track stress levels
+                    meta.preStressLevel = preStressLevel
+                    meta.postStressLevel = postStressLevel
+                    
+                    let enhancedSession = EnhancedSession(
+                        type: .breathing,
+                        start: startTime,
+                        end: endTime,
+                        meta: meta
+                    )
+                    
+                    // Save enhanced session
+                    Task { @MainActor in
+                        sessionManager.saveSession(enhancedSession)
+                    }
                 }
                 
                 // Update the stored data directly
@@ -572,6 +674,9 @@ struct BreatheView: View {
         
         totalElapsedTime = 0
         sessionStartTime = nil
+        // Reset stress levels for next session
+        preStressLevel = nil
+        postStressLevel = nil
     }
     
     func updateCurrentPhase() {
@@ -953,6 +1058,74 @@ private struct WheelDurationPicker: View {
         if seconds < 60 { return "\(seconds) sec" }        // 15/30/45
         if seconds == 60 { return "1 min" }
         return "\(seconds / 60) min"
+    }
+}
+
+// MARK: - Stress Level Picker Modal
+private struct StressLevelPickerModal: View {
+    @Binding var isPresented: Bool
+    let title: String
+    @Binding var selectedLevel: Int?
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            Text(title)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                .multilineTextAlignment(.center)
+            
+            HStack(spacing: 12) {
+                ForEach(1...5, id: \.self) { level in
+                    Button(action: {
+                        selectedLevel = level
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isPresented = false
+                        }
+                    }) {
+                        VStack(spacing: 8) {
+                            Text("\(level)")
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundColor(selectedLevel == level ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
+                            
+                            if level == 1 {
+                                Text("Calm")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(selectedLevel == level ? .white.opacity(0.9) : Color(red: 0.4, green: 0.5, blue: 0.6))
+                            } else if level == 5 {
+                                Text("Very\nStressed")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(selectedLevel == level ? .white.opacity(0.9) : Color(red: 0.4, green: 0.5, blue: 0.6))
+                                    .multilineTextAlignment(.center)
+                            }
+                        }
+                        .frame(width: 60, height: 80)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(selectedLevel == level ? Color(red: 0.65, green: 0.8, blue: 0.92) : Color.white.opacity(0.6))
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+            
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isPresented = false
+                }
+            }) {
+                Text("Skip")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .padding(24)
+        .frame(maxWidth: 340)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
+        )
     }
 }
 

@@ -100,4 +100,52 @@ final class HealthKitManager: ObservableObject {
         store.execute(observer)
         store.enableBackgroundDelivery(for: sleepType, frequency: .hourly) { _, _ in }
     }
+    
+    // MARK: - Sleep Event Analysis
+    
+    /// Extract wakeups and WASO from HealthKit sleep samples for a given time range
+    func analyzeSleepEvents(from start: Date, to end: Date) async throws -> (wakeups: Int, wasoSeconds: Int) {
+        let samples = try await fetchSleep(from: start, to: end)
+        
+        // Sort by start time
+        let sortedSamples = samples.sorted { $0.startDate < $1.startDate }
+        
+        // Count wakeups (each awake segment after the first sleep segment is a wakeup)
+        var wakeupCount = 0
+        var hasSlept = false
+        
+        for sample in sortedSamples {
+            let stage = SleepStage(rawValue: sample.value)
+            if stage == .awake && hasSlept {
+                // This is a wakeup after sleep has started
+                wakeupCount += 1
+            } else if stage != .awake && stage != .unknown {
+                // Sleep has started
+                hasSlept = true
+            }
+        }
+        
+        // Calculate WASO (Wake After Sleep Onset) - total awake time after first sleep
+        var wasoTotal: TimeInterval = 0
+        var firstSleepTime: Date?
+        
+        for sample in sortedSamples {
+            let stage = SleepStage(rawValue: sample.value)
+            
+            if firstSleepTime == nil && stage != .awake && stage != .unknown {
+                firstSleepTime = sample.startDate
+            }
+            
+            if let sleepStart = firstSleepTime, stage == .awake {
+                // This awake segment is after sleep onset
+                let awakeStart = max(sample.startDate, sleepStart)
+                let awakeEnd = sample.endDate
+                if awakeEnd > sleepStart {
+                    wasoTotal += awakeEnd.timeIntervalSince(awakeStart)
+                }
+            }
+        }
+        
+        return (wakeups: wakeupCount, wasoSeconds: Int(wasoTotal))
+    }
 }

@@ -143,6 +143,7 @@ struct FocusView: View {
     private let bellPlayer = BellPlayer()
     @State private var showNoiseSettings = false
     @State private var showDurationSettings = false
+    @State private var distractionCount: Int = 0
     
     // Custom durations (in seconds)
     @AppStorage("focusDuration") private var focusDuration: Int = 1500 // 25 minutes
@@ -153,6 +154,7 @@ struct FocusView: View {
     @AppStorage("focusStats") private var focusStatsData: Data = Data()
     @State private var sessionStartTime: Date?
     @StateObject private var userStatsManager = UserStatsManager()
+    @StateObject private var sessionManager = SessionManager.shared
     
     private var focusStats: FocusStats {
         get {
@@ -373,26 +375,51 @@ struct FocusView: View {
     }
     
     private var controlButtonsSection: some View {
-        HStack(spacing: 16) {
-            if isRunning {
-                Button(action: resetTimer) {
+        VStack(spacing: 12) {
+            if isRunning && currentMode == .work {
+                // Distraction button (only during focus sessions)
+                Button(action: {
+                    distractionCount += 1
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }) {
                     HStack(spacing: 8) {
-                        Image(systemName: "stop.fill")
+                        Image(systemName: "exclamationmark.circle")
                             .font(.system(size: 14))
-                        Text(isAutoCycleMode ? "End Cycle" : "Reset")
-                            .font(.system(size: 16, weight: .regular, design: .default))
+                        Text("Distracted (\(distractionCount))")
+                            .font(.system(size: 14, weight: .medium, design: .default))
                     }
-                    .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 12)
+                    .foregroundColor(Color(red: 0.9, green: 0.5, blue: 0.3))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
                     .background(
-                        RoundedRectangle(cornerRadius: 20)
-                            .fill(Color(red: 1.0, green: 1.0, blue: 1.0, opacity: 0.7))
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(red: 0.9, green: 0.5, blue: 0.3).opacity(0.15))
                     )
                 }
                 .buttonStyle(PlainButtonStyle())
-            } else {
-                modeSelectorSection
+            }
+            
+            HStack(spacing: 16) {
+                if isRunning {
+                    Button(action: resetTimer) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "stop.fill")
+                                .font(.system(size: 14))
+                            Text(isAutoCycleMode ? "End Cycle" : "Reset")
+                                .font(.system(size: 16, weight: .regular, design: .default))
+                        }
+                        .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(Color(red: 1.0, green: 1.0, blue: 1.0, opacity: 0.7))
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                } else {
+                    modeSelectorSection
+                }
             }
         }
     }
@@ -655,6 +682,7 @@ struct FocusView: View {
         isRunning = true
         isPaused = false
         sessionStartTime = Date()
+        distractionCount = 0 // Reset distraction count for new session
         
         // Play start bell
         bellPlayer.playBell()
@@ -695,14 +723,15 @@ struct FocusView: View {
     }
     
     func resetTimer() {
-        // Track statistics before resetting
-        trackSessionTime()
+        // Track statistics before resetting (not completed - abandoned)
+        trackSessionTime(completed: false)
         
         isRunning = false
         isPaused = false
         timer?.invalidate()
         timer = nil
         sessionStartTime = nil
+        distractionCount = 0
         
         // Stop noise
         if noiseGenerator.isEnabled {
@@ -718,10 +747,11 @@ struct FocusView: View {
         timeRemaining = duration(for: currentMode)
     }
     
-    private func trackSessionTime() {
+    private func trackSessionTime(completed: Bool = false) {
         // Track statistics - always track time, only count as completed if session lasted at least 30 seconds
         if let startTime = sessionStartTime {
-            let sessionDuration = Int(Date().timeIntervalSince(startTime))
+            let endTime = Date()
+            let sessionDuration = Int(endTime.timeIntervalSince(startTime))
             if sessionDuration > 0 {
                 var stats = focusStats
                 
@@ -739,6 +769,30 @@ struct FocusView: View {
                         
                         // Record session in UserStatsManager for streak tracking
                         userStatsManager.recordSession(activityType: .focus, durationSeconds: sessionDuration)
+                        
+                        // Create enhanced session with metadata
+                        var meta = EnhancedSession.SessionMetadata()
+                        meta.plannedDuration = duration(for: currentMode)
+                        meta.completed = completed
+                        meta.distractions = distractionCount
+                        
+                        // Track content usage if noise was enabled
+                        if noiseGenerator.isEnabled {
+                            meta.contentId = noiseGenerator.selectedNoiseType.description
+                            meta.contentDuration = sessionDuration
+                        }
+                        
+                        let enhancedSession = EnhancedSession(
+                            type: .focus,
+                            start: startTime,
+                            end: endTime,
+                            meta: meta
+                        )
+                        
+                        // Save enhanced session
+                        Task { @MainActor in
+                            sessionManager.saveSession(enhancedSession)
+                        }
                     }
                 } else {
                     stats.totalRestTimeSeconds += sessionDuration
@@ -782,8 +836,8 @@ struct FocusView: View {
             noiseGenerator.stopNoise()
         }
         
-        // Track statistics
-        trackSessionTime()
+        // Track statistics (completed successfully)
+        trackSessionTime(completed: true)
         
         if currentMode == .work {
             completedPomodoros += 1
@@ -810,6 +864,7 @@ struct FocusView: View {
                 currentMode = .work
             }
             timeRemaining = duration(for: currentMode)
+            distractionCount = 0 // Reset for next session
         }
     }
     
