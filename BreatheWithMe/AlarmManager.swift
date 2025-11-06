@@ -8,9 +8,18 @@ import Foundation
 import UserNotifications
 import AVFoundation
 import AudioToolbox
+import Combine
 
 class AlarmManager: ObservableObject {
     static let shared = AlarmManager()
+    
+    @Published var isAlarmActive = false
+    @Published var snoozeTime: Date?
+    
+    private let bellPlayer = BellPlayer()
+    private var alarmTimer: Timer?
+    private var bellPlayTimer: Timer?
+    private let snoozeDuration: TimeInterval = 5 * 60 // 5 minutes
     
     private init() {
         requestNotificationPermission()
@@ -56,20 +65,88 @@ class AlarmManager: ObservableObject {
     
     // Cancel alarm
     func cancelAlarm(identifier: String = "sleepAlarm") {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
+        // Cancel both regular and snooze alarms
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier, "sleepAlarmSnooze"])
+        stopAlarm()
         print("✅ AlarmManager: Alarm cancelled")
     }
     
-    // Play alarm sound (for when app is in foreground)
+    // Start alarm (plays bell sound repeatedly)
+    func startAlarm() {
+        guard !isAlarmActive else { 
+            print("⚠️ AlarmManager: Alarm already active, ignoring start request")
+            return 
+        }
+        
+        print("🔔 AlarmManager: Starting alarm...")
+        isAlarmActive = true
+        snoozeTime = nil
+        
+        // Configure audio session for alarm playback (override any existing session)
+        do {
+            // Use .playback category with no mixing to ensure alarm plays even if other audio is playing
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
+            try AVAudioSession.sharedInstance().setActive(true, options: [])
+            print("✅ AlarmManager: Audio session configured successfully")
+        } catch {
+            print("❌ AlarmManager: Failed to setup audio session: \(error)")
+        }
+        
+        // Play bell immediately on main thread
+        DispatchQueue.main.async { [weak self] in
+            print("🔔 AlarmManager: Playing bell sound...")
+            self?.bellPlayer.playBell()
+        }
+        
+        // Schedule repeated bell playback every 3.5 seconds (bell duration)
+        bellPlayTimer = Timer.scheduledTimer(withTimeInterval: 3.5, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async {
+                print("🔔 AlarmManager: Repeating bell sound...")
+                self?.bellPlayer.playBell()
+            }
+        }
+        
+        print("✅ AlarmManager: Alarm started successfully")
+    }
+    
+    // Stop alarm
+    func stopAlarm() {
+        guard isAlarmActive else { return }
+        
+        isAlarmActive = false
+        snoozeTime = nil
+        bellPlayTimer?.invalidate()
+        bellPlayTimer = nil
+        
+        print("✅ AlarmManager: Alarm stopped")
+    }
+    
+    // Snooze alarm (stop for now, reschedule for later)
+    func snoozeAlarm() {
+        guard isAlarmActive else { return }
+        
+        let newAlarmTime = Date().addingTimeInterval(snoozeDuration)
+        snoozeTime = newAlarmTime
+        
+        // Stop current alarm
+        stopAlarm()
+        
+        // Reschedule for snooze time
+        scheduleAlarm(at: newAlarmTime, identifier: "sleepAlarmSnooze")
+        
+        print("✅ AlarmManager: Alarm snoozed until \(newAlarmTime)")
+    }
+    
+    // Play alarm sound (for when app is in foreground - legacy support)
     func playAlarmSound() {
-        // Use system sound for alarm
-        AudioServicesPlaySystemSound(1005) // System sound ID for alarm
+        startAlarm()
     }
     
     // Check if alarm time has been reached
     func checkAlarm(identifier: String = "sleepAlarm", completion: @escaping (Bool) -> Void) {
         UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
-            let hasAlarm = requests.contains { $0.identifier == identifier }
+            let hasAlarm = requests.contains { $0.identifier == identifier } || 
+                          requests.contains { $0.identifier == "sleepAlarmSnooze" }
             completion(hasAlarm)
         }
     }

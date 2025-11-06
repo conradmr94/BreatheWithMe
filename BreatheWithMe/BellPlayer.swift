@@ -16,8 +16,10 @@ final class BellPlayer {
     
     private func setupAudio() {
         do {
+            // Use .playback category - will be overridden by AlarmManager when alarm plays
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
             try AVAudioSession.sharedInstance().setActive(true)
+            print("✅ BellPlayer: Audio session setup successful")
         } catch {
             print("❌ BellPlayer: Failed to setup audio session: \(error)")
         }
@@ -35,16 +37,37 @@ final class BellPlayer {
     }
     
     func playBell() {
+        // Ensure audio engine is running
+        if !audioEngine.isRunning {
+            print("⚠️ BellPlayer: Audio engine not running, restarting...")
+            do {
+                try audioEngine.start()
+                print("✅ BellPlayer: Audio engine restarted")
+            } catch {
+                print("❌ BellPlayer: Failed to restart audio engine: \(error)")
+                return
+            }
+        }
+        
         let sampleRate: Double = 44100.0
         let duration: Double = 3.5
         let fundamentalFreq: Double = 180.0
-        let volume: Float = 0.08
+        let volume: Float = 0.5  // Increased volume for alarm
         
         let frameCount = Int(duration * sampleRate)
-        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1) else { return }
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frameCount)) else { return }
+        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1) else {
+            print("❌ BellPlayer: Failed to create audio format")
+            return
+        }
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frameCount)) else {
+            print("❌ BellPlayer: Failed to create audio buffer")
+            return
+        }
         buffer.frameLength = AVAudioFrameCount(frameCount)
-        guard let channelData = buffer.floatChannelData?[0] else { return }
+        guard let channelData = buffer.floatChannelData?[0] else {
+            print("❌ BellPlayer: Failed to get channel data")
+            return
+        }
         
         let partials: [(freq: Double, amp: Double, decay: Double)] = [
             (1.0, 1.0, 0.5),
@@ -80,12 +103,15 @@ final class BellPlayer {
                 let decayEnvelope = exp(-decay * time)
                 sample += sin(2.0 * .pi * freq * time) * amp * decayEnvelope * attackEnvelope
             }
-            channelData[i] = Float(sample) * volume * Float(fadeOutEnvelope) * 0.15
+            channelData[i] = Float(sample) * volume * Float(fadeOutEnvelope)
         }
         
         playerNode.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
         if !playerNode.isPlaying {
             playerNode.play()
+            print("🔔 BellPlayer: Bell sound playing")
+        } else {
+            print("🔔 BellPlayer: Bell sound scheduled (already playing)")
         }
     }
 }

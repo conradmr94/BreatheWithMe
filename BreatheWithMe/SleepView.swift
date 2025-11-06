@@ -53,11 +53,27 @@ struct SleepView: View {
     @State private var sessionStartTime: Date?
     
     // Alarm functionality
-    @State private var alarmEnabled = false
-    @State private var alarmTime = Date()
+    @AppStorage("alarmEnabled") private var alarmEnabled = false
+    @AppStorage("alarmTime") private var alarmTimeData: Data = Data()
     @State private var showAlarmPicker = false
+    @State private var alarmTimePickerValue: Date = Date()
     @StateObject private var alarmManager = AlarmManager.shared
     @State private var alarmFired = false
+    
+    private var alarmTime: Date {
+        get {
+            if let decoded = try? JSONDecoder().decode(Date.self, from: alarmTimeData) {
+                return decoded
+            }
+            // Default to 8 hours from now
+            return Calendar.current.date(byAdding: .hour, value: 8, to: Date()) ?? Date()
+        }
+        set {
+            if let encoded = try? JSONEncoder().encode(newValue) {
+                alarmTimeData = encoded
+            }
+        }
+    }
 
     // Statistics tracking
     @AppStorage("sleepStats") private var sleepStatsData: Data = Data()
@@ -84,7 +100,7 @@ struct SleepView: View {
     // Session Manager for enhanced tracking
     @StateObject private var sessionManager = SessionManager.shared
     
-    var body: some View {
+    private var backgroundView: some View {
         ZStack {
             // Deep night gradient
             LinearGradient(
@@ -110,8 +126,11 @@ struct SleepView: View {
                         )
                 }
             }
-            
-            VStack(spacing: 0) {
+        }
+    }
+    
+    private var mainContentView: some View {
+        VStack(spacing: 0) {
                 // Top section
                 VStack(spacing: 12) {
                     if !isRunning {
@@ -246,6 +265,7 @@ struct SleepView: View {
                                 // Time picker button
                                 if alarmEnabled {
                                     Button(action: {
+                                        alarmTimePickerValue = alarmTime
                                         withAnimation(.easeInOut(duration: 0.3)) {
                                             showAlarmPicker = true
                                         }
@@ -320,7 +340,102 @@ struct SleepView: View {
                 }
                 .frame(height: 155)
                 .padding(.bottom, 60)
+        }
+    }
+    
+    @ViewBuilder
+    private var infoMessageOverlay: some View {
+        if noiseGenerator.showInfoMessage {
+            VStack {
+                Spacer()
+                Text(noiseGenerator.infoMessage)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.black.opacity(0.8))
+                    )
+                    .padding(.horizontal, 40)
+                    .padding(.bottom, 100)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
+        }
+    }
+    
+    @ViewBuilder
+    private var modalsOverlay: some View {
+        if showNoiseSettings {
+            ZStack {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showNoiseSettings = false
+                        }
+                    }
+                SleepNoiseOptionsModal(
+                    isPresented: $showNoiseSettings,
+                    noiseGenerator: noiseGenerator,
+                    isRunning: isRunning
+                )
+                .transition(.scale.combined(with: .opacity))
+            }
+            .zIndex(2)
+        }
+        
+        // Alarm time picker modal
+        if showAlarmPicker {
+            ZStack {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showAlarmPicker = false
+                        }
+                    }
+                AlarmTimePickerModal(
+                    isPresented: $showAlarmPicker,
+                    alarmTime: $alarmTimePickerValue,
+                    onSave: {
+                        if let encoded = try? JSONEncoder().encode(alarmTimePickerValue) {
+                            alarmTimeData = encoded
+                        }
+                    }
+                )
+                .transition(.scale.combined(with: .opacity))
+            }
+            .zIndex(3)
+        }
+        
+        // Alarm UI overlay (when alarm is active)
+        if alarmManager.isAlarmActive {
+            AlarmActiveOverlay(
+                alarmManager: alarmManager,
+                onDismiss: {
+                    alarmManager.stopAlarm()
+                    if isRunning {
+                        stopTimer()
+                    }
+                },
+                onSnooze: {
+                    alarmManager.snoozeAlarm()
+                    alarmFired = false
+                }
+            )
+            .zIndex(4)
+            .transition(.opacity)
+        }
+    }
+    
+    private var baseView: some View {
+        ZStack {
+            backgroundView
+            mainContentView
         }
         .ignoresSafeArea(.container, edges: .top)
         .preferredColorScheme(.dark)
@@ -343,75 +458,15 @@ struct SleepView: View {
                 view
             }
         }
-        .overlay(
-            // Info message popup for color noise
-            Group {
-                if noiseGenerator.showInfoMessage {
-                    VStack {
-                        Spacer()
-                        Text(noiseGenerator.infoMessage)
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.white)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.black.opacity(0.8))
-                            )
-                            .padding(.horizontal, 40)
-                            .padding(.bottom, 100)
-                            .transition(.opacity.combined(with: .move(edge: .bottom)))
-                    }
-                }
+    }
+    
+    var body: some View {
+        baseView
+            .overlay(infoMessageOverlay)
+            .overlay(modalsOverlay)
+            .onAppear {
+                vm.onAppear()
             }
-        )
-        .overlay(
-            Group {
-                if showNoiseSettings {
-                    ZStack {
-                        Color.black.opacity(0.4)
-                            .ignoresSafeArea()
-                            .transition(.opacity)
-                            .onTapGesture {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    showNoiseSettings = false
-                                }
-                            }
-                        SleepNoiseOptionsModal(
-                            isPresented: $showNoiseSettings,
-                            noiseGenerator: noiseGenerator,
-                            isRunning: isRunning
-                        )
-                        .transition(.scale.combined(with: .opacity))
-                    }
-                    .zIndex(2)
-                }
-                
-                // Alarm time picker modal
-                if showAlarmPicker {
-                    ZStack {
-                        Color.black.opacity(0.4)
-                            .ignoresSafeArea()
-                            .transition(.opacity)
-                            .onTapGesture {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    showAlarmPicker = false
-                                }
-                            }
-                        AlarmTimePickerModal(
-                            isPresented: $showAlarmPicker,
-                            alarmTime: $alarmTime
-                        )
-                        .transition(.scale.combined(with: .opacity))
-                    }
-                    .zIndex(3)
-                }
-            }
-        )
-        .onAppear {
-            vm.onAppear()
-        }
     }
     
     // --- Existing timer logic with session tracking ---
@@ -433,7 +488,10 @@ struct SleepView: View {
                 targetAlarmTime = Calendar.current.date(byAdding: .day, value: 1, to: targetAlarmTime) ?? targetAlarmTime
             }
             alarmManager.scheduleAlarm(at: targetAlarmTime)
-            alarmTime = targetAlarmTime // Update stored alarm time
+            // Update stored alarm time directly
+            if let encoded = try? JSONEncoder().encode(targetAlarmTime) {
+                alarmTimeData = encoded
+            }
             print("✅ Sleep: Alarm scheduled for \(targetAlarmTime)")
         }
         
@@ -449,12 +507,29 @@ struct SleepView: View {
             // Check if alarm time has been reached
             if alarmEnabled && !alarmFired {
                 let now = Date()
-                if now >= alarmTime {
+                let calendar = Calendar.current
+                let nowComponents = calendar.dateComponents([.hour, .minute], from: now)
+                let alarmComponents = calendar.dateComponents([.hour, .minute], from: alarmTime)
+                
+                // Check if current time matches alarm time (within same minute)
+                if nowComponents.hour == alarmComponents.hour && 
+                   nowComponents.minute == alarmComponents.minute {
+                    print("🔔 Sleep: Alarm time reached! Current: \(now), Alarm: \(alarmTime)")
                     alarmFired = true
-                    alarmManager.playAlarmSound()
-                    // Auto-stop sleep session when alarm fires
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        stopTimer()
+                    DispatchQueue.main.async {
+                        self.alarmManager.startAlarm()
+                    }
+                }
+            }
+            
+            // Check for snooze alarm
+            if let snoozeTime = alarmManager.snoozeTime, !alarmFired {
+                let now = Date()
+                if now >= snoozeTime {
+                    print("🔔 Sleep: Snooze alarm time reached! Current: \(now), Snooze: \(snoozeTime)")
+                    alarmFired = true
+                    DispatchQueue.main.async {
+                        self.alarmManager.startAlarm()
                     }
                 }
             }
@@ -464,6 +539,11 @@ struct SleepView: View {
         isRunning = false
         timer?.invalidate()
         timer = nil
+        
+        // Stop alarm if active
+        if alarmManager.isAlarmActive {
+            alarmManager.stopAlarm()
+        }
         
         // Cancel alarm if still pending
         if alarmEnabled {
@@ -696,6 +776,7 @@ struct SleepNoiseOptionsModal: View {
 struct AlarmTimePickerModal: View {
     @Binding var isPresented: Bool
     @Binding var alarmTime: Date
+    let onSave: () -> Void
     
     var body: some View {
         VStack(spacing: 20) {
@@ -731,6 +812,8 @@ struct AlarmTimePickerModal: View {
                 .buttonStyle(PlainButtonStyle())
                 
                 Button(action: {
+                    // Save the alarm time
+                    onSave()
                     withAnimation(.easeInOut(duration: 0.2)) {
                         isPresented = false
                     }
@@ -755,6 +838,112 @@ struct AlarmTimePickerModal: View {
                 .fill(Color.white)
                 .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
         )
+    }
+}
+
+// MARK: - Alarm Active Overlay
+struct AlarmActiveOverlay: View {
+    @ObservedObject var alarmManager: AlarmManager
+    let onDismiss: () -> Void
+    let onSnooze: () -> Void
+    
+    @State private var pulseScale: CGFloat = 1.0
+    
+    var body: some View {
+        ZStack {
+            // Background overlay
+            Color.black.opacity(0.85)
+                .ignoresSafeArea()
+            
+            VStack(spacing: 40) {
+                Spacer()
+                
+                // Alarm icon with pulse animation
+                ZStack {
+                    // Pulsing circles
+                    ForEach(0..<3) { index in
+                        Circle()
+                            .fill(Color(red: 0.4, green: 0.5, blue: 0.8).opacity(0.3 - Double(index) * 0.1))
+                            .frame(width: 200 + CGFloat(index) * 40, height: 200 + CGFloat(index) * 40)
+                            .scaleEffect(pulseScale + Double(index) * 0.05)
+                    }
+                    
+                    // Main alarm icon
+                    Image(systemName: "alarm.fill")
+                        .font(.system(size: 80, weight: .light))
+                        .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.8))
+                        .scaleEffect(pulseScale)
+                }
+                .frame(height: 300)
+                
+                // Wake up text
+                VStack(spacing: 12) {
+                    Text("Wake Up")
+                        .font(.system(size: 36, weight: .light, design: .default))
+                        .foregroundColor(.white)
+                    
+                    Text("Time to start your day")
+                        .font(.system(size: 16, weight: .regular, design: .default))
+                        .foregroundColor(.white.opacity(0.7))
+                }
+                
+                Spacer()
+                
+                // Action buttons
+                HStack(spacing: 20) {
+                    // Snooze button
+                    Button(action: {
+                        onSnooze()
+                    }) {
+                        VStack(spacing: 8) {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .font(.system(size: 24))
+                            Text("Snooze")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.white.opacity(0.2))
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    
+                    // Dismiss button
+                    Button(action: {
+                        onDismiss()
+                    }) {
+                        VStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 24))
+                            Text("Dismiss")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color(red: 0.4, green: 0.5, blue: 0.8))
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+                .padding(.horizontal, 40)
+                .padding(.bottom, 60)
+            }
+        }
+        .onAppear {
+            startPulseAnimation()
+        }
+    }
+    
+    private func startPulseAnimation() {
+        withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+            pulseScale = 1.15
+        }
     }
 }
 

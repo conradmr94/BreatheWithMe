@@ -56,6 +56,8 @@ A minimalist iOS wellness app combining guided breathing exercises, Pomodoro foc
    ```
 
 ### Running the App
+
+#### Running on iOS Simulator
 1. Once Xcode opens, look at the top toolbar
 2. Click on the device selector (next to the Play/Stop buttons)
 3. Choose an iOS simulator from the dropdown menu:
@@ -66,6 +68,25 @@ A minimalist iOS wellness app combining guided breathing exercises, Pomodoro foc
 4. Click the **Play button** (▶️) or press `Cmd + R`
 5. Wait for the app to build (first build may take a minute)
 6. The iOS simulator will launch and run your app
+
+#### Running on Physical iPhone
+1. **Connect your iPhone to your Mac** using a USB cable (or ensure it's connected via Wi-Fi)
+2. **Unlock your iPhone** and, if prompted, tap "Trust This Computer" and enter your passcode
+3. In Xcode, click on the device selector (next to the Play/Stop buttons) in the top toolbar
+4. Your iPhone should appear in the device list (it will show your device name, e.g., "Matt's iPhone")
+5. Select your iPhone from the dropdown menu
+6. **First time only**: Xcode may need to set up your device for development:
+   - If you see a message about "Developer Mode," go to Settings → Privacy & Security → Developer Mode on your iPhone and enable it
+   - You may need to restart your iPhone after enabling Developer Mode
+   - Xcode will automatically manage code signing with your Apple ID (free developer account)
+7. Click the **Play button** (▶️) or press `Cmd + R`
+8. Wait for the app to build and install on your iPhone
+9. **First time only**: On your iPhone, you may see a prompt that the app is untrusted:
+   - Go to Settings → General → VPN & Device Management (or "Device Management")
+   - Tap on your Apple ID under "Developer App"
+   - Tap "Trust [Your Apple ID]"
+   - Tap "Allow" in the confirmation dialog
+10. The app will launch automatically on your iPhone
 
 ### First Time Setup
 - If prompted to "Trust" or allow developer mode, click **Trust** or **Always Allow**

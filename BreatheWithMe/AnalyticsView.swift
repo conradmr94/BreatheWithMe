@@ -8,19 +8,19 @@ import SwiftUI
 import Charts
 
 struct AnalyticsView: View {
-    @State private var selectedTab: AnalyticsTab = .sleep
+    @State private var selectedTab: AnalyticsTab = .breathing
     
     enum AnalyticsTab: String, CaseIterable {
-        case sleep = "Sleep"
-        case focus = "Focus"
         case breathing = "Breathe"
+        case focus = "Focus"
+        case sleep = "Sleep"
         case insights = "Insights"
         
         var icon: String {
             switch self {
-            case .sleep: return "moon.stars.fill"
-            case .focus: return "brain.head.profile"
             case .breathing: return "wind"
+            case .focus: return "brain.head.profile"
+            case .sleep: return "moon.stars.fill"
             case .insights: return "sparkles"
             }
         }
@@ -29,32 +29,34 @@ struct AnalyticsView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Tab selector - using a horizontal scrollable picker for better layout
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(AnalyticsTab.allCases, id: \.self) { tab in
-                        Button(action: {
-                            withAnimation {
-                                selectedTab = tab
-                            }
-                        }) {
-                            VStack(spacing: 4) {
-                                Image(systemName: tab.icon)
-                                    .font(.system(size: 16))
-                                Text(tab.rawValue)
-                                    .font(.system(size: 13, weight: .medium))
-                            }
-                            .foregroundColor(selectedTab == tab ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(selectedTab == tab ? Color(red: 0.4, green: 0.5, blue: 0.8) : Color.white.opacity(0.3))
-                            )
+            HStack(spacing: 12) {
+                Spacer()
+                ForEach(AnalyticsTab.allCases, id: \.self) { tab in
+                    Button(action: {
+                        withAnimation {
+                            selectedTab = tab
                         }
-                        .buttonStyle(PlainButtonStyle())
+                    }) {
+                        VStack(spacing: 5) {
+                            Image(systemName: tab.icon)
+                                .font(.system(size: 18, weight: .medium))
+                            Text(tab.rawValue)
+                                .font(.system(size: 12, weight: .semibold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                        }
+                        .foregroundColor(selectedTab == tab ? .white : Color(red: 0.3, green: 0.4, blue: 0.5))
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(selectedTab == tab ? Color(red: 0.4, green: 0.5, blue: 0.8) : Color.white.opacity(0.5))
+                                .shadow(color: selectedTab == tab ? Color(red: 0.4, green: 0.5, blue: 0.8).opacity(0.4) : Color.black.opacity(0.1), radius: selectedTab == tab ? 8 : 4, x: 0, y: selectedTab == tab ? 4 : 2)
+                        )
                     }
+                    .buttonStyle(PlainButtonStyle())
                 }
-                .padding(.horizontal)
+                Spacer()
             }
             .padding(.vertical, 12)
             
@@ -76,7 +78,7 @@ struct AnalyticsView: View {
             LinearGradient(
                 gradient: Gradient(colors: [
                     Color(red: 0.95, green: 0.97, blue: 1.0),
-                    Color(red: 0.88, green: 0.93, blue: 0.98)
+                    Color(red: 0.9, green: 0.94, blue: 0.98)
                 ]),
                 startPoint: .top,
                 endPoint: .bottom
@@ -126,7 +128,7 @@ struct SleepAnalyticsContent: View {
                 VStack(spacing: 8) {
                     Text("Sleep Analytics")
                         .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
                     
                     // Timeframe selector
                     Picker("Timeframe", selection: $selectedTimeframe) {
@@ -160,17 +162,6 @@ struct SleepAnalyticsContent: View {
             }
             .padding()
         }
-        .background(
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(red: 0.15, green: 0.15, blue: 0.25),
-                    Color(red: 0.1, green: 0.1, blue: 0.2)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
-        .preferredColorScheme(.dark)
     }
 }
 
@@ -255,17 +246,6 @@ struct FocusAnalyticsContent: View {
             }
             .padding()
         }
-        .background(
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(red: 0.95, green: 0.97, blue: 1.0),
-                    Color(red: 0.88, green: 0.93, blue: 0.98)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
-        .preferredColorScheme(.light)
     }
 }
 
@@ -340,17 +320,6 @@ struct BreathingAnalyticsContent: View {
             }
             .padding()
         }
-        .background(
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(red: 0.95, green: 0.97, blue: 1.0),
-                    Color(red: 0.88, green: 0.93, blue: 0.98)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
-        .preferredColorScheme(.light)
     }
 }
 

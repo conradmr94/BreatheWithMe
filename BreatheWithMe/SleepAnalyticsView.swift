@@ -117,7 +117,7 @@ struct SleepScoreCard: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Average Sleep Score")
                 .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.white.opacity(0.8))
+                .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
             
             HStack(alignment: .lastTextBaseline, spacing: 8) {
                 Text("\(Int(score))")
@@ -126,7 +126,7 @@ struct SleepScoreCard: View {
                 
                 Text("/ 100")
                     .font(.system(size: 20, weight: .regular))
-                    .foregroundColor(.white.opacity(0.6))
+                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
             }
             
             // Score breakdown
@@ -149,7 +149,8 @@ struct SleepScoreCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.1))
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
         )
     }
 }
@@ -175,7 +176,7 @@ struct SleepDurationChart: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Sleep Duration Trend")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white)
+                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
             
             if #available(iOS 16.0, *) {
                 Chart(chartData, id: \.date) { dataPoint in
@@ -208,7 +209,8 @@ struct SleepDurationChart: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.1))
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
         )
     }
 }
@@ -238,16 +240,16 @@ struct BedtimeRegularityCard: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Bedtime Regularity")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white)
+                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
             
             HStack(alignment: .lastTextBaseline, spacing: 8) {
                 Text(meanTimeString)
                     .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
                 
                 Text("avg bedtime")
                     .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(.white.opacity(0.6))
+                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
             }
             
             HStack {
@@ -259,13 +261,14 @@ struct BedtimeRegularityCard: View {
                 
                 Text("±\(Int(regularity.stdDev / 60)) min")
                     .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(.white.opacity(0.6))
+                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
             }
         }
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.1))
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
         )
     }
 }
@@ -292,7 +295,7 @@ struct SleepEventsCard: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Sleep Events")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white)
+                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
             
             HStack(spacing: 20) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -301,7 +304,7 @@ struct SleepEventsCard: View {
                         .foregroundColor(.orange)
                     Text("min snoring")
                         .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
@@ -310,7 +313,7 @@ struct SleepEventsCard: View {
                         .foregroundColor(.blue)
                     Text("avg wakeups")
                         .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
                 }
                 
                 Spacer()
@@ -319,7 +322,8 @@ struct SleepEventsCard: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.1))
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
         )
     }
 }
@@ -345,7 +349,7 @@ struct SleepSummaryStats: View {
         VStack(spacing: 12) {
             Text("Summary")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white)
+                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
                 .frame(maxWidth: .infinity, alignment: .leading)
             
             HStack(spacing: 16) {
@@ -371,7 +375,8 @@ struct SleepSummaryStats: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.1))
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
         )
     }
 }
@@ -390,7 +395,7 @@ struct StatBadge: View {
             
             Text("\(label): \(count)")
                 .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.white.opacity(0.8))
+                .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
         }
     }
 }
@@ -404,21 +409,21 @@ struct StatCard: View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 24))
-                .foregroundColor(.white.opacity(0.8))
+                .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
             
             Text(value)
                 .font(.system(size: 20, weight: .bold))
-                .foregroundColor(.white)
+                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
             
             Text(title)
                 .font(.system(size: 12, weight: .regular))
-                .foregroundColor(.white.opacity(0.6))
+                .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
         }
         .frame(maxWidth: .infinity)
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white.opacity(0.05))
+                .fill(Color(red: 0.95, green: 0.97, blue: 1.0))
         )
     }
 }

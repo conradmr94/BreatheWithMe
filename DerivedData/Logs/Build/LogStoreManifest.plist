@@ -6,7 +6,7 @@
 	<integer>11</integer>
 	<key>logs</key>
 	<dict>
-		<key>2E885F6E-97A7-4B7E-9866-556491379CF6</key>
+		<key>AB6B99E0-8DB4-43B5-9B11-88C3F9CB8DED</key>
 		<dict>
 			<key>className</key>
 			<string>IDECommandLineBuildLog</string>
@@ -15,21 +15,21 @@
 			<key>domainType</key>
 			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
 			<key>fileName</key>
-			<string>2E885F6E-97A7-4B7E-9866-556491379CF6.xcactivitylog</string>
+			<string>AB6B99E0-8DB4-43B5-9B11-88C3F9CB8DED.xcactivitylog</string>
 			<key>hasPrimaryLog</key>
 			<true/>
 			<key>primaryObservable</key>
 			<dict>
 				<key>highLevelStatus</key>
-				<string>S</string>
+				<string>E</string>
 				<key>totalNumberOfAnalyzerIssues</key>
 				<integer>0</integer>
 				<key>totalNumberOfErrors</key>
-				<integer>0</integer>
+				<integer>1</integer>
 				<key>totalNumberOfTestFailures</key>
 				<integer>0</integer>
 				<key>totalNumberOfWarnings</key>
-				<integer>0</integer>
+				<integer>1</integer>
 			</dict>
 			<key>schemeIdentifier-containerName</key>
 			<string>BreatheWithMe project</string>
@@ -38,15 +38,15 @@
 			<key>schemeIdentifier-sharedScheme</key>
 			<integer>1</integer>
 			<key>signature</key>
-			<string>Cleaning project BreatheWithMe with scheme BreatheWithMe</string>
+			<string>Building project BreatheWithMe with scheme BreatheWithMe</string>
 			<key>timeStartedRecording</key>
-			<real>783819902.96673501</real>
+			<real>784165743.09963095</real>
 			<key>timeStoppedRecording</key>
-			<real>783819903.23363101</real>
+			<real>784165751.63961601</real>
 			<key>title</key>
-			<string>Cleaning project BreatheWithMe with scheme BreatheWithMe</string>
+			<string>Building project BreatheWithMe with scheme BreatheWithMe</string>
 			<key>uniqueIdentifier</key>
-			<string>2E885F6E-97A7-4B7E-9866-556491379CF6</string>
+			<string>AB6B99E0-8DB4-43B5-9B11-88C3F9CB8DED</string>
 		</dict>
 	</dict>
 </dict>

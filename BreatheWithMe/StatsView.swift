@@ -25,14 +25,37 @@ struct StatsView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Tab selector
-            Picker("Stats", selection: $selectedTab) {
+            // Tab selector - using a horizontal scrollable picker for better layout
+            HStack(spacing: 12) {
+                Spacer()
                 ForEach(StatsTab.allCases, id: \.self) { tab in
-                    Text(tab.rawValue).tag(tab)
+                    Button(action: {
+                        withAnimation {
+                            selectedTab = tab
+                        }
+                    }) {
+                        VStack(spacing: 5) {
+                            Image(systemName: tab.icon)
+                                .font(.system(size: 18, weight: .medium))
+                            Text(tab.rawValue)
+                                .font(.system(size: 12, weight: .semibold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                        }
+                        .foregroundColor(selectedTab == tab ? .white : Color(red: 0.3, green: 0.4, blue: 0.5))
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(selectedTab == tab ? Color(red: 0.4, green: 0.5, blue: 0.8) : Color.white.opacity(0.5))
+                                .shadow(color: selectedTab == tab ? Color(red: 0.4, green: 0.5, blue: 0.8).opacity(0.4) : Color.black.opacity(0.1), radius: selectedTab == tab ? 8 : 4, x: 0, y: selectedTab == tab ? 4 : 2)
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
                 }
+                Spacer()
             }
-            .pickerStyle(.segmented)
-            .padding()
+            .padding(.vertical, 12)
             
             // Content based on selected tab
             Group {
