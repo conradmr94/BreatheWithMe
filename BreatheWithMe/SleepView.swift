@@ -239,7 +239,7 @@ struct SleepView: View {
                     // Alarm settings (when not running)
                     if !isRunning {
                         let accent = Color(red: 0.4, green: 0.5, blue: 0.8)
-                        VStack(alignment: .leading, spacing: 10) {
+                        VStack(alignment: .center, spacing: 10) {
                             HStack {
                                 Spacer()
                                 Button(action: {
@@ -247,9 +247,7 @@ struct SleepView: View {
                                     showAlarmSettings = true
                                 }) {
                                     HStack(spacing: 8) {
-                                        Image(systemName: "clock.badge.gearshape")
-                                            .font(.system(size: 16, weight: .semibold))
-                                        Text("Alarm Options")
+                                        Text("Alarm")
                                             .font(.system(size: 14, weight: .semibold))
                                     }
                                     .foregroundColor(accent)
@@ -265,7 +263,7 @@ struct SleepView: View {
                             }
 
                             if isAlarmEnabled {
-                                VStack(alignment: .leading, spacing: 4) {
+                                VStack(alignment: .center, spacing: 4) {
                                     Text("Next alarm: \(alarmDisplayTime)")
                                         .font(.system(size: 13, weight: .medium))
                                         .foregroundColor(.white.opacity(0.85))
@@ -273,7 +271,7 @@ struct SleepView: View {
                                         .font(.system(size: 12, weight: .regular))
                                         .foregroundColor(.white.opacity(0.6))
                                 }
-                                .padding(.horizontal, 4)
+                                .frame(maxWidth: .infinity)
                                 .transition(.opacity)
                             }
                         }
@@ -571,6 +569,45 @@ struct SleepView: View {
             .zIndex(2)
         }
         
+        // Alarm Settings overlay
+        if showAlarmSettings {
+            ZStack {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showAlarmSettings = false
+                            stopAlarmPreview()
+                        }
+                    }
+                AlarmSettingsSheet(
+                    isAlarmEnabled: alarmEnabledBinding,
+                    alarmDate: alarmTimeBinding,
+                    selectedSound: alarmSoundBinding,
+                    soundOptions: NoiseGenerator.NoiseType.alarmEligibleCases,
+                    focusLockBinding: focusLockToggleBinding,
+                    focusLockDescription: focusLockStatusText,
+                    isPreviewing: isPreviewingAlarm,
+                    previewAction: {
+                        if isPreviewingAlarm {
+                            stopAlarmPreview()
+                        } else {
+                            previewAlarmSound()
+                        }
+                    },
+                    onDismiss: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showAlarmSettings = false
+                            stopAlarmPreview()
+                        }
+                    }
+                )
+                .transition(.scale.combined(with: .opacity))
+            }
+            .zIndex(3)
+        }
+        
         // Alarm UI overlay (when alarm is active)
         if alarmManager.isAlarmActive {
                 AlarmActiveOverlay(
@@ -620,34 +657,8 @@ struct SleepView: View {
     
     var body: some View {
         baseView
-            .overlay(infoMessageOverlay)
-            .overlay(modalsOverlay)
-        .sheet(isPresented: $showAlarmSettings, onDismiss: {
-            stopAlarmPreview()
-        }) {
-            let sheetView = AlarmSettingsSheet(
-                isAlarmEnabled: alarmEnabledBinding,
-                alarmDate: alarmTimeBinding,
-                selectedSound: alarmSoundBinding,
-                soundOptions: NoiseGenerator.NoiseType.alarmEligibleCases,
-                focusLockBinding: focusLockToggleBinding,
-                focusLockDescription: focusLockStatusText,
-                isPreviewing: isPreviewingAlarm,
-                previewAction: {
-                    if isPreviewingAlarm {
-                        stopAlarmPreview()
-                    } else {
-                        previewAlarmSound()
-                    }
-                }
-            )
-            if #available(iOS 16.0, *) {
-                sheetView
-                    .presentationDetents([.medium, .large])
-            } else {
-                sheetView
-            }
-        }
+        .overlay(infoMessageOverlay)
+        .overlay(modalsOverlay)
             .onAppear {
                 vm.onAppear()
                 alarmManager.configure(alarmSound: selectedAlarmSound)
@@ -1176,75 +1187,162 @@ private struct AlarmSettingsSheet: View {
     let focusLockDescription: String
     let isPreviewing: Bool
     let previewAction: () -> Void
-    @Environment(\.dismiss) private var dismiss
+    let onDismiss: () -> Void
 
     var body: some View {
-        Group {
-            if #available(iOS 16.0, *) {
-                NavigationStack { formContent }
-            } else {
-                NavigationView { formContent }
-            }
-        }
-    }
-
-    private var formContent: some View {
-        Form {
-            Section {
-                Toggle(isOn: $isAlarmEnabled) {
-                    Text("Alarm")
-                        .font(.system(size: 15, weight: .semibold))
+        VStack(alignment: .leading, spacing: 24) {
+            // Header with title and close button
+            HStack {
+                Text("Alarm Settings")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                Spacer()
+                Button(action: {
+                    onDismiss()
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(Color.black.opacity(0.25))
                 }
+                .buttonStyle(PlainButtonStyle())
             }
             
-            Section(header: Text("Wake Time")) {
-                DatePicker(
-                    "Wake time",
-                    selection: $alarmDate,
-                    displayedComponents: .hourAndMinute
-                )
-                .labelsHidden()
-                .disabled(!isAlarmEnabled)
-            }
-
-            Section(header: Text("Alarm Sound")) {
-                Picker("Sound", selection: $selectedSound) {
-                    ForEach(soundOptions, id: \.self) { sound in
-                        Label(sound.description, systemImage: sound.icon)
+            VStack(alignment: .leading, spacing: 24) {
+                // Alarm Toggle
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Alarm")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                    }
+                    
+                    Toggle(isOn: $isAlarmEnabled) {
+                        Text("Enable alarm")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                    }
+                    .toggleStyle(SwitchToggleStyle(tint: Color(red: 0.4, green: 0.5, blue: 0.8)))
+                }
+                
+                // Wake Time
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Image(systemName: "clock")
+                            .font(.system(size: 16))
+                            .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.8))
+                        Text("Wake Time")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                    }
+                    
+                    DatePicker(
+                        "",
+                        selection: $alarmDate,
+                        displayedComponents: .hourAndMinute
+                    )
+                    .datePickerStyle(.wheel)
+                    .labelsHidden()
+                    .disabled(!isAlarmEnabled)
+                    .opacity(isAlarmEnabled ? 1.0 : 0.5)
+                    .frame(height: 140)
+                }
+                
+                // Alarm Sound
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Image(systemName: "speaker.wave.2")
+                            .font(.system(size: 16))
+                            .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.8))
+                        Text("Alarm Sound")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                    }
+                    
+                    Picker("Sound", selection: $selectedSound) {
+                        ForEach(soundOptions, id: \.self) { sound in
+                            HStack {
+                                Image(systemName: sound.icon)
+                                Text(sound.description)
+                            }
                             .tag(sound)
+                        }
                     }
-                }
-                .disabled(!isAlarmEnabled)
-
-                Button(action: previewAction) {
-                    Label(isPreviewing ? "Stop Preview" : "Preview Sound",
-                          systemImage: isPreviewing ? "stop.circle.fill" : "play.circle")
-                        .font(.system(size: 16, weight: .semibold))
-                }
-                .disabled(!isAlarmEnabled)
-            }
-
-            Section(header: Text("Focus Lock")) {
-                Toggle(isOn: focusLockBinding) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Block distracting apps")
-                            .font(.system(size: 15, weight: .semibold))
-                        Text(focusLockDescription)
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
+                    .pickerStyle(.menu)
+                    .disabled(!isAlarmEnabled)
+                    .opacity(isAlarmEnabled ? 1.0 : 0.5)
+                    .padding(.top, 4)
+                    
+                    Button(action: previewAction) {
+                        HStack {
+                            Image(systemName: isPreviewing ? "stop.circle.fill" : "play.circle")
+                            Text(isPreviewing ? "Stop Preview" : "Preview Sound")
+                                .font(.system(size: 15, weight: .medium))
+                        }
+                        .foregroundColor(isAlarmEnabled ? Color(red: 0.4, green: 0.5, blue: 0.8) : Color(red: 0.4, green: 0.5, blue: 0.6))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(isAlarmEnabled ? Color(red: 0.4, green: 0.5, blue: 0.8).opacity(0.15) : Color.white.opacity(0.6))
+                        )
                     }
+                    .buttonStyle(PlainButtonStyle())
+                    .disabled(!isAlarmEnabled)
                 }
-                .disabled(!isAlarmEnabled)
+                
+                // Focus Lock
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Image(systemName: "lock")
+                            .font(.system(size: 16))
+                            .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.8))
+                        Text("Focus Lock")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                    }
+                    
+                    Toggle(isOn: focusLockBinding) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Block distracting apps")
+                                .font(.system(size: 15, weight: .medium))
+                            Text(focusLockDescription)
+                                .font(.system(size: 12))
+                                .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                    }
+                    .toggleStyle(SwitchToggleStyle(tint: Color(red: 0.4, green: 0.5, blue: 0.8)))
+                    .disabled(!isAlarmEnabled)
+                    .opacity(isAlarmEnabled ? 1.0 : 0.5)
+                }
             }
-        }
-        .navigationTitle("Alarm Settings")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Done") { dismiss() }
+            .padding(.top, 4)
+            
+            // Done button
+            Button(action: {
+                onDismiss()
+            }) {
+                Text("Done")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(red: 0.4, green: 0.5, blue: 0.8))
+                    )
             }
+            .buttonStyle(PlainButtonStyle())
+            .padding(.top, 8)
         }
+        .padding(20)
+        .frame(maxWidth: 360)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
+        )
     }
 }
 
