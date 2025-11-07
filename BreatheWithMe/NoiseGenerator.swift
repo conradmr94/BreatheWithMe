@@ -767,7 +767,7 @@ private extension NoiseGenerator {
         case .forest:
             return 4.0
         case .night:
-            return 7.0
+            return 8.5
         case .thunder:
             return 0.85
         case .rain:
