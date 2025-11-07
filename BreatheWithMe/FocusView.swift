@@ -595,16 +595,17 @@ struct FocusView: View {
                 
                 Spacer()
                 
-                 // Bottom controls
-                 VStack(spacing: 24) {
-                     // Settings buttons (always visible)
-                     VStack(spacing: 12) {
-                         settingsButtonsSection
-                     }
-                     .transition(.opacity)
+                // Bottom controls
+                VStack(spacing: 24) {
+                    // Settings buttons (always visible)
+                    VStack(spacing: 12) {
+                        settingsButtonsSection
+                    }
+                    .transition(.opacity)
                     
                     controlButtonsSection
                 }
+                .frame(height: 155)
                 .padding(.bottom, 60)
             }
         }
