@@ -68,7 +68,7 @@ final class BellPlayer {
         let sampleRate: Double = 44100.0
         let duration: Double = 3.5
         let fundamentalFreq: Double = 180.0
-        let volume: Float = 0.25  // Much quieter bell for transitions
+        let volume: Float = 0.1  // Extremely quiet bell for transitions
         
         let frameCount = Int(duration * sampleRate)
         guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1) else {
