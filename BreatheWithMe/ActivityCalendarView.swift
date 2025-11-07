@@ -6,6 +6,19 @@
 //
 
 import SwiftUI
+import UIKit
+
+// MARK: - Lightweight Award Model
+private struct AwardBadge: Identifiable {
+    let id: String
+    let title: String
+    let detail: String
+    let systemImage: String
+    let unlocked: Bool
+    let accentColor: Color
+    let background: Color
+    let border: Color
+}
 
 // MARK: - Date Item for Sheet Presentation
 struct DateItem: Identifiable {
@@ -22,6 +35,8 @@ struct ActivityCalendarView: View {
     @StateObject private var statsManager = UserStatsManager()
     @State private var selectedMonth = Date()
     @State private var selectedDateItem: DateItem?
+    @State private var showingShareSheet = false
+    @State private var showingAwardsSheet = false
     
     private let calendar = Calendar.current
     private let daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -328,6 +343,86 @@ struct ActivityCalendarView: View {
                         )
                 )
                 .padding(.horizontal, 20)
+
+                // Awards section
+                if !awardBadges.isEmpty {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "star.circle.fill")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(Color(red: 0.95, green: 0.75, blue: 0.2))
+                            Text("Awards")
+                                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                .foregroundColor(Color(red: 0.25, green: 0.35, blue: 0.45))
+                            Spacer()
+                            Button {
+                                showingAwardsSheet = true
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Text("View all")
+                                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 12, weight: .semibold))
+                                }
+                                .foregroundColor(Color(red: 0.35, green: 0.45, blue: 0.55))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.white.opacity(0.7))
+                                .clipShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
+                            ForEach(awardBadges.prefix(4)) { award in
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Image(systemName: award.systemImage)
+                                        .font(.system(size: 24, weight: .semibold))
+                                        .foregroundColor(award.unlocked ? award.accentColor : Color(red: 0.7, green: 0.75, blue: 0.8))
+                                        .opacity(award.unlocked ? 1 : 0.4)
+
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(award.title)
+                                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                            .foregroundColor(award.unlocked ? Color(red: 0.2, green: 0.3, blue: 0.4) : Color(red: 0.55, green: 0.6, blue: 0.7))
+                                        Text(award.detail)
+                                            .font(.system(size: 12, weight: .regular, design: .rounded))
+                                            .foregroundColor(Color(red: 0.55, green: 0.65, blue: 0.75))
+                                            .lineLimit(2)
+                                    }
+                                }
+                                .padding(14)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 18)
+                                        .fill(award.unlocked ? award.background : Color.white.opacity(0.65))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 18)
+                                        .strokeBorder(award.unlocked ? award.border : Color.white.opacity(0.7), lineWidth: 1)
+                                )
+                                .shadow(color: award.unlocked ? Color.black.opacity(0.08) : Color.black.opacity(0.04), radius: 10, x: 0, y: 6)
+                            }
+                        }
+                    }
+                    .padding(18)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.white.opacity(0.95), Color.white.opacity(0.85)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .shadow(color: Color.black.opacity(0.06), radius: 16, x: 0, y: 8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 20)
+                                    .strokeBorder(Color.white.opacity(0.8), lineWidth: 1)
+                            )
+                    )
+                    .padding(.horizontal, 20)
+                }
                 
                 // Stats summary
                 VStack(alignment: .leading, spacing: 16) {
@@ -413,6 +508,15 @@ struct ActivityCalendarView: View {
         .sheet(item: $selectedDateItem) { item in
             DayStatsDetailView(date: item.date, statsManager: statsManager)
         }
+        .sheet(isPresented: $showingShareSheet) {
+            ShareSheet(activityItems: [shareMessage])
+        }
+        .sheet(isPresented: $showingAwardsSheet) {
+            AwardListSheet(awards: awardBadges, shareAction: {
+                showingAwardsSheet = false
+                showingShareSheet = true
+            })
+        }
     }
     
     // MARK: - Helper Properties
@@ -483,6 +587,49 @@ struct ActivityCalendarView: View {
         return statsManager.sessionHistory.filter {
             $0.date >= startOfMonth && $0.date < endOfMonth
         }.count
+    }
+
+    private var shareMessage: String {
+        let streak = statsManager.currentStreak
+        let total = statsManager.totalSessions
+        let streakText = streak > 0 ? "I'm on a \(streak)-day streak in BreatheWithMe." : "I'm starting my wellness streak in BreatheWithMe."
+        let sessionsText = total > 0 ? "I've completed \(total) sessions so far." : "Join me for the first session!"
+        return "\(streakText) \(sessionsText)"
+    }
+
+    private var awardBadges: [AwardBadge] {
+        let breatheCount = statsManager.sessionHistory.filter { $0.activityType == .breathe }.count
+        let focusCount = statsManager.sessionHistory.filter { $0.activityType == .focus }.count
+        let sleepCount = statsManager.sessionHistory.filter { $0.activityType == .sleep }.count
+        let totalMinutes = statsManager.totalTimeSeconds / 60
+        let activeDays = statsManager.totalActiveDays
+        let longestStreak = statsManager.longestStreak
+        let restCount = statsManager.sessionHistory.filter { $0.activityType == .rest }.count
+        let recentSessions = statsManager.sessionsThisWeek
+        let nightSleepCount = statsManager.sessionHistory.filter { record in
+            record.activityType == .sleep && Calendar.current.component(.hour, from: record.date) >= 0 && Calendar.current.component(.hour, from: record.date) < 4
+        }.count
+        let morningBreathCount = statsManager.sessionHistory.filter { record in
+            record.activityType == .breathe && Calendar.current.component(.hour, from: record.date) < 10
+        }.count
+
+        return [
+            AwardBadge(id: "first_session", title: "Getting Started", detail: "Log your first session", systemImage: "sparkles", unlocked: statsManager.totalSessions >= 1, accentColor: Color(red: 1.0, green: 0.72, blue: 0.18), background: Color(red: 1.0, green: 0.95, blue: 0.82), border: Color(red: 1.0, green: 0.88, blue: 0.55)),
+            AwardBadge(id: "streak_7", title: "On a Roll", detail: "Maintain a 7-day streak", systemImage: "flame.fill", unlocked: statsManager.currentStreak >= 7, accentColor: Color(red: 0.98, green: 0.44, blue: 0.21), background: Color(red: 1.0, green: 0.9, blue: 0.86), border: Color(red: 0.99, green: 0.73, blue: 0.6)),
+            AwardBadge(id: "streak_21", title: "Habit Architect", detail: "Maintain a 21-day streak", systemImage: "calendar.circle.fill", unlocked: statsManager.currentStreak >= 21, accentColor: Color(red: 0.89, green: 0.56, blue: 0.94), background: Color(red: 0.96, green: 0.88, blue: 0.98), border: Color(red: 0.93, green: 0.7, blue: 0.96)),
+            AwardBadge(id: "longest_50", title: "Legacy", detail: "Reach a 50-day record streak", systemImage: "flame.circle.fill", unlocked: longestStreak >= 50, accentColor: Color(red: 0.95, green: 0.55, blue: 0.35), background: Color(red: 1.0, green: 0.92, blue: 0.86), border: Color(red: 0.98, green: 0.74, blue: 0.58)),
+            AwardBadge(id: "focus_10", title: "Focus Builder", detail: "Complete 10 focus sessions", systemImage: "timer", unlocked: focusCount >= 10, accentColor: Color(red: 0.32, green: 0.58, blue: 0.98), background: Color(red: 0.88, green: 0.94, blue: 1.0), border: Color(red: 0.73, green: 0.85, blue: 1.0)),
+            AwardBadge(id: "focus_25", title: "Deep Focus", detail: "Complete 25 focus sessions", systemImage: "brain.head.profile", unlocked: focusCount >= 25, accentColor: Color(red: 0.28, green: 0.47, blue: 0.96), background: Color(red: 0.86, green: 0.9, blue: 1.0), border: Color(red: 0.7, green: 0.78, blue: 1.0)),
+            AwardBadge(id: "rested_minutes", title: "Rested", detail: "Sleep 1000 minutes total", systemImage: "moon.zzz.fill", unlocked: sleepCount > 0 && totalMinutes >= 1000, accentColor: Color(red: 0.55, green: 0.66, blue: 1.0), background: Color(red: 0.88, green: 0.9, blue: 1.0), border: Color(red: 0.74, green: 0.78, blue: 1.0)),
+            AwardBadge(id: "sleep_30", title: "Sleep Master", detail: "Log 30 sleep sessions", systemImage: "bed.double.fill", unlocked: sleepCount >= 30, accentColor: Color(red: 0.45, green: 0.56, blue: 0.98), background: Color(red: 0.88, green: 0.9, blue: 1.0), border: Color(red: 0.74, green: 0.77, blue: 1.0)),
+            AwardBadge(id: "breath_15", title: "Calm Collector", detail: "Finish 15 breathing sessions", systemImage: "wind", unlocked: breatheCount >= 15, accentColor: Color(red: 0.25, green: 0.7, blue: 0.65), background: Color(red: 0.85, green: 0.95, blue: 0.93), border: Color(red: 0.64, green: 0.86, blue: 0.82)),
+            AwardBadge(id: "breath_week", title: "Steady Breather", detail: "Breathe every day for a week", systemImage: "lungs.fill", unlocked: breatheCount >= 7, accentColor: Color(red: 0.3, green: 0.8, blue: 0.6), background: Color(red: 0.88, green: 0.96, blue: 0.91), border: Color(red: 0.67, green: 0.86, blue: 0.77)),
+            AwardBadge(id: "active_30", title: "Calendar Champ", detail: "Stay active 30 days total", systemImage: "calendar.badge.clock", unlocked: activeDays >= 30, accentColor: Color(red: 0.29, green: 0.6, blue: 0.82), background: Color(red: 0.87, green: 0.94, blue: 0.99), border: Color(red: 0.64, green: 0.83, blue: 0.94)),
+            AwardBadge(id: "rest_reset", title: "Reset Pro", detail: "Take 10 rest breaks", systemImage: "pause.circle.fill", unlocked: restCount >= 10, accentColor: Color(red: 0.85, green: 0.48, blue: 0.5), background: Color(red: 0.98, green: 0.9, blue: 0.9), border: Color(red: 0.94, green: 0.72, blue: 0.74)),
+            AwardBadge(id: "fresh_start", title: "Fresh Start", detail: "Complete 3 sessions this week", systemImage: "sparkles.rectangle.stack", unlocked: recentSessions >= 3, accentColor: Color(red: 0.96, green: 0.68, blue: 0.32), background: Color(red: 1.0, green: 0.93, blue: 0.84), border: Color(red: 0.98, green: 0.8, blue: 0.52)),
+            AwardBadge(id: "night_owl", title: "Night Owl", detail: "Start 5 sleep sessions after midnight", systemImage: "moon.stars.fill", unlocked: nightSleepCount >= 5, accentColor: Color(red: 0.45, green: 0.55, blue: 0.95), background: Color(red: 0.88, green: 0.9, blue: 0.99), border: Color(red: 0.72, green: 0.75, blue: 0.98)),
+            AwardBadge(id: "morning_air", title: "Morning Air", detail: "Do 5 breathing sessions before 10am", systemImage: "sunrise.fill", unlocked: morningBreathCount >= 5, accentColor: Color(red: 0.98, green: 0.8, blue: 0.35), background: Color(red: 1.0, green: 0.94, blue: 0.83), border: Color(red: 0.97, green: 0.83, blue: 0.53))
+        ]
     }
     
     // MARK: - Helper Methods
@@ -967,6 +1114,76 @@ struct DayStatsDetailView: View {
             return Color(red: 0.5, green: 0.8, blue: 0.5)
         case .sleep:
             return Color(red: 0.6, green: 0.5, blue: 0.8)
+        }
+    }
+}
+
+// MARK: - Share Sheet Wrapper
+private struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+// MARK: - Award List Sheet
+private struct AwardListSheet: View {
+    let awards: [AwardBadge]
+    var shareAction: () -> Void
+
+    var body: some View {
+        NavigationView {
+            List {
+                Section(header: Text("Unlocked")) {
+                    ForEach(awards.filter { $0.unlocked }) { award in
+                        AwardRow(award: award)
+                    }
+                }
+
+                Section(header: Text("Locked")) {
+                    ForEach(awards.filter { !$0.unlocked }) { award in
+                        AwardRow(award: award)
+                            .opacity(0.55)
+                    }
+                }
+            }
+            .listStyle(InsetGroupedListStyle())
+            .navigationTitle("All Awards")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: shareAction) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                }
+            }
+        }
+    }
+
+    private struct AwardRow: View {
+        let award: AwardBadge
+
+        var body: some View {
+            HStack(spacing: 14) {
+                Image(systemName: award.systemImage)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundColor(award.unlocked ? award.accentColor : Color(red: 0.7, green: 0.75, blue: 0.8))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(award.title)
+                        .font(.system(size: 16, weight: .semibold))
+                    Text(award.detail)
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                if award.unlocked {
+                    Image(systemName: "checkmark.seal.fill")
+                        .foregroundColor(Color.green)
+                }
+            }
+            .padding(.vertical, 6)
         }
     }
 }
