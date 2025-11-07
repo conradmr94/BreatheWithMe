@@ -12,19 +12,34 @@ import Combine
 
 class AlarmManager: ObservableObject {
     static let shared = AlarmManager()
+    enum Constants {
+        static let categoryID = "ALARM_CATEGORY"
+        static let snoozeActionID = "ALARM_SNOOZE"
+        static let stopActionID = "ALARM_STOP"
+    }
     
     @Published var isAlarmActive = false
     @Published var snoozeTime: Date?
     
     private let bellPlayer = BellPlayer()
-    private var alarmTimer: Timer?
     private var bellPlayTimer: Timer?
+    private var alarmPlayer: AVAudioPlayer?
     private let snoozeDuration: TimeInterval = 5 * 60 // 5 minutes
+    private var currentAlarmSound: NoiseGenerator.NoiseType = .birds
     
     private init() {
+        registerNotificationCategories()
         requestNotificationPermission()
     }
     
+    func configure(alarmSound: NoiseGenerator.NoiseType) {
+        if alarmSound.isAmbientSound {
+            currentAlarmSound = alarmSound
+        } else {
+            currentAlarmSound = .birds
+        }
+    }
+
     // Request notification permission
     func requestNotificationPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
@@ -36,42 +51,70 @@ class AlarmManager: ObservableObject {
         }
     }
     
+    func registerNotificationCategories() {
+        let snooze = UNNotificationAction(
+            identifier: Constants.snoozeActionID,
+            title: "Snooze 10 min",
+            options: []
+        )
+        let stop = UNNotificationAction(
+            identifier: Constants.stopActionID,
+            title: "Stop",
+            options: [.destructive]
+        )
+        let category = UNNotificationCategory(
+            identifier: Constants.categoryID,
+            actions: [snooze, stop],
+            intentIdentifiers: [],
+            options: []
+        )
+        UNUserNotificationCenter.current().setNotificationCategories([category])
+    }
+    
     // Schedule alarm notification
-    func scheduleAlarm(at date: Date, identifier: String = "sleepAlarm") {
-        // Cancel any existing alarm
-        cancelAlarm(identifier: identifier)
-        
+    func schedule(alarm: SleepAlarm) {
+        guard alarm.isEnabled else {
+            cancel(alarm: alarm)
+            return
+        }
+        var fireDate = alarm.date
+        if fireDate <= Date() {
+            fireDate = Calendar.current.date(byAdding: .day, value: 1, to: fireDate) ?? fireDate.addingTimeInterval(24 * 60 * 60)
+            var updatedAlarm = alarm
+            updatedAlarm.date = fireDate
+            SleepAlarmStore.shared.save(updatedAlarm)
+        }
+        cancel(identifier: alarm.id.uuidString)
         let content = UNMutableNotificationContent()
-        content.title = "Wake Up"
-        content.body = "Time to wake up! Your sleep session has ended."
+        content.title = alarm.label ?? "Alarm"
+        content.body = "Time to wake up"
         content.sound = .default
-        content.categoryIdentifier = "ALARM"
-        content.userInfo = ["alarmId": identifier]
-        
-        // Schedule notification
-        let triggerDate = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        content.categoryIdentifier = Constants.categoryID
+        content.userInfo = ["alarmId": alarm.id.uuidString]
+        let triggerDate = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
         let trigger = UNCalendarNotificationTrigger(dateMatching: triggerDate, repeats: false)
-        
-        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
-        
+        let request = UNNotificationRequest(identifier: alarm.id.uuidString, content: content, trigger: trigger)
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
                 print("❌ AlarmManager: Failed to schedule alarm: \(error)")
             } else {
-                print("✅ AlarmManager: Alarm scheduled for \(date)")
+                print("✅ AlarmManager: Alarm scheduled for \(fireDate)")
             }
         }
+        let selectedSound = NoiseGenerator.NoiseType(rawValue: alarm.sound) ?? .birds
+        configure(alarmSound: selectedSound)
     }
     
     // Cancel alarm
-    func cancelAlarm(identifier: String = "sleepAlarm") {
-        // Cancel both regular and snooze alarms
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier, "sleepAlarmSnooze"])
-        stopAlarm()
+    func cancel(alarm: SleepAlarm) {
+        cancel(identifier: alarm.id.uuidString)
+        stopAlarmPlayback()
+        isAlarmActive = false
+        snoozeTime = nil
         print("✅ AlarmManager: Alarm cancelled")
     }
     
-    // Start alarm (plays bell sound repeatedly)
+    // Start alarm (plays selected nature sound, falling back to bell)
     func startAlarm() {
         guard !isAlarmActive else { 
             print("⚠️ AlarmManager: Alarm already active, ignoring start request")
@@ -97,21 +140,15 @@ class AlarmManager: ObservableObject {
             print("❌ AlarmManager: Failed to setup audio session: \(error)")
         }
         
-        // Play bell immediately on main thread
-        DispatchQueue.main.async { [weak self] in
-            print("🔔 AlarmManager: Playing bell sound...")
-            self?.bellPlayer.playBell()
-        }
+        // Stop any existing playback before starting (without deactivating session)
+        stopAlarmPlayback(deactivateSession: false)
         
-        // Schedule repeated bell playback every 3.5 seconds (bell duration)
-        bellPlayTimer = Timer.scheduledTimer(withTimeInterval: 3.5, repeats: true) { [weak self] _ in
-            DispatchQueue.main.async {
-                print("🔔 AlarmManager: Repeating bell sound...")
-                self?.bellPlayer.playBell()
-            }
+        if playAlarm(using: currentAlarmSound) {
+            print("✅ AlarmManager: Alarm started successfully with \(currentAlarmSound.description) sound")
+        } else {
+            print("⚠️ AlarmManager: Falling back to bell sound for alarm")
+            playFallbackBell()
         }
-        
-        print("✅ AlarmManager: Alarm started successfully")
     }
     
     // Stop alarm
@@ -120,25 +157,23 @@ class AlarmManager: ObservableObject {
         
         isAlarmActive = false
         snoozeTime = nil
-        bellPlayTimer?.invalidate()
-        bellPlayTimer = nil
+        stopAlarmPlayback()
         
         print("✅ AlarmManager: Alarm stopped")
     }
     
-    // Snooze alarm (stop for now, reschedule for later)
     func snoozeAlarm() {
-        guard isAlarmActive else { return }
-        
-        let newAlarmTime = Date().addingTimeInterval(snoozeDuration)
+        guard var alarm = SleepAlarmStore.shared.load() else {
+            stopAlarm()
+            return
+        }
+        let newAlarmTime = Date().addingTimeInterval(TimeInterval(alarm.snoozeMinutes * 60))
+        alarm.date = newAlarmTime
+        alarm.isEnabled = true
+        SleepAlarmStore.shared.save(alarm)
         snoozeTime = newAlarmTime
-        
-        // Stop current alarm
         stopAlarm()
-        
-        // Reschedule for snooze time
-        scheduleAlarm(at: newAlarmTime, identifier: "sleepAlarmSnooze")
-        
+        schedule(alarm: alarm)
         print("✅ AlarmManager: Alarm snoozed until \(newAlarmTime)")
     }
     
@@ -154,6 +189,61 @@ class AlarmManager: ObservableObject {
                           requests.contains { $0.identifier == "sleepAlarmSnooze" }
             completion(hasAlarm)
         }
+    }
+}
+
+// MARK: - Private helpers
+
+private extension AlarmManager {
+    func playAlarm(using sound: NoiseGenerator.NoiseType) -> Bool {
+        guard let fileName = sound.bundleFileName,
+              let url = Bundle.main.url(forResource: fileName, withExtension: nil) else {
+            print("❌ AlarmManager: Missing audio asset for \(sound.rawValue) alarm sound")
+            return false
+        }
+        do {
+            let player = try AVAudioPlayer(contentsOf: url)
+            player.numberOfLoops = -1
+            player.volume = 1.0
+            player.prepareToPlay()
+            player.play()
+            alarmPlayer = player
+            print("🎶 AlarmManager: Playing \(sound.description) alarm sound")
+            return true
+        } catch {
+            print("❌ AlarmManager: Failed to play alarm sound \(sound.rawValue): \(error)")
+            return false
+        }
+    }
+    
+    func playFallbackBell() {
+        DispatchQueue.main.async { [weak self] in
+            print("🔔 AlarmManager: Playing bell sound...")
+            self?.bellPlayer.playBell()
+        }
+        bellPlayTimer = Timer.scheduledTimer(withTimeInterval: 3.5, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async {
+                print("🔔 AlarmManager: Repeating bell sound...")
+                self?.bellPlayer.playBell()
+            }
+        }
+    }
+    
+    func stopAlarmPlayback(deactivateSession: Bool = true) {
+        alarmPlayer?.stop()
+        alarmPlayer = nil
+        bellPlayTimer?.invalidate()
+        bellPlayTimer = nil
+        guard deactivateSession else { return }
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+        } catch {
+            print("⚠️ AlarmManager: Unable to deactivate audio session: \(error)")
+        }
+    }
+
+    func cancel(identifier: String) {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
     }
 }
 

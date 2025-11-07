@@ -87,12 +87,7 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
     
     private func isRealAudioType(_ type: NoiseType) -> Bool {
-        switch type {
-        case .rain, .ocean, .wind, .thunder, .forest, .cafe, .city, .fire, .birds:
-            return true
-        case .white, .pink, .brown, .blue, .green:
-            return false
-        }
+        return type.isAmbientSound
     }
     
     private func setupAudioSession() {
@@ -162,18 +157,7 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
     
     private func getAudioFilename(for type: NoiseType) -> String {
-        switch type {
-        case .rain: return "rain.mp3"
-        case .ocean: return "ocean.mp3"
-        case .wind: return "wind.mp3"
-        case .thunder: return "thunder.mp3"
-        case .forest: return "forest.mp3"
-        case .cafe: return "cafe.mp3"
-        case .city: return "city.mp3"
-        case .fire: return "fire.mp3"
-        case .birds: return "birds.mp3"
-        default: return ""
-        }
+        return type.bundleFileName ?? ""
     }
     
     private func createPlaceholderAudio(for type: NoiseType) {
@@ -736,6 +720,36 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             let natural = sin(time * 2000.0) * 0.08 + sin(time * 1000.0) * 0.04
             let random = Float.random(in: -0.05...0.05)
             channelData[i] = (natural + random) * 0.1
+        }
+    }
+}
+
+// MARK: - Alarm Support Helpers
+
+extension NoiseGenerator.NoiseType {
+    /// Nature/ambient sounds that have backing audio assets and are eligible for alarms.
+    static var alarmEligibleCases: [NoiseGenerator.NoiseType] {
+        [.rain, .ocean, .wind, .thunder, .forest, .cafe, .city, .fire, .birds]
+    }
+
+    /// Indicates whether this noise type maps to a bundled ambient sound asset.
+    var isAmbientSound: Bool {
+        Self.alarmEligibleCases.contains(self)
+    }
+
+    /// Filename (including extension) for the bundled audio asset, if available.
+    var bundleFileName: String? {
+        switch self {
+        case .rain: return "rain.mp3"
+        case .ocean: return "ocean.mp3"
+        case .wind: return "wind.mp3"
+        case .thunder: return "thunder.mp3"
+        case .forest: return "forest.mp3"
+        case .cafe: return "cafe.mp3"
+        case .city: return "city.mp3"
+        case .fire: return "fire.mp3"
+        case .birds: return "birds.mp3"
+        default: return nil
         }
     }
 }

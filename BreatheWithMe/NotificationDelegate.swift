@@ -19,10 +19,7 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
     func userNotificationCenter(_ center: UNUserNotificationCenter, 
                                willPresent notification: UNNotification, 
                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        let userInfo = notification.request.content.userInfo
-        
-        // Check if this is an alarm notification
-        if notification.request.content.categoryIdentifier == "ALARM" {
+        if notification.request.content.categoryIdentifier == AlarmManager.Constants.categoryID {
             // Trigger alarm sound even when app is in foreground
             AlarmManager.shared.startAlarm()
             // Show notification banner and play sound
@@ -37,12 +34,29 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
     func userNotificationCenter(_ center: UNUserNotificationCenter, 
                                didReceive response: UNNotificationResponse, 
                                withCompletionHandler completionHandler: @escaping () -> Void) {
-        let userInfo = response.notification.request.content.userInfo
-        
-        // Check if this is an alarm notification
-        if response.notification.request.content.categoryIdentifier == "ALARM" {
-            // Trigger alarm sound when user interacts with notification
-            AlarmManager.shared.startAlarm()
+        let identifier = response.notification.request.identifier
+        let category = response.notification.request.content.categoryIdentifier
+        if category == AlarmManager.Constants.categoryID {
+            switch response.actionIdentifier {
+            case AlarmManager.Constants.snoozeActionID:
+                if var alarm = SleepAlarmStore.shared.load(), alarm.id.uuidString == identifier {
+                    let newDate = Date().addingTimeInterval(TimeInterval(alarm.snoozeMinutes * 60))
+                    alarm.date = newDate
+                    alarm.isEnabled = true
+                    SleepAlarmStore.shared.save(alarm)
+                    AlarmManager.shared.schedule(alarm: alarm)
+                }
+                AlarmManager.shared.stopAlarm()
+            case AlarmManager.Constants.stopActionID:
+                if var alarm = SleepAlarmStore.shared.load(), alarm.id.uuidString == identifier {
+                    alarm.isEnabled = false
+                    SleepAlarmStore.shared.save(alarm)
+                    AlarmManager.shared.cancel(alarm: alarm)
+                }
+                AlarmManager.shared.stopAlarm()
+            default:
+                AlarmManager.shared.startAlarm()
+            }
         }
         
         completionHandler()

@@ -13,6 +13,7 @@ struct BreatheWithMeApp: App {
     init() {
         // Set up notification delegate to handle background notifications
         UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
+        _ = AlarmManager.shared
     }
     
     var body: some Scene {

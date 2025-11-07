@@ -53,28 +53,22 @@ struct SleepView: View {
     @State private var sessionStartTime: Date?
     
     // Alarm functionality
-    @AppStorage("alarmEnabled") private var alarmEnabled = false
-    @AppStorage("alarmTime") private var alarmTimeData: Data = Data()
-    @State private var showAlarmPicker = false
+    @State private var alarm: SleepAlarm?
     @State private var alarmTimePickerValue: Date = Date()
+    @State private var selectedAlarmSound: NoiseGenerator.NoiseType = .birds
+    @State private var showAlarmPicker = false
+    @State private var showAlarmSoundPicker = false
     @StateObject private var alarmManager = AlarmManager.shared
-    @State private var alarmFired = false
-    
-    private var alarmTime: Date {
-        get {
-            if let decoded = try? JSONDecoder().decode(Date.self, from: alarmTimeData) {
-                return decoded
-            }
-            // Default to 8 hours from now
-            return Calendar.current.date(byAdding: .hour, value: 8, to: Date()) ?? Date()
-        }
-        set {
-            if let encoded = try? JSONEncoder().encode(newValue) {
-                alarmTimeData = encoded
-            }
-        }
-    }
 
+    init() {
+        let storedAlarm = SleepAlarmStore.shared.load()
+        _alarm = State(initialValue: storedAlarm)
+        let defaultDate = Calendar.current.date(byAdding: .hour, value: 8, to: Date()) ?? Date()
+        _alarmTimePickerValue = State(initialValue: storedAlarm?.date ?? defaultDate)
+        let sound = storedAlarm.flatMap { NoiseGenerator.NoiseType(rawValue: $0.sound) } ?? .birds
+        _selectedAlarmSound = State(initialValue: sound)
+    }
+    
     // Statistics tracking
     @AppStorage("sleepStats") private var sleepStatsData: Data = Data()
     @StateObject private var userStatsManager = UserStatsManager()
@@ -230,57 +224,62 @@ struct SleepView: View {
                 VStack(spacing: 24) {
                     // Alarm settings (when not running)
                     if !isRunning {
-                        VStack(spacing: 12) {
-                            // Alarm toggle and time picker
-                            HStack(spacing: 16) {
-                                // Alarm toggle
-                                Button(action: {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        alarmEnabled.toggle()
-                                        if !alarmEnabled {
-                                            alarmManager.cancelAlarm()
-                                        }
-                                    }
-                                }) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            let accent = Color(red: 0.4, green: 0.5, blue: 0.8)
+                            HStack(spacing: 12) {
+                                Button(action: { toggleAlarm() }) {
                                     HStack(spacing: 8) {
-                                        Image(systemName: alarmEnabled ? "alarm.fill" : "alarm")
+                                        Image(systemName: isAlarmEnabled ? "alarm.fill" : "alarm")
                                             .font(.system(size: 16))
-                                        Text(alarmEnabled ? formatAlarmTime(alarmTime) : "Set Alarm")
+                                        Text(isAlarmEnabled ? alarmDisplayTime : "Set Alarm")
                                             .font(.system(size: 15, weight: .medium, design: .default))
                                     }
-                                    .foregroundColor(alarmEnabled ? 
-                                                   Color(red: 0.4, green: 0.5, blue: 0.8) :
-                                                   Color.white.opacity(0.6))
-                                    .padding(.horizontal, 20)
+                                    .foregroundColor(isAlarmEnabled ? accent : Color.white.opacity(0.6))
+                                    .padding(.horizontal, 18)
                                     .padding(.vertical, 10)
                                     .background(
                                         RoundedRectangle(cornerRadius: 20)
-                                            .fill(alarmEnabled ? 
-                                                  Color(red: 0.4, green: 0.5, blue: 0.8).opacity(0.25) :
-                                                  Color.white.opacity(0.1))
+                                            .fill(isAlarmEnabled ? accent.opacity(0.25) : Color.white.opacity(0.1))
                                     )
                                 }
                                 .buttonStyle(PlainButtonStyle())
-                                
-                                // Time picker button
-                                if alarmEnabled {
-                                    Button(action: {
-                                        alarmTimePickerValue = alarmTime
-                                        withAnimation(.easeInOut(duration: 0.3)) {
-                                            showAlarmPicker = true
-                                        }
-                                    }) {
-                                        Image(systemName: "clock")
-                                            .font(.system(size: 16))
-                                            .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.8))
-                                            .padding(10)
-                                            .background(
-                                                Circle()
-                                                    .fill(Color(red: 0.4, green: 0.5, blue: 0.8).opacity(0.25))
-                                            )
+
+                                Button(action: {
+                                    alarmTimePickerValue = alarmFireDate
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showAlarmPicker = true
                                     }
-                                    .buttonStyle(PlainButtonStyle())
+                                }) {
+                                    Image(systemName: "clock")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(isAlarmEnabled ? accent : Color.white.opacity(0.6))
+                                        .padding(10)
+                                        .background(
+                                            Circle().fill(isAlarmEnabled ? accent.opacity(0.25) : Color.white.opacity(0.12))
+                                        )
                                 }
+                                .buttonStyle(PlainButtonStyle())
+
+                                Button(action: {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showAlarmSoundPicker = true
+                                    }
+                                }) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: selectedAlarmSound.icon)
+                                            .font(.system(size: 14, weight: .medium))
+                                        Text(selectedAlarmSound.description)
+                                            .font(.system(size: 12, weight: .semibold))
+                                    }
+                                    .foregroundColor(isAlarmEnabled ? accent : Color.white.opacity(0.6))
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 8)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 14)
+                                            .fill(isAlarmEnabled ? accent.opacity(0.25) : Color.white.opacity(0.12))
+                                    )
+                                }
+                                .buttonStyle(PlainButtonStyle())
                             }
                         }
                         .transition(.opacity)
@@ -343,6 +342,94 @@ struct SleepView: View {
         }
     }
     
+    private var isAlarmEnabled: Bool {
+        alarm?.isEnabled == true
+    }
+    
+    private var alarmFireDate: Date {
+        alarm?.date ?? alarmTimePickerValue
+    }
+    
+    private var alarmDisplayTime: String {
+        formatAlarmTime(alarmFireDate)
+    }
+
+    private func toggleAlarm() {
+        if var existing = alarm {
+            existing.isEnabled.toggle()
+            existing.sound = selectedAlarmSound.rawValue
+            if existing.isEnabled {
+                AlarmManager.shared.requestNotificationPermission()
+                existing.date = normalizedFireDate(from: alarmTimePickerValue)
+                alarmTimePickerValue = existing.date
+                SleepAlarmStore.shared.save(existing)
+                alarm = existing
+                AlarmManager.shared.schedule(alarm: existing)
+            } else {
+                SleepAlarmStore.shared.save(existing)
+                alarm = existing
+                AlarmManager.shared.cancel(alarm: existing)
+            }
+        } else {
+            AlarmManager.shared.requestNotificationPermission()
+            var newAlarm = SleepAlarm(date: normalizedFireDate(from: alarmTimePickerValue), isEnabled: true, label: "Wake Up", snoozeMinutes: 10, sound: selectedAlarmSound.rawValue)
+            alarmTimePickerValue = newAlarm.date
+            SleepAlarmStore.shared.save(newAlarm)
+            alarm = newAlarm
+            AlarmManager.shared.schedule(alarm: newAlarm)
+        }
+    }
+
+    private func updateAlarmDate(to newValue: Date) {
+        alarmTimePickerValue = newValue
+        let adjusted = normalizedFireDate(from: newValue)
+        if var existing = alarm {
+            existing.date = adjusted
+            alarmTimePickerValue = adjusted
+            SleepAlarmStore.shared.save(existing)
+            alarm = existing
+            if existing.isEnabled {
+                AlarmManager.shared.requestNotificationPermission()
+                AlarmManager.shared.schedule(alarm: existing)
+            }
+        } else {
+            let newAlarm = SleepAlarm(date: adjusted, isEnabled: false, label: "Wake Up", snoozeMinutes: 10, sound: selectedAlarmSound.rawValue)
+            SleepAlarmStore.shared.save(newAlarm)
+            alarm = newAlarm
+        }
+    }
+
+    private func persistAlarmSound(_ newSound: NoiseGenerator.NoiseType) {
+        if var existing = alarm {
+            existing.sound = newSound.rawValue
+            SleepAlarmStore.shared.save(existing)
+            alarm = existing
+            if existing.isEnabled {
+                AlarmManager.shared.requestNotificationPermission()
+                AlarmManager.shared.schedule(alarm: existing)
+            }
+        } else {
+            let newAlarm = SleepAlarm(date: normalizedFireDate(from: alarmTimePickerValue), isEnabled: false, label: "Wake Up", snoozeMinutes: 10, sound: newSound.rawValue)
+            SleepAlarmStore.shared.save(newAlarm)
+            alarm = newAlarm
+        }
+        alarmManager.configure(alarmSound: newSound)
+    }
+
+    private func normalizedFireDate(from date: Date) -> Date {
+        let calendar = Calendar.current
+        var components = calendar.dateComponents([.hour, .minute], from: date)
+        let now = Date()
+        components.year = calendar.component(.year, from: now)
+        components.month = calendar.component(.month, from: now)
+        components.day = calendar.component(.day, from: now)
+        var candidate = calendar.date(from: components) ?? date
+        if candidate <= now {
+            candidate = calendar.date(byAdding: .day, value: 1, to: candidate) ?? candidate
+        }
+        return candidate
+    }
+    
     @ViewBuilder
     private var infoMessageOverlay: some View {
         if noiseGenerator.showInfoMessage {
@@ -402,10 +489,27 @@ struct SleepView: View {
                     isPresented: $showAlarmPicker,
                     alarmTime: $alarmTimePickerValue,
                     onSave: {
-                        if let encoded = try? JSONEncoder().encode(alarmTimePickerValue) {
-                            alarmTimeData = encoded
+                        updateAlarmDate(to: alarmTimePickerValue)
+                    }
+                )
+                .transition(.scale.combined(with: .opacity))
+            }
+            .zIndex(3)
+        }
+
+        if showAlarmSoundPicker {
+            ZStack {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showAlarmSoundPicker = false
                         }
                     }
+                AlarmSoundPickerModal(
+                    isPresented: $showAlarmSoundPicker,
+                    selectedSound: $selectedAlarmSound
                 )
                 .transition(.scale.combined(with: .opacity))
             }
@@ -414,20 +518,18 @@ struct SleepView: View {
         
         // Alarm UI overlay (when alarm is active)
         if alarmManager.isAlarmActive {
-            AlarmActiveOverlay(
-                alarmManager: alarmManager,
-                onDismiss: {
-                    alarmManager.stopAlarm()
-                    alarmFired = false  // Reset so alarm can fire again if needed
-                    if isRunning {
-                        stopTimer()
+                AlarmActiveOverlay(
+                    alarmManager: alarmManager,
+                    onDismiss: {
+                        alarmManager.stopAlarm()
+                        if isRunning {
+                            stopTimer()
+                        }
+                    },
+                    onSnooze: {
+                        alarmManager.snoozeAlarm()
                     }
-                },
-                onSnooze: {
-                    alarmManager.snoozeAlarm()
-                    alarmFired = false  // Reset for snooze alarm
-                }
-            )
+                )
             .zIndex(4)
             .transition(.opacity)
         }
@@ -467,6 +569,10 @@ struct SleepView: View {
             .overlay(modalsOverlay)
             .onAppear {
                 vm.onAppear()
+                alarmManager.configure(alarmSound: selectedAlarmSound)
+            }
+            .onChange(of: selectedAlarmSound) { newValue in
+                persistAlarmSound(newValue)
             }
     }
     
@@ -476,25 +582,8 @@ struct SleepView: View {
         isRunning = true
         elapsedSeconds = 0
         sessionStartTime = Date()
-        alarmFired = false
         startPulseAnimation()
-        
-        // Schedule alarm if enabled
-        if alarmEnabled {
-            // Ensure alarm time is in the future
-            var targetAlarmTime = alarmTime
-            let now = Date()
-            if targetAlarmTime <= now {
-                // If alarm time is in the past, set it for tomorrow
-                targetAlarmTime = Calendar.current.date(byAdding: .day, value: 1, to: targetAlarmTime) ?? targetAlarmTime
-            }
-            alarmManager.scheduleAlarm(at: targetAlarmTime)
-            // Update stored alarm time directly
-            if let encoded = try? JSONEncoder().encode(targetAlarmTime) {
-                alarmTimeData = encoded
-            }
-            print("✅ Sleep: Alarm scheduled for \(targetAlarmTime)")
-        }
+        alarmManager.configure(alarmSound: selectedAlarmSound)
         
         // Start noise if enabled
         if noiseGenerator.isEnabled {
@@ -504,45 +593,6 @@ struct SleepView: View {
         // Check for alarm every second
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [self] _ in
             elapsedSeconds += 1
-            
-            // Check if alarm time has been reached
-            // Only fire if alarm is enabled, not already active, and time matches
-            if alarmEnabled && !alarmManager.isAlarmActive {
-                let now = Date()
-                let calendar = Calendar.current
-                let nowComponents = calendar.dateComponents([.hour, .minute], from: now)
-                let alarmComponents = calendar.dateComponents([.hour, .minute], from: alarmTime)
-                
-                // Check if current time matches alarm time (within same minute)
-                if nowComponents.hour == alarmComponents.hour && 
-                   nowComponents.minute == alarmComponents.minute {
-                    // Fire alarm if we haven't fired yet, or if alarm was stopped (allowing re-fire)
-                    if !alarmFired {
-                        print("🔔 Sleep: Alarm time reached! Current: \(now), Alarm: \(alarmTime)")
-                        alarmFired = true
-                        DispatchQueue.main.async {
-                            self.alarmManager.startAlarm()
-                        }
-                    }
-                } else {
-                    // Reset alarmFired when we move to a different minute
-                    // This allows alarm to fire again for the next alarm time
-                    if alarmFired {
-                        alarmFired = false
-                    }
-                }
-            }
-            
-            // Check for snooze alarm
-            if let snoozeTime = alarmManager.snoozeTime, !alarmManager.isAlarmActive {
-                let now = Date()
-                if now >= snoozeTime {
-                    print("🔔 Sleep: Snooze alarm time reached! Current: \(now), Snooze: \(snoozeTime)")
-                    DispatchQueue.main.async {
-                        self.alarmManager.startAlarm()
-                    }
-                }
-            }
         }
     }
     func stopTimer() {
@@ -553,14 +603,6 @@ struct SleepView: View {
         // Stop alarm if active
         if alarmManager.isAlarmActive {
             alarmManager.stopAlarm()
-        }
-        
-        // Reset alarmFired flag so alarm can fire again if needed
-        alarmFired = false
-        
-        // Cancel alarm if still pending
-        if alarmEnabled {
-            alarmManager.cancelAlarm()
         }
         
         // Track sleep session if it was at least 60 seconds (1 minute)
@@ -850,6 +892,86 @@ struct AlarmTimePickerModal: View {
             RoundedRectangle(cornerRadius: 20)
                 .fill(Color.white)
                 .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
+        )
+    }
+}
+
+// MARK: - Alarm Sound Picker Modal
+struct AlarmSoundPickerModal: View {
+    @Binding var isPresented: Bool
+    @Binding var selectedSound: NoiseGenerator.NoiseType
+    
+    private let options = NoiseGenerator.NoiseType.alarmEligibleCases
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Choose Alarm Sound")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            VStack(spacing: 12) {
+                ForEach(options, id: \.self) { sound in
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedSound = sound
+                            isPresented = false
+                        }
+                    }) {
+                        HStack(spacing: 14) {
+                            Image(systemName: sound.icon)
+                                .font(.system(size: 18))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(sound.description)
+                                    .font(.system(size: 15, weight: .semibold))
+                                Text("Nature sound")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(Color(red: 0.45, green: 0.55, blue: 0.65))
+                            }
+                            Spacer()
+                            if sound == selectedSound {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.8))
+                            }
+                        }
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 14)
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(sound == selectedSound ? Color(red: 0.4, green: 0.5, blue: 0.8).opacity(0.18) : Color.white.opacity(0.95))
+                        )
+                        .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+            .frame(maxWidth: .infinity)
+            
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isPresented = false
+                }
+            }) {
+                Text("Close")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(Color(red: 0.4, green: 0.5, blue: 0.8))
+                    )
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .padding(20)
+        .frame(maxWidth: 340)
+        .background(
+            RoundedRectangle(cornerRadius: 22)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.12), radius: 24, x: 0, y: 12)
         )
     }
 }
