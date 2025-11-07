@@ -13,6 +13,8 @@ final class SleepViewModel: ObservableObject {
     @Published var isAuthorized = false
     @Published var summaries: [SleepDaySummary] = []
     @Published var lastError: String?
+    @Published var latestRespiratoryRate: Double?
+    @Published var respiratoryRateUpdated: Date?
 
     private let hk = HealthKitManager.shared
     private let calendar = Calendar.current
@@ -23,6 +25,7 @@ final class SleepViewModel: ObservableObject {
                 try await hk.requestAuthorization()
                 isAuthorized = true
                 await reloadLast14Days()
+                await loadLatestRespiratoryRate()
                 hk.startSleepObserver { [weak self] in
                     Task { await self?.reloadLast14Days() }
                 }
@@ -53,6 +56,21 @@ final class SleepViewModel: ObservableObject {
                     return SleepDaySummary(date: day, totalSeconds: total, stageSeconds: stageBuckets)
                 }
             summaries = list
+            await loadLatestRespiratoryRate()
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func loadLatestRespiratoryRate() async {
+        guard isAuthorized else { return }
+        do {
+            if let sample = try await hk.latestRespiratoryRateSample() {
+                let unit = HKUnit.count().unitDivided(by: HKUnit.minute())
+                let value = sample.quantity.doubleValue(for: unit)
+                latestRespiratoryRate = value
+                respiratoryRateUpdated = sample.endDate
+            }
         } catch {
             lastError = error.localizedDescription
         }
@@ -79,9 +97,20 @@ final class SleepViewModel: ObservableObject {
         String(format: "%.1f h", h)
     }
 
+    func formatRespiratoryRate(_ value: Double) -> String {
+        String(format: "%.1f breaths/min", value)
+    }
+
     func formatDate(_ d: Date) -> String {
         let f = DateFormatter()
         f.dateStyle = .medium
+        return f.string(from: d)
+    }
+
+    func formatDateTime(_ d: Date) -> String {
+        let f = DateFormatter()
+        f.dateStyle = .short
+        f.timeStyle = .short
         return f.string(from: d)
     }
 }

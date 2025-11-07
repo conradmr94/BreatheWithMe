@@ -68,13 +68,16 @@ final class HealthKitManager: ObservableObject {
     private var sleepType: HKCategoryType {
         HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!
     }
+    private var respiratoryRateType: HKQuantityType {
+        HKObjectType.quantityType(forIdentifier: .respiratoryRate)!
+    }
 
     // MARK: Authorization
     func requestAuthorization() async throws {
         guard HKHealthStore.isHealthDataAvailable() else {
             throw NSError(domain: "HealthKit", code: 1, userInfo: [NSLocalizedDescriptionKey: "Health data not available"])
         }
-        try await store.requestAuthorization(toShare: [], read: [sleepType])
+        try await store.requestAuthorization(toShare: [], read: [sleepType, respiratoryRateType])
     }
 
     // MARK: Fetch window
@@ -147,5 +150,37 @@ final class HealthKitManager: ObservableObject {
         }
         
         return (wakeups: wakeupCount, wasoSeconds: Int(wasoTotal))
+    }
+
+    // MARK: - Respiratory Rate
+
+    func fetchRespiratoryRates(from start: Date, to end: Date) async throws -> [HKQuantitySample] {
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        let sort = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+
+        return try await withCheckedThrowingContinuation { cont in
+            let query = HKSampleQuery(sampleType: respiratoryRateType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sort]) { _, samples, error in
+                if let error = error {
+                    cont.resume(throwing: error)
+                } else {
+                    cont.resume(returning: (samples as? [HKQuantitySample]) ?? [])
+                }
+            }
+            store.execute(query)
+        }
+    }
+
+    func latestRespiratoryRateSample() async throws -> HKQuantitySample? {
+        let sort = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+        return try await withCheckedThrowingContinuation { cont in
+            let query = HKSampleQuery(sampleType: respiratoryRateType, predicate: nil, limit: 1, sortDescriptors: [sort]) { _, samples, error in
+                if let error = error {
+                    cont.resume(throwing: error)
+                } else {
+                    cont.resume(returning: (samples as? [HKQuantitySample])?.first)
+                }
+            }
+            store.execute(query)
+        }
     }
 }

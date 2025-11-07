@@ -87,6 +87,22 @@ struct SleepStatsView: View {
                                 .font(.system(size: 17, weight: .semibold))
                                 .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
                         }
+                        if let rate = vm.latestRespiratoryRate {
+                            Divider().padding(.vertical, 4)
+
+                            HStack {
+                                Text("Respiratory Rate")
+                                Spacer()
+                                Text(vm.formatRespiratoryRate(rate))
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                            }
+                            if let updated = vm.respiratoryRateUpdated {
+                                Text("Updated " + vm.formatDateTime(updated))
+                                    .font(.system(size: 12, weight: .regular))
+                                    .foregroundColor(Color(red: 0.45, green: 0.55, blue: 0.65))
+                            }
+                        }
                         
                         Divider().padding(.vertical, 4)
                         
