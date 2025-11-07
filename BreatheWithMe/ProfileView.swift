@@ -59,7 +59,7 @@ struct ProfileView: View {
                                 Image(uiImage: profileImage)
                                     .resizable()
                                     .scaledToFill()
-                                    .frame(width: 120, height: 120)
+                                    .frame(width: 100, height: 100)
                                     .clipShape(Circle())
                                     .overlay(
                                         Circle()
@@ -69,7 +69,7 @@ struct ProfileView: View {
                                 Image(systemName: selectedDefaultIcon ?? "person.circle.fill")
                                     .resizable()
                                     .scaledToFit()
-                                    .frame(width: 120, height: 120)
+                                    .frame(width: 100, height: 100)
                                     .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
                             }
                             
@@ -130,6 +130,10 @@ struct ProfileView: View {
                         Text(statsManager.motivationalMessage)
                             .font(.system(size: 15, weight: .medium))
                             .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+
+                        Text(todayString)
+                            .font(.system(size: 14, weight: .regular))
+                            .foregroundColor(Color(red: 0.55, green: 0.65, blue: 0.75))
                     }
 
                     // Main Stats Card
@@ -338,6 +342,12 @@ struct ProfileView: View {
     }
     
     // MARK: - Profile Image Persistence
+    private var todayString: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE, MMM d"
+        return formatter.string(from: Date())
+    }
+
     private func loadProfileImage() {
         if let imageData = UserDefaults.standard.data(forKey: "profileImage"),
            let uiImage = UIImage(data: imageData) {
