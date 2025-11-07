@@ -71,13 +71,19 @@ final class HealthKitManager: ObservableObject {
     private var respiratoryRateType: HKQuantityType {
         HKObjectType.quantityType(forIdentifier: .respiratoryRate)!
     }
+    private var mindfulType: HKCategoryType {
+        HKObjectType.categoryType(forIdentifier: .mindfulSession)!
+    }
 
     // MARK: Authorization
     func requestAuthorization() async throws {
         guard HKHealthStore.isHealthDataAvailable() else {
             throw NSError(domain: "HealthKit", code: 1, userInfo: [NSLocalizedDescriptionKey: "Health data not available"])
         }
-        try await store.requestAuthorization(toShare: [], read: [sleepType, respiratoryRateType])
+        try await store.requestAuthorization(
+            toShare: [mindfulType],
+            read: [sleepType, respiratoryRateType, mindfulType]
+        )
     }
 
     // MARK: Fetch window
@@ -182,5 +188,47 @@ final class HealthKitManager: ObservableObject {
             }
             store.execute(query)
         }
+    }
+
+    // MARK: - Mindful Minutes
+
+    func saveMindfulSession(start: Date, end: Date) async throws {
+        guard start < end else { return }
+        // Mindful sessions use a single "mindful" value (0)
+        let sample = HKCategorySample(type: mindfulType, value: 0, start: start, end: end)
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            store.save(sample) { success, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                } else if success {
+                    continuation.resume(returning: ())
+                } else {
+                    continuation.resume(throwing: NSError(domain: "HealthKit", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to save mindful session"]))
+                }
+            }
+        }
+    }
+
+    func fetchMindfulSessions(from start: Date, to end: Date) async throws -> [HKCategorySample] {
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(sampleType: mindfulType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sort]) { _, samples, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: (samples as? [HKCategorySample]) ?? [])
+                }
+            }
+            store.execute(query)
+        }
+    }
+
+    func mindfulMinutesTotal(from start: Date, to end: Date) async throws -> Double {
+        let sessions = try await fetchMindfulSessions(from: start, to: end)
+        let totalSeconds = sessions.reduce(0.0) { partial, sample in
+            partial + sample.endDate.timeIntervalSince(sample.startDate)
+        }
+        return totalSeconds / 60.0
     }
 }

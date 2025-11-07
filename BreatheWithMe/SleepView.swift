@@ -56,9 +56,11 @@ struct SleepView: View {
     @State private var alarm: SleepAlarm?
     @State private var alarmTimePickerValue: Date = Date()
     @State private var selectedAlarmSound: NoiseGenerator.NoiseType = .birds
-    @State private var showAlarmPicker = false
-    @State private var showAlarmSoundPicker = false
+    @State private var showAlarmSettings = false
     @StateObject private var alarmManager = AlarmManager.shared
+    @AppStorage("focusLockUntilTimestamp") private var focusLockUntilTimestamp: Double = 0
+    @State private var isPreviewingAlarm = false
+    @State private var alarmPreviewWorkItem: DispatchWorkItem?
 
     init() {
         let storedAlarm = SleepAlarmStore.shared.load()
@@ -67,6 +69,7 @@ struct SleepView: View {
         _alarmTimePickerValue = State(initialValue: storedAlarm?.date ?? defaultDate)
         let sound = storedAlarm.flatMap { NoiseGenerator.NoiseType(rawValue: $0.sound) } ?? .birds
         _selectedAlarmSound = State(initialValue: sound)
+        AlarmManager.shared.configure(alarmSound: sound)
     }
     
     // Statistics tracking
@@ -93,6 +96,17 @@ struct SleepView: View {
     @StateObject private var noiseGenerator = NoiseGenerator()
     // Session Manager for enhanced tracking
     @StateObject private var sessionManager = SessionManager.shared
+    private static let focusLockTimeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return formatter
+    }()
+    private static let focusLockRelativeFormatter: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter
+    }()
     
     private var backgroundView: some View {
         ZStack {
@@ -224,8 +238,8 @@ struct SleepView: View {
                 VStack(spacing: 24) {
                     // Alarm settings (when not running)
                     if !isRunning {
-                        VStack(alignment: .leading, spacing: 12) {
-                            let accent = Color(red: 0.4, green: 0.5, blue: 0.8)
+                        let accent = Color(red: 0.4, green: 0.5, blue: 0.8)
+                        VStack(alignment: .leading, spacing: 10) {
                             HStack(spacing: 12) {
                                 Button(action: { toggleAlarm() }) {
                                     HStack(spacing: 8) {
@@ -234,55 +248,56 @@ struct SleepView: View {
                                         Text(isAlarmEnabled ? alarmDisplayTime : "Set Alarm")
                                             .font(.system(size: 15, weight: .medium, design: .default))
                                     }
-                                    .foregroundColor(isAlarmEnabled ? accent : Color.white.opacity(0.6))
+                                    .foregroundColor(isAlarmEnabled ? accent : Color.white.opacity(0.7))
                                     .padding(.horizontal, 18)
                                     .padding(.vertical, 10)
                                     .background(
                                         RoundedRectangle(cornerRadius: 20)
-                                            .fill(isAlarmEnabled ? accent.opacity(0.25) : Color.white.opacity(0.1))
+                                            .fill(isAlarmEnabled ? accent.opacity(0.25) : Color.white.opacity(0.12))
                                     )
                                 }
                                 .buttonStyle(PlainButtonStyle())
 
                                 Button(action: {
                                     alarmTimePickerValue = alarmFireDate
-                                    withAnimation(.easeInOut(duration: 0.3)) {
-                                        showAlarmPicker = true
-                                    }
+                                    showAlarmSettings = true
                                 }) {
-                                    Image(systemName: "clock")
-                                        .font(.system(size: 16))
-                                        .foregroundColor(isAlarmEnabled ? accent : Color.white.opacity(0.6))
-                                        .padding(10)
-                                        .background(
-                                            Circle().fill(isAlarmEnabled ? accent.opacity(0.25) : Color.white.opacity(0.12))
-                                        )
-                                }
-                                .buttonStyle(PlainButtonStyle())
-
-                                Button(action: {
-                                    withAnimation(.easeInOut(duration: 0.3)) {
-                                        showAlarmSoundPicker = true
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "clock.badge.gearshape")
+                                            .font(.system(size: 16, weight: .semibold))
+                                        Text("Alarm Options")
+                                            .font(.system(size: 14, weight: .semibold))
                                     }
-                                }) {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: selectedAlarmSound.icon)
-                                            .font(.system(size: 14, weight: .medium))
-                                        Text(selectedAlarmSound.description)
-                                            .font(.system(size: 12, weight: .semibold))
-                                    }
-                                    .foregroundColor(isAlarmEnabled ? accent : Color.white.opacity(0.6))
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 8)
+                                    .foregroundColor(accent)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
                                     .background(
-                                        RoundedRectangle(cornerRadius: 14)
-                                            .fill(isAlarmEnabled ? accent.opacity(0.25) : Color.white.opacity(0.12))
+                                        RoundedRectangle(cornerRadius: 18)
+                                            .fill(accent.opacity(0.22))
                                     )
                                 }
                                 .buttonStyle(PlainButtonStyle())
                             }
+
+                            if isAlarmEnabled {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Next alarm: \(alarmDisplayTime)")
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.85))
+                                    Text("Sound: \(selectedAlarmSound.description)")
+                                        .font(.system(size: 12, weight: .regular))
+                                        .foregroundColor(.white.opacity(0.6))
+                                }
+                                .padding(.horizontal, 4)
+                                .transition(.opacity)
+                            } else {
+                                Text("Tap Alarm Options to configure wake time, sound, and focus lock.")
+                                    .font(.system(size: 12, weight: .regular))
+                                    .foregroundColor(.white.opacity(0.6))
+                                    .padding(.horizontal, 4)
+                                    .transition(.opacity)
+                            }
                         }
-                        .transition(.opacity)
                     }
                     
                     // Noise settings (always visible)
@@ -353,6 +368,49 @@ struct SleepView: View {
     private var alarmDisplayTime: String {
         formatAlarmTime(alarmFireDate)
     }
+    private var alarmTimeBinding: Binding<Date> {
+        Binding(
+            get: { alarmTimePickerValue },
+            set: { newValue in updateAlarmDate(to: newValue) }
+        )
+    }
+    private var alarmSoundBinding: Binding<NoiseGenerator.NoiseType> {
+        Binding(
+            get: { selectedAlarmSound },
+            set: { newValue in
+                if selectedAlarmSound != newValue {
+                    selectedAlarmSound = newValue
+                    persistAlarmSound(newValue)
+                }
+            }
+        )
+    }
+    private var focusLockActive: Bool {
+        focusLockUntilTimestamp > Date().timeIntervalSince1970
+    }
+    private var focusLockEndDate: Date {
+        Date(timeIntervalSince1970: focusLockUntilTimestamp)
+    }
+    private var focusLockStatusText: String {
+        guard focusLockActive else {
+            return "Locks the app until your alarm goes off."
+        }
+        let timeText = SleepView.focusLockTimeFormatter.string(from: focusLockEndDate)
+        let relative = SleepView.focusLockRelativeFormatter.localizedString(for: focusLockEndDate, relativeTo: Date())
+        return "Locked until \(timeText) (\(relative))."
+    }
+    private var focusLockToggleBinding: Binding<Bool> {
+        Binding<Bool>(
+            get: { focusLockActive },
+            set: { newValue in
+                if newValue {
+                    enableFocusLock()
+                } else {
+                    disableFocusLock()
+                }
+            }
+        )
+    }
 
     private func toggleAlarm() {
         if var existing = alarm {
@@ -365,14 +423,20 @@ struct SleepView: View {
                 SleepAlarmStore.shared.save(existing)
                 alarm = existing
                 AlarmManager.shared.schedule(alarm: existing)
+                if focusLockActive {
+                    enableFocusLock(haptic: false)
+                }
             } else {
                 SleepAlarmStore.shared.save(existing)
                 alarm = existing
                 AlarmManager.shared.cancel(alarm: existing)
+                if focusLockActive {
+                    disableFocusLock()
+                }
             }
         } else {
             AlarmManager.shared.requestNotificationPermission()
-            var newAlarm = SleepAlarm(date: normalizedFireDate(from: alarmTimePickerValue), isEnabled: true, label: "Wake Up", snoozeMinutes: 10, sound: selectedAlarmSound.rawValue)
+            let newAlarm = SleepAlarm(date: normalizedFireDate(from: alarmTimePickerValue), isEnabled: true, label: "Wake Up", snoozeMinutes: 10, sound: selectedAlarmSound.rawValue)
             alarmTimePickerValue = newAlarm.date
             SleepAlarmStore.shared.save(newAlarm)
             alarm = newAlarm
@@ -391,6 +455,9 @@ struct SleepView: View {
             if existing.isEnabled {
                 AlarmManager.shared.requestNotificationPermission()
                 AlarmManager.shared.schedule(alarm: existing)
+                if focusLockActive {
+                    enableFocusLock(haptic: false)
+                }
             }
         } else {
             let newAlarm = SleepAlarm(date: adjusted, isEnabled: false, label: "Wake Up", snoozeMinutes: 10, sound: selectedAlarmSound.rawValue)
@@ -400,6 +467,7 @@ struct SleepView: View {
     }
 
     private func persistAlarmSound(_ newSound: NoiseGenerator.NoiseType) {
+        stopAlarmPreview()
         if var existing = alarm {
             existing.sound = newSound.rawValue
             SleepAlarmStore.shared.save(existing)
@@ -428,6 +496,44 @@ struct SleepView: View {
             candidate = calendar.date(byAdding: .day, value: 1, to: candidate) ?? candidate
         }
         return candidate
+    }
+    
+    private func enableFocusLock(haptic: Bool = true) {
+        let target = normalizedFireDate(from: alarmTimePickerValue)
+        let minimumLock = Date().addingTimeInterval(60)
+        let lockDate = target > minimumLock ? target : minimumLock
+        focusLockUntilTimestamp = lockDate.timeIntervalSince1970
+        if haptic {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
+    }
+    
+    private func disableFocusLock() {
+        focusLockUntilTimestamp = 0
+    }
+    
+    private func previewAlarmSound() {
+        if isPreviewingAlarm {
+            stopAlarmPreview()
+            return
+        }
+        alarmManager.configure(alarmSound: selectedAlarmSound)
+        alarmManager.playAlarmSound()
+        isPreviewingAlarm = true
+        let workItem = DispatchWorkItem {
+            stopAlarmPreview()
+        }
+        alarmPreviewWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10, execute: workItem)
+    }
+    
+    private func stopAlarmPreview() {
+        alarmPreviewWorkItem?.cancel()
+        alarmPreviewWorkItem = nil
+        if isPreviewingAlarm {
+            alarmManager.stopAlarm()
+            isPreviewingAlarm = false
+        }
     }
     
     @ViewBuilder
@@ -472,48 +578,6 @@ struct SleepView: View {
                 .transition(.scale.combined(with: .opacity))
             }
             .zIndex(2)
-        }
-        
-        // Alarm time picker modal
-        if showAlarmPicker {
-            ZStack {
-                Color.black.opacity(0.4)
-                    .ignoresSafeArea()
-                    .transition(.opacity)
-                    .onTapGesture {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            showAlarmPicker = false
-                        }
-                    }
-                AlarmTimePickerModal(
-                    isPresented: $showAlarmPicker,
-                    alarmTime: $alarmTimePickerValue,
-                    onSave: {
-                        updateAlarmDate(to: alarmTimePickerValue)
-                    }
-                )
-                .transition(.scale.combined(with: .opacity))
-            }
-            .zIndex(3)
-        }
-
-        if showAlarmSoundPicker {
-            ZStack {
-                Color.black.opacity(0.4)
-                    .ignoresSafeArea()
-                    .transition(.opacity)
-                    .onTapGesture {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            showAlarmSoundPicker = false
-                        }
-                    }
-                AlarmSoundPickerModal(
-                    isPresented: $showAlarmSoundPicker,
-                    selectedSound: $selectedAlarmSound
-                )
-                .transition(.scale.combined(with: .opacity))
-            }
-            .zIndex(3)
         }
         
         // Alarm UI overlay (when alarm is active)
@@ -567,6 +631,32 @@ struct SleepView: View {
         baseView
             .overlay(infoMessageOverlay)
             .overlay(modalsOverlay)
+        .sheet(isPresented: $showAlarmSettings, onDismiss: {
+            stopAlarmPreview()
+        }) {
+            let sheetView = AlarmSettingsSheet(
+                isAlarmEnabled: isAlarmEnabled,
+                alarmDate: alarmTimeBinding,
+                selectedSound: alarmSoundBinding,
+                soundOptions: NoiseGenerator.NoiseType.alarmEligibleCases,
+                focusLockBinding: focusLockToggleBinding,
+                focusLockDescription: focusLockStatusText,
+                isPreviewing: isPreviewingAlarm,
+                previewAction: {
+                    if isPreviewingAlarm {
+                        stopAlarmPreview()
+                    } else {
+                        previewAlarmSound()
+                    }
+                }
+            )
+            if #available(iOS 16.0, *) {
+                sheetView
+                    .presentationDetents([.medium, .large])
+            } else {
+                sheetView
+            }
+        }
             .onAppear {
                 vm.onAppear()
                 alarmManager.configure(alarmSound: selectedAlarmSound)
@@ -574,11 +664,15 @@ struct SleepView: View {
             .onChange(of: selectedAlarmSound) { newValue in
                 persistAlarmSound(newValue)
             }
+            .onDisappear {
+                stopAlarmPreview()
+            }
     }
     
     // --- Existing timer logic with session tracking ---
     func toggleTimer() { isRunning ? stopTimer() : startTimer() }
     func startTimer() {
+        stopAlarmPreview()
         isRunning = true
         elapsedSeconds = 0
         sessionStartTime = Date()
@@ -1078,6 +1172,80 @@ struct AlarmActiveOverlay: View {
     private func startPulseAnimation() {
         withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
             pulseScale = 1.15
+        }
+    }
+}
+
+private struct AlarmSettingsSheet: View {
+    let isAlarmEnabled: Bool
+    @Binding var alarmDate: Date
+    @Binding var selectedSound: NoiseGenerator.NoiseType
+    let soundOptions: [NoiseGenerator.NoiseType]
+    let focusLockBinding: Binding<Bool>
+    let focusLockDescription: String
+    let isPreviewing: Bool
+    let previewAction: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        Group {
+            if #available(iOS 16.0, *) {
+                NavigationStack { formContent }
+            } else {
+                NavigationView { formContent }
+            }
+        }
+    }
+
+    private var formContent: some View {
+        Form {
+            Section(header: Text("Wake Time")) {
+                DatePicker(
+                    "Wake time",
+                    selection: $alarmDate,
+                    displayedComponents: .hourAndMinute
+                )
+                .labelsHidden()
+                .disabled(!isAlarmEnabled)
+            }
+
+            Section(header: Text("Alarm Sound")) {
+                Picker("Sound", selection: $selectedSound) {
+                    ForEach(soundOptions, id: \.self) { sound in
+                        Label(sound.description, systemImage: sound.icon)
+                            .tag(sound)
+                    }
+                }
+                .disabled(!isAlarmEnabled)
+
+                Button(action: previewAction) {
+                    Label(isPreviewing ? "Stop Preview" : "Preview Sound",
+                          systemImage: isPreviewing ? "stop.circle.fill" : "play.circle")
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                .disabled(!isAlarmEnabled)
+            }
+
+            Section(header: Text("Focus Lock")) {
+                Toggle(isOn: focusLockBinding) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Block distracting apps")
+                            .font(.system(size: 15, weight: .semibold))
+                        Text(focusLockDescription)
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .disabled(!isAlarmEnabled)
+            }
+        }
+        .navigationTitle("Alarm Settings")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Done") { dismiss() }
+            }
         }
     }
 }

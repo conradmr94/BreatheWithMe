@@ -80,6 +80,7 @@ struct BreatheView: View {
     @State private var sessionStartTime: Date?
     @StateObject private var userStatsManager = UserStatsManager()
     @StateObject private var sessionManager = SessionManager.shared
+    @State private var hasRequestedHealthKit = false
     
     // Stress reporting
     @State private var showPreStressPicker = false
@@ -548,6 +549,13 @@ struct BreatheView: View {
                 }
             }
         )
+        .onAppear {
+            guard !hasRequestedHealthKit else { return }
+            hasRequestedHealthKit = true
+            Task {
+                try? await HealthKitManager.shared.requestAuthorization()
+            }
+        }
     }
     
     // MARK: - Breathing state control
@@ -663,6 +671,9 @@ struct BreatheView: View {
                     // Save enhanced session
                     Task { @MainActor in
                         sessionManager.saveSession(enhancedSession)
+                    }
+                    Task {
+                        try? await HealthKitManager.shared.saveMindfulSession(start: startTime, end: endTime)
                     }
                 }
                 

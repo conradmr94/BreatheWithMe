@@ -5,10 +5,26 @@
 
 import SwiftUI
 import UIKit
+import Combine
 
 struct ContentView: View {
     @State private var selectedTab = 0
     private let maxTabIndex = 2
+    @AppStorage("focusLockUntilTimestamp") private var focusLockUntilTimestamp: Double = 0
+    @State private var lockNow = Date()
+    @State private var showUnlockFocusLockAlert = false
+    private let focusLockTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    private static let focusLockTimeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return formatter
+    }()
+    private static let focusLockRelativeFormatter: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter
+    }()
 
     // Swipe tuning: keep these fairly high so precise UI drags don't trigger
     private let minHorizontalFlick: CGFloat = 220   // use predictedEndTranslation.width
@@ -36,7 +52,7 @@ struct ContentView: View {
                 }
             }
 
-        return TabView(selection: $selectedTab) {
+        let tabContent = TabView(selection: $selectedTab) {
             BreatheView()
                 .tabItem { Label("Breathe", systemImage: "wind") }
                 .tag(0)
@@ -52,7 +68,6 @@ struct ContentView: View {
         .accentColor(Color(red: 0.65, green: 0.8, blue: 0.92))
         .onAppear { updateTabColors(for: selectedTab) }
         .onChange(of: selectedTab) { updateTabColors(for: $0) }
-        // IMPORTANT: simultaneous so child gestures still work.
         .simultaneousGesture(globalSwipe)
         .apply { view in
             if #available(iOS 16.0, *) {
@@ -61,8 +76,98 @@ struct ContentView: View {
                     .toolbarColorScheme(selectedTab == 2 ? .dark : .light, for: .tabBar)
             } else { view }
         }
+
+        return ZStack {
+            tabContent
+            if focusLockActive {
+                focusLockOverlay
+            }
+        }
+        .onReceive(focusLockTimer) { date in
+            lockNow = date
+            if focusLockUntilTimestamp > 0 && focusLockUntilTimestamp <= date.timeIntervalSince1970 {
+                focusLockUntilTimestamp = 0
+            }
+        }
+        .alert("Unlock early?", isPresented: $showUnlockFocusLockAlert) {
+            Button("Unlock", role: .destructive) { releaseFocusLock() }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Focus Lock keeps the app blocked until your scheduled wake time. Unlocking early will end the session now.")
+        }
     }
 
+    private var focusLockRemaining: TimeInterval {
+        max(0, focusLockUntilTimestamp - lockNow.timeIntervalSince1970)
+    }
+    private var focusLockActive: Bool {
+        focusLockRemaining > 0
+    }
+    private var focusLockEndDate: Date {
+        Date(timeIntervalSince1970: focusLockUntilTimestamp)
+    }
+    private var focusLockCountdownText: String {
+        let remaining = Int(focusLockRemaining)
+        guard remaining > 0 else { return "00:00" }
+        let hours = remaining / 3600
+        let minutes = (remaining % 3600) / 60
+        let seconds = remaining % 60
+        if hours > 0 {
+            return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            return String(format: "%02d:%02d", minutes, seconds)
+        }
+    }
+    private var focusLockEndDescription: String {
+        guard focusLockActive else { return "" }
+        let time = ContentView.focusLockTimeFormatter.string(from: focusLockEndDate)
+        let relative = ContentView.focusLockRelativeFormatter.localizedString(for: focusLockEndDate, relativeTo: lockNow)
+        return "Unlocks at \(time) (\(relative))"
+    }
+    @ViewBuilder
+    private var focusLockOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.88)
+                .ignoresSafeArea()
+            VStack(spacing: 18) {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 44, weight: .medium))
+                    .foregroundColor(.white)
+                    .padding(.bottom, 4)
+                Text("Focus Lock is on")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundColor(.white)
+                Text(focusLockCountdownText)
+                    .font(.system(size: 40, weight: .bold, design: .monospaced))
+                    .foregroundColor(.white)
+                if !focusLockEndDescription.isEmpty {
+                    Text(focusLockEndDescription)
+                        .font(.system(size: 14))
+                        .foregroundColor(.white.opacity(0.75))
+                        .multilineTextAlignment(.center)
+                }
+                Button(action: { showUnlockFocusLockAlert = true }) {
+                    Text("Unlock early")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.white)
+                        .cornerRadius(18)
+                }
+                .padding(.top, 12)
+            }
+            .padding(32)
+        }
+        .transition(.opacity)
+        .animation(.easeInOut(duration: 0.2), value: focusLockActive)
+    }
+    
+    private func releaseFocusLock() {
+        focusLockUntilTimestamp = 0
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+    
     // MARK: - Tab helpers
     private func goToNextTab() {
         guard selectedTab < maxTabIndex else { return }
