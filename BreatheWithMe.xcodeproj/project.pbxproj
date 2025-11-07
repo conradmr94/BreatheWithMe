@@ -46,6 +46,7 @@
 		A1000086000000000000001 /* AlarmManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000087000000000000001 /* AlarmManager.swift */; };
 		A1000088000000000000001 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000089000000000000001 /* StatsView.swift */; };
 		A1000090000000000000001 /* AnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000091000000000000001 /* AnalyticsView.swift */; };
+		A1000092000000000000001 /* NotificationDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000093000000000000001 /* NotificationDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -90,6 +91,7 @@
 		A1000087000000000000001 /* AlarmManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmManager.swift; sourceTree = "<group>"; };
 		A1000089000000000000001 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
 		A1000091000000000000001 /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
+		A1000093000000000000001 /* NotificationDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationDelegate.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -122,6 +124,7 @@
 				A1000075000000000000001 /* AudioEventDetector.swift */,
 				A1000077000000000000001 /* BreathingProtocols.swift */,
 				A1000087000000000000001 /* AlarmManager.swift */,
+				A1000093000000000000001 /* NotificationDelegate.swift */,
 				A1000089000000000000001 /* StatsView.swift */,
 				A1000091000000000000001 /* AnalyticsView.swift */,
 				A1000079000000000000001 /* SleepAnalyticsView.swift */,
@@ -279,6 +282,7 @@
 				A1000082000000000000001 /* BreathingAnalyticsView.swift in Sources */,
 				A1000084000000000000001 /* CrossFeatureAnalyticsView.swift in Sources */,
 				A1000086000000000000001 /* AlarmManager.swift in Sources */,
+				A1000092000000000000001 /* NotificationDelegate.swift in Sources */,
 				A1000088000000000000001 /* StatsView.swift in Sources */,
 				A1000090000000000000001 /* AnalyticsView.swift in Sources */,
 			);
@@ -425,6 +429,8 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "This app uses HealthKit to track your sleep patterns and provide personalized breathing exercises based on your health data.";
+				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "This app needs notifications to alert you when your sleep alarm goes off.";
+				INFOPLIST_KEY_UIBackgroundModes = audio;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -455,6 +461,8 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "This app uses HealthKit to track your sleep patterns and provide personalized breathing exercises based on your health data.";
+				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "This app needs notifications to alert you when your sleep alarm goes off.";
+				INFOPLIST_KEY_UIBackgroundModes = audio;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

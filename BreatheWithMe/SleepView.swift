@@ -418,13 +418,14 @@ struct SleepView: View {
                 alarmManager: alarmManager,
                 onDismiss: {
                     alarmManager.stopAlarm()
+                    alarmFired = false  // Reset so alarm can fire again if needed
                     if isRunning {
                         stopTimer()
                     }
                 },
                 onSnooze: {
                     alarmManager.snoozeAlarm()
-                    alarmFired = false
+                    alarmFired = false  // Reset for snooze alarm
                 }
             )
             .zIndex(4)
@@ -505,7 +506,8 @@ struct SleepView: View {
             elapsedSeconds += 1
             
             // Check if alarm time has been reached
-            if alarmEnabled && !alarmFired {
+            // Only fire if alarm is enabled, not already active, and time matches
+            if alarmEnabled && !alarmManager.isAlarmActive {
                 let now = Date()
                 let calendar = Calendar.current
                 let nowComponents = calendar.dateComponents([.hour, .minute], from: now)
@@ -514,20 +516,28 @@ struct SleepView: View {
                 // Check if current time matches alarm time (within same minute)
                 if nowComponents.hour == alarmComponents.hour && 
                    nowComponents.minute == alarmComponents.minute {
-                    print("🔔 Sleep: Alarm time reached! Current: \(now), Alarm: \(alarmTime)")
-                    alarmFired = true
-                    DispatchQueue.main.async {
-                        self.alarmManager.startAlarm()
+                    // Fire alarm if we haven't fired yet, or if alarm was stopped (allowing re-fire)
+                    if !alarmFired {
+                        print("🔔 Sleep: Alarm time reached! Current: \(now), Alarm: \(alarmTime)")
+                        alarmFired = true
+                        DispatchQueue.main.async {
+                            self.alarmManager.startAlarm()
+                        }
+                    }
+                } else {
+                    // Reset alarmFired when we move to a different minute
+                    // This allows alarm to fire again for the next alarm time
+                    if alarmFired {
+                        alarmFired = false
                     }
                 }
             }
             
             // Check for snooze alarm
-            if let snoozeTime = alarmManager.snoozeTime, !alarmFired {
+            if let snoozeTime = alarmManager.snoozeTime, !alarmManager.isAlarmActive {
                 let now = Date()
                 if now >= snoozeTime {
                     print("🔔 Sleep: Snooze alarm time reached! Current: \(now), Snooze: \(snoozeTime)")
-                    alarmFired = true
                     DispatchQueue.main.async {
                         self.alarmManager.startAlarm()
                     }
@@ -544,6 +554,9 @@ struct SleepView: View {
         if alarmManager.isAlarmActive {
             alarmManager.stopAlarm()
         }
+        
+        // Reset alarmFired flag so alarm can fire again if needed
+        alarmFired = false
         
         // Cancel alarm if still pending
         if alarmEnabled {

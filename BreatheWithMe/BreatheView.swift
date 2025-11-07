@@ -496,12 +496,9 @@ struct BreatheView: View {
                     .zIndex(3)
                 }
                 
-                // Pre-stress picker
+                // Pre-stress picker - subtle top card
                 if showPreStressPicker {
-                    ZStack {
-                        Color.black.opacity(0.4)
-                            .ignoresSafeArea()
-                            .transition(.opacity)
+                    VStack {
                         StressLevelPickerModal(
                             isPresented: $showPreStressPicker,
                             title: "How stressed are you?",
@@ -509,25 +506,21 @@ struct BreatheView: View {
                                 get: { preStressLevel },
                                 set: { newValue in
                                     preStressLevel = newValue
-                                    showPreStressPicker = false
-                                    // Start breathing after stress level is set
-                                    if newValue != nil {
-                                        startBreathing()
+                                    withAnimation(.easeOut(duration: 0.3)) {
+                                        showPreStressPicker = false
                                     }
                                 }
                             )
                         )
-                        .transition(.scale.combined(with: .opacity))
+                        .transition(.opacity)
+                        Spacer()
                     }
                     .zIndex(4)
                 }
                 
-                // Post-stress picker
+                // Post-stress picker - subtle top card
                 if showPostStressPicker {
-                    ZStack {
-                        Color.black.opacity(0.4)
-                            .ignoresSafeArea()
-                            .transition(.opacity)
+                    VStack {
                         StressLevelPickerModal(
                             isPresented: $showPostStressPicker,
                             title: "How do you feel now?",
@@ -535,15 +528,21 @@ struct BreatheView: View {
                                 get: { postStressLevel },
                                 set: { newValue in
                                     postStressLevel = newValue
-                                    showPostStressPicker = false
-                                    // Complete the session after post-stress is set
+                                    withAnimation(.easeOut(duration: 0.3)) {
+                                        showPostStressPicker = false
+                                    }
+                                    // Reset stress levels for next session after post-stress is set
                                     if newValue != nil {
-                                        stopBreathing()
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                            self.preStressLevel = nil
+                                            self.postStressLevel = nil
+                                        }
                                     }
                                 }
                             )
                         )
-                        .transition(.scale.combined(with: .opacity))
+                        .transition(.opacity)
+                        Spacer()
                     }
                     .zIndex(4)
                 }
@@ -562,12 +561,7 @@ struct BreatheView: View {
     }
     
     func startBreathing() {
-        // Show pre-stress picker if not already set
-        if preStressLevel == nil {
-            showPreStressPicker = true
-            return
-        }
-        
+        // Start breathing immediately - don't wait for stress level
         isBreathing = true
         remainingTime = selectedDuration
         totalElapsedTime = 0
@@ -576,6 +570,18 @@ struct BreatheView: View {
         
         updateBreathingAnimation()
         if bellSoundEnabled { bellPlayer.playBell() }
+        
+        // Show pre-stress picker subtly if not already set (non-blocking)
+        if preStressLevel == nil {
+            // Show after a brief delay to not interrupt the breathing start
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                if self.isBreathing && self.preStressLevel == nil {
+                    withAnimation(.easeIn(duration: 0.3)) {
+                        self.showPreStressPicker = true
+                    }
+                }
+            }
+        }
         
         // Timer updates at 0.1 second intervals for smooth phase transitions
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
@@ -599,16 +605,11 @@ struct BreatheView: View {
         opacity = 1.0
         currentPhase = .inhale
         
-        // Show post-stress picker if pre-stress was set (but only if we actually had a session)
-        if let startTime = sessionStartTime, preStressLevel != nil && postStressLevel == nil {
-            showPostStressPicker = true
-            return
-        }
-        
         // Track statistics - always track time, only count as completed if session lasted at least 10 seconds
+        var sessionDuration: Int = 0
         if let startTime = sessionStartTime {
             let endTime = Date()
-            let sessionDuration = Int(endTime.timeIntervalSince(startTime))
+            sessionDuration = Int(endTime.timeIntervalSince(startTime))
             if sessionDuration > 0 {
                 var stats = breatheStats
                 
@@ -673,10 +674,24 @@ struct BreatheView: View {
         }
         
         totalElapsedTime = 0
+        let sessionWasCompleted = sessionDuration >= 10
         sessionStartTime = nil
-        // Reset stress levels for next session
-        preStressLevel = nil
-        postStressLevel = nil
+        
+        // Show post-stress picker subtly if session was completed (non-blocking)
+        if sessionWasCompleted && postStressLevel == nil {
+            // Show after a brief delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                withAnimation(.easeIn(duration: 0.3)) {
+                    self.showPostStressPicker = true
+                }
+            }
+        } else {
+            // Reset stress levels for next session only if we're not showing post-stress picker
+            if !sessionWasCompleted {
+                preStressLevel = nil
+                postStressLevel = nil
+            }
+        }
     }
     
     func updateCurrentPhase() {
@@ -1066,66 +1081,102 @@ private struct StressLevelPickerModal: View {
     @Binding var isPresented: Bool
     let title: String
     @Binding var selectedLevel: Int?
+    @State private var autoDismissTask: DispatchWorkItem?
     
     var body: some View {
-        VStack(spacing: 20) {
-            Text(title)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
-                .multilineTextAlignment(.center)
+        VStack(spacing: 16) {
+            // Header with close button
+            HStack {
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                    .multilineTextAlignment(.center)
+                
+                Spacer()
+                
+                Button(action: {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        isPresented = false
+                    }
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(Color.black.opacity(0.25))
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
             
-            HStack(spacing: 12) {
+            // Compact stress level buttons
+            HStack(spacing: 8) {
                 ForEach(1...5, id: \.self) { level in
                     Button(action: {
                         selectedLevel = level
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(.easeOut(duration: 0.3)) {
                             isPresented = false
                         }
                     }) {
-                        VStack(spacing: 8) {
+                        VStack(spacing: 4) {
                             Text("\(level)")
-                                .font(.system(size: 24, weight: .bold))
+                                .font(.system(size: 20, weight: .bold))
                                 .foregroundColor(selectedLevel == level ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
+                                .frame(height: 24) // Fixed height for number
                             
-                            if level == 1 {
-                                Text("Calm")
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(selectedLevel == level ? .white.opacity(0.9) : Color(red: 0.4, green: 0.5, blue: 0.6))
-                            } else if level == 5 {
-                                Text("Very\nStressed")
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(selectedLevel == level ? .white.opacity(0.9) : Color(red: 0.4, green: 0.5, blue: 0.6))
-                                    .multilineTextAlignment(.center)
+                            // Always include label area for consistent alignment
+                            Group {
+                                if level == 1 {
+                                    Text("Calm")
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundColor(selectedLevel == level ? .white.opacity(0.9) : Color(red: 0.4, green: 0.5, blue: 0.6))
+                                        .frame(height: 20, alignment: .center)
+                                } else if level == 5 {
+                                    Text("Very\nStressed")
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundColor(selectedLevel == level ? .white.opacity(0.9) : Color(red: 0.4, green: 0.5, blue: 0.6))
+                                        .multilineTextAlignment(.center)
+                                        .lineLimit(2)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .frame(minHeight: 20, maxHeight: 24, alignment: .center)
+                                } else {
+                                    // Invisible placeholder for levels 2-4 to maintain alignment
+                                    Text(" ")
+                                        .font(.system(size: 10, weight: .medium))
+                                        .opacity(0)
+                                        .frame(height: 20)
+                                }
                             }
                         }
-                        .frame(width: 60, height: 80)
+                        .frame(width: 50, height: 65)
                         .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(selectedLevel == level ? Color(red: 0.65, green: 0.8, blue: 0.92) : Color.white.opacity(0.6))
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(selectedLevel == level ? Color(red: 0.65, green: 0.8, blue: 0.92) : Color.white.opacity(0.8))
                         )
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
             }
-            
-            Button(action: {
-                withAnimation(.easeInOut(duration: 0.2)) {
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.15), radius: 20, x: 0, y: 5)
+        )
+        .padding(.horizontal, 16)
+        .padding(.top, 50)
+        .onAppear {
+            // Auto-dismiss after 5 seconds if not interacted with
+            let task = DispatchWorkItem {
+                withAnimation(.easeOut(duration: 0.3)) {
                     isPresented = false
                 }
-            }) {
-                Text("Skip")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
             }
-            .buttonStyle(PlainButtonStyle())
+            autoDismissTask = task
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0, execute: task)
         }
-        .padding(24)
-        .frame(maxWidth: 340)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
-        )
+        .onDisappear {
+            autoDismissTask?.cancel()
+        }
     }
 }
 

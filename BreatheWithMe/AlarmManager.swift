@@ -84,10 +84,15 @@ class AlarmManager: ObservableObject {
         
         // Configure audio session for alarm playback (override any existing session)
         do {
-            // Use .playback category with no mixing to ensure alarm plays even if other audio is playing
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
-            try AVAudioSession.sharedInstance().setActive(true, options: [])
-            print("✅ AlarmManager: Audio session configured successfully")
+            // Use .playback category which plays audio even in silent mode
+            // The .playback category automatically plays through speakers and overrides silent mode
+            let audioSession = AVAudioSession.sharedInstance()
+            try audioSession.setCategory(.playback, mode: .default, options: [])
+            try audioSession.setActive(true, options: [.notifyOthersOnDeactivation])
+            print("✅ AlarmManager: Audio session configured successfully (will play in silent mode)")
+            print("   - Category: \(audioSession.category.rawValue)")
+            print("   - Mode: \(audioSession.mode.rawValue)")
+            print("   - Is active: \(audioSession.isOtherAudioPlaying)")
         } catch {
             print("❌ AlarmManager: Failed to setup audio session: \(error)")
         }
