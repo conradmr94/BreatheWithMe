@@ -37,12 +37,22 @@ struct ActivityCalendarView: View {
     @State private var selectedDateItem: DateItem?
     @State private var showingShareSheet = false
     @State private var showingAwardsSheet = false
+    @AppStorage("profileThemeRawValue") private var profileThemeRawValue: String = ProfileTheme.default.rawValue
+    
+    private var profileTheme: ProfileTheme {
+        ProfileTheme(rawValue: profileThemeRawValue) ?? .default
+    }
+    
+    private var themeColors: ProfileTheme.Colors {
+        profileTheme.colors
+    }
     
     private let calendar = Calendar.current
     private let daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     
     var body: some View {
-        ScrollView {
+        let colors = themeColors
+        return ScrollView {
             VStack(spacing: 24) {
                 // Header with streak info
                 HStack(spacing: 12) {
@@ -51,20 +61,20 @@ struct ActivityCalendarView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "flame.fill")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(statsManager.currentStreak >= 3 ? Color.orange : Color(red: 0.5, green: 0.6, blue: 0.7))
+                                .foregroundColor(statsManager.currentStreak >= 3 ? colors.highlight : colors.accent)
                             Text("Current Streak")
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                .foregroundColor(Color(red: 0.45, green: 0.55, blue: 0.65))
+                                .foregroundColor(colors.secondaryText)
                                 .textCase(.uppercase)
                         }
                         
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
                             Text("\(statsManager.currentStreak)")
                                 .font(.system(size: 40, weight: .bold, design: .rounded))
-                                .foregroundColor(statsManager.currentStreak >= 3 ? Color.orange : Color(red: 0.2, green: 0.3, blue: 0.4))
+                                .foregroundColor(statsManager.currentStreak >= 3 ? colors.highlight : colors.primaryText)
                             Text(statsManager.currentStreak == 1 ? "day" : "days")
                                 .font(.system(size: 16, weight: .medium, design: .rounded))
-                                .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                .foregroundColor(colors.secondaryText)
                                 .padding(.bottom, 4)
                         }
                     }
@@ -72,17 +82,11 @@ struct ActivityCalendarView: View {
                     .padding(18)
                     .background(
                         RoundedRectangle(cornerRadius: 20)
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color.white.opacity(0.95), Color.white.opacity(0.85)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .shadow(color: Color.black.opacity(0.06), radius: 16, x: 0, y: 8)
+                            .fill(colors.cardBackground)
+                            .shadow(color: colors.cardShadow, radius: 16, x: 0, y: 8)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 20)
-                                    .strokeBorder(Color.white.opacity(0.8), lineWidth: 1)
+                                    .strokeBorder(colors.separator.opacity(0.6), lineWidth: 1)
                             )
                     )
                     
@@ -91,20 +95,20 @@ struct ActivityCalendarView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "chart.line.uptrend.xyaxis")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                .foregroundColor(colors.accent)
                             Text("Best")
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                .foregroundColor(Color(red: 0.45, green: 0.55, blue: 0.65))
+                                .foregroundColor(colors.secondaryText)
                                 .textCase(.uppercase)
                         }
                         
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
                             Text("\(statsManager.longestStreak)")
                                 .font(.system(size: 40, weight: .bold, design: .rounded))
-                                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                .foregroundColor(colors.primaryText)
                             Text(statsManager.longestStreak == 1 ? "day" : "days")
                                 .font(.system(size: 16, weight: .medium, design: .rounded))
-                                .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                .foregroundColor(colors.secondaryText)
                                 .padding(.bottom, 4)
                         }
                     }
@@ -112,17 +116,11 @@ struct ActivityCalendarView: View {
                     .padding(18)
                     .background(
                         RoundedRectangle(cornerRadius: 20)
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color.white.opacity(0.95), Color.white.opacity(0.85)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .shadow(color: Color.black.opacity(0.06), radius: 16, x: 0, y: 8)
+                            .fill(colors.cardBackground)
+                            .shadow(color: colors.cardShadow, radius: 16, x: 0, y: 8)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 20)
-                                    .strokeBorder(Color.white.opacity(0.8), lineWidth: 1)
+                                    .strokeBorder(colors.separator.opacity(0.6), lineWidth: 1)
                             )
                     )
                 }
@@ -669,6 +667,7 @@ struct DayStatsDetailView: View {
     let date: Date
     @ObservedObject var statsManager: UserStatsManager
     @Environment(\.dismiss) var dismiss
+    @AppStorage("profileThemeRawValue") private var profileThemeRawValue: String = ProfileTheme.default.rawValue
     
     private let calendar = Calendar.current
     
@@ -696,6 +695,43 @@ struct DayStatsDetailView: View {
         ].filter { $0.count > 0 }
     }
     
+    private var profileTheme: ProfileTheme {
+        ProfileTheme(rawValue: profileThemeRawValue) ?? .default
+    }
+    
+    private var colors: ProfileTheme.Colors { profileTheme.colors }
+    
+    private var cardGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                colors.cardBackground.opacity(profileTheme == .dark ? 0.98 : 0.99),
+                colors.cardBackground.opacity(profileTheme == .dark ? 0.85 : 0.9)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+    
+    private var backgroundGradient: LinearGradient {
+        LinearGradient(
+            colors: [colors.backgroundTop, colors.backgroundBottom],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+    
+    private var progressTrackColor: Color {
+        colors.separator.opacity(profileTheme == .dark ? 0.6 : 0.4)
+    }
+    
+    private func progressFill(for color: Color) -> LinearGradient {
+        LinearGradient(
+            colors: [color.opacity(0.85), color],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+    
     var body: some View {
         NavigationView {
             ScrollView {
@@ -704,7 +740,7 @@ struct DayStatsDetailView: View {
                     VStack(spacing: 12) {
                         Text(formatDate(date))
                             .font(.system(size: 32, weight: .bold, design: .rounded))
-                            .foregroundColor(Color(red: 0.15, green: 0.25, blue: 0.35))
+                            .foregroundColor(colors.primaryText)
                         
                         if calendar.isDateInToday(date) {
                             Text("TODAY")
@@ -717,7 +753,7 @@ struct DayStatsDetailView: View {
                                     Capsule()
                                         .fill(
                                             LinearGradient(
-                                                colors: [Color(red: 0.3, green: 0.7, blue: 1.0), Color(red: 0.0, green: 0.5, blue: 0.9)],
+                                                colors: [colors.accent, colors.accent.opacity(0.7)],
                                                 startPoint: .leading,
                                                 endPoint: .trailing
                                             )
@@ -733,32 +769,26 @@ struct DayStatsDetailView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 24, weight: .medium))
-                                .foregroundColor(Color(red: 0.4, green: 0.7, blue: 0.9))
+                                .foregroundColor(colors.accent)
                             
                             Text("\(sessionsForDay.count)")
                                 .font(.system(size: 42, weight: .bold, design: .rounded))
-                                .foregroundColor(Color(red: 0.15, green: 0.25, blue: 0.35))
+                                .foregroundColor(colors.primaryText)
                             
                             Text("SESSIONS")
                                 .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                .foregroundColor(Color(red: 0.45, green: 0.55, blue: 0.65))
+                                .foregroundColor(colors.secondaryText)
                                 .textCase(.uppercase)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(20)
                         .background(
                             RoundedRectangle(cornerRadius: 20)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Color.white.opacity(0.95), Color.white.opacity(0.85)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .shadow(color: Color.black.opacity(0.06), radius: 16, x: 0, y: 8)
+                                .fill(cardGradient)
+                                .shadow(color: colors.cardShadow, radius: 16, x: 0, y: 8)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 20)
-                                        .strokeBorder(Color.white.opacity(0.8), lineWidth: 1)
+                                        .strokeBorder(colors.separator.opacity(0.6), lineWidth: 1)
                                 )
                         )
                         
@@ -766,34 +796,28 @@ struct DayStatsDetailView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Image(systemName: "clock.fill")
                                 .font(.system(size: 24, weight: .medium))
-                                .foregroundColor(Color(red: 0.5, green: 0.8, blue: 0.5))
+                                .foregroundColor(colors.accent)
                             
                             Text(formatTime(seconds: totalTimeSeconds))
                                 .font(.system(size: 42, weight: .bold, design: .rounded))
-                                .foregroundColor(Color(red: 0.15, green: 0.25, blue: 0.35))
+                                .foregroundColor(colors.primaryText)
                                 .minimumScaleFactor(0.7)
                                 .lineLimit(1)
                             
                             Text("TOTAL TIME")
                                 .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                .foregroundColor(Color(red: 0.45, green: 0.55, blue: 0.65))
+                                .foregroundColor(colors.secondaryText)
                                 .textCase(.uppercase)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(20)
                         .background(
                             RoundedRectangle(cornerRadius: 20)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Color.white.opacity(0.95), Color.white.opacity(0.85)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .shadow(color: Color.black.opacity(0.06), radius: 16, x: 0, y: 8)
+                                .fill(cardGradient)
+                                .shadow(color: colors.cardShadow, radius: 16, x: 0, y: 8)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 20)
-                                        .strokeBorder(Color.white.opacity(0.8), lineWidth: 1)
+                                        .strokeBorder(colors.separator.opacity(0.6), lineWidth: 1)
                                 )
                         )
                     }
@@ -805,10 +829,10 @@ struct DayStatsDetailView: View {
                             HStack(spacing: 6) {
                                 Image(systemName: "chart.pie.fill")
                                     .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                    .foregroundColor(colors.accent)
                                 Text("Activity Summary")
                                     .font(.system(size: 17, weight: .bold, design: .rounded))
-                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                    .foregroundColor(colors.primaryText)
                             }
                             
                             VStack(spacing: 14) {
@@ -829,10 +853,10 @@ struct DayStatsDetailView: View {
                                                 VStack(alignment: .leading, spacing: 4) {
                                                     Text(item.type.rawValue)
                                                         .font(.system(size: 16, weight: .semibold, design: .rounded))
-                                                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                                        .foregroundColor(colors.primaryText)
                                                     Text("\(item.count) session\(item.count == 1 ? "" : "s")")
                                                         .font(.system(size: 13, weight: .medium, design: .rounded))
-                                                        .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                                        .foregroundColor(colors.secondaryText)
                                                 }
                                             }
                                             
@@ -848,21 +872,12 @@ struct DayStatsDetailView: View {
                                             ZStack(alignment: .leading) {
                                                 // Background bar
                                                 RoundedRectangle(cornerRadius: 6)
-                                                    .fill(Color(red: 0.92, green: 0.94, blue: 0.96))
+                                                    .fill(progressTrackColor)
                                                     .frame(height: 8)
                                                 
                                                 // Progress bar
                                                 RoundedRectangle(cornerRadius: 6)
-                                                    .fill(
-                                                        LinearGradient(
-                                                            colors: [
-                                                                colorForActivity(item.type).opacity(0.8),
-                                                                colorForActivity(item.type)
-                                                            ],
-                                                            startPoint: .leading,
-                                                            endPoint: .trailing
-                                                        )
-                                                    )
+                                                    .fill(progressFill(for: colorForActivity(item.type)))
                                                     .frame(
                                                         width: geometry.size.width * CGFloat(item.time) / CGFloat(max(totalTimeSeconds, 1)),
                                                         height: 8
@@ -874,13 +889,8 @@ struct DayStatsDetailView: View {
                                     .padding(16)
                                     .background(
                                         RoundedRectangle(cornerRadius: 16)
-                                            .fill(
-                                                LinearGradient(
-                                                    colors: [Color.white.opacity(0.9), Color.white.opacity(0.7)],
-                                                    startPoint: .topLeading,
-                                                    endPoint: .bottomTrailing
-                                                )
-                                            )
+                                            .fill(cardGradient)
+                                            .shadow(color: colors.cardShadow, radius: 12, x: 0, y: 6)
                                     )
                                 }
                             }
@@ -888,17 +898,11 @@ struct DayStatsDetailView: View {
                         .padding(20)
                         .background(
                             RoundedRectangle(cornerRadius: 20)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Color.white.opacity(0.95), Color.white.opacity(0.85)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .shadow(color: Color.black.opacity(0.06), radius: 16, x: 0, y: 8)
+                                .fill(cardGradient)
+                                .shadow(color: colors.cardShadow, radius: 16, x: 0, y: 8)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 20)
-                                        .strokeBorder(Color.white.opacity(0.8), lineWidth: 1)
+                                        .strokeBorder(colors.separator.opacity(0.6), lineWidth: 1)
                                 )
                         )
                         .padding(.horizontal, 20)
@@ -911,10 +915,10 @@ struct DayStatsDetailView: View {
                             HStack(spacing: 6) {
                                 Image(systemName: "chart.line.uptrend.xyaxis")
                                     .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                    .foregroundColor(colors.accent)
                                 Text("Insights")
                                     .font(.system(size: 17, weight: .bold, design: .rounded))
-                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                    .foregroundColor(colors.primaryText)
                             }
                             
                             HStack(spacing: 12) {
@@ -922,28 +926,22 @@ struct DayStatsDetailView: View {
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text("AVG SESSION")
                                         .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                        .foregroundColor(Color(red: 0.45, green: 0.55, blue: 0.65))
+                                        .foregroundColor(colors.secondaryText)
                                         .textCase(.uppercase)
                                     
                                     Text(formatTime(seconds: totalTimeSeconds / max(sessionsForDay.count, 1)))
                                         .font(.system(size: 28, weight: .bold, design: .rounded))
-                                        .foregroundColor(Color(red: 0.15, green: 0.25, blue: 0.35))
+                                        .foregroundColor(colors.primaryText)
                                     
                                     Text("per session")
                                         .font(.system(size: 12, weight: .medium, design: .rounded))
-                                        .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                        .foregroundColor(colors.secondaryText)
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(18)
                                 .background(
                                     RoundedRectangle(cornerRadius: 16)
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [Color.white.opacity(0.9), Color.white.opacity(0.7)],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
+                                        .fill(cardGradient)
                                 )
                                 
                                 // Most active type
@@ -951,7 +949,7 @@ struct DayStatsDetailView: View {
                                     VStack(alignment: .leading, spacing: 8) {
                                         Text("TOP ACTIVITY")
                                             .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                            .foregroundColor(Color(red: 0.45, green: 0.55, blue: 0.65))
+                                            .foregroundColor(colors.secondaryText)
                                             .textCase(.uppercase)
                                         
                                         HStack(spacing: 8) {
@@ -962,10 +960,10 @@ struct DayStatsDetailView: View {
                                             VStack(alignment: .leading, spacing: 2) {
                                                 Text(topActivity.type.rawValue)
                                                     .font(.system(size: 16, weight: .bold, design: .rounded))
-                                                    .foregroundColor(Color(red: 0.15, green: 0.25, blue: 0.35))
+                                                    .foregroundColor(colors.primaryText)
                                                 Text("\(topActivity.count) times")
                                                     .font(.system(size: 12, weight: .medium, design: .rounded))
-                                                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                                    .foregroundColor(colors.secondaryText)
                                             }
                                         }
                                     }
@@ -973,13 +971,7 @@ struct DayStatsDetailView: View {
                                     .padding(18)
                                     .background(
                                         RoundedRectangle(cornerRadius: 16)
-                                            .fill(
-                                                LinearGradient(
-                                                    colors: [Color.white.opacity(0.9), Color.white.opacity(0.7)],
-                                                    startPoint: .topLeading,
-                                                    endPoint: .bottomTrailing
-                                                )
-                                            )
+                                            .fill(cardGradient)
                                     )
                                 }
                             }
@@ -987,17 +979,11 @@ struct DayStatsDetailView: View {
                         .padding(20)
                         .background(
                             RoundedRectangle(cornerRadius: 20)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Color.white.opacity(0.95), Color.white.opacity(0.85)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .shadow(color: Color.black.opacity(0.06), radius: 16, x: 0, y: 8)
+                                .fill(cardGradient)
+                                .shadow(color: colors.cardShadow, radius: 16, x: 0, y: 8)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 20)
-                                        .strokeBorder(Color.white.opacity(0.8), lineWidth: 1)
+                                        .strokeBorder(colors.separator.opacity(0.6), lineWidth: 1)
                                 )
                         )
                         .padding(.horizontal, 20)
@@ -1016,28 +1002,22 @@ struct DayStatsDetailView: View {
                             VStack(spacing: 6) {
                                 Text("No Activity")
                                     .font(.system(size: 22, weight: .bold, design: .rounded))
-                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                    .foregroundColor(colors.primaryText)
                                 
                                 Text("No sessions recorded on this day")
                                     .font(.system(size: 15, weight: .medium, design: .rounded))
-                                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                    .foregroundColor(colors.secondaryText)
                             }
                         }
                         .padding(.vertical, 50)
                         .frame(maxWidth: .infinity)
                         .background(
                             RoundedRectangle(cornerRadius: 20)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Color.white.opacity(0.95), Color.white.opacity(0.85)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .shadow(color: Color.black.opacity(0.06), radius: 16, x: 0, y: 8)
+                                .fill(cardGradient)
+                                .shadow(color: colors.cardShadow, radius: 16, x: 0, y: 8)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 20)
-                                        .strokeBorder(Color.white.opacity(0.8), lineWidth: 1)
+                                        .strokeBorder(colors.separator.opacity(0.6), lineWidth: 1)
                                 )
                         )
                         .padding(.horizontal, 20)
@@ -1045,17 +1025,7 @@ struct DayStatsDetailView: View {
                 }
                 .padding(.bottom, 20)
             }
-            .background(
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(red: 0.95, green: 0.97, blue: 1.0),
-                        Color(red: 0.9, green: 0.94, blue: 0.98)
-                    ]),
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
-            )
+            .background(backgroundGradient.ignoresSafeArea())
             .navigationTitle("Day Stats")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1063,7 +1033,7 @@ struct DayStatsDetailView: View {
                     Button("Done") {
                         dismiss()
                     }
-                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                    .foregroundColor(colors.accent)
                 }
             }
         }
@@ -1133,9 +1103,15 @@ private struct ShareSheet: UIViewControllerRepresentable {
 private struct AwardListSheet: View {
     let awards: [AwardBadge]
     var shareAction: () -> Void
+    @AppStorage("profileThemeRawValue") private var profileThemeRawValue: String = ProfileTheme.default.rawValue
+    
+    private var themeColors: ProfileTheme.Colors {
+        ProfileTheme(rawValue: profileThemeRawValue)?.colors ?? ProfileTheme.default.colors
+    }
 
     var body: some View {
-        NavigationView {
+        let colors = themeColors
+        return NavigationView {
             List {
                 Section(header: Text("Unlocked")) {
                     ForEach(awards.filter { $0.unlocked }) { award in
@@ -1151,6 +1127,16 @@ private struct AwardListSheet: View {
                 }
             }
             .listStyle(InsetGroupedListStyle())
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        colors.backgroundTop,
+                        colors.backgroundBottom
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
             .navigationTitle("All Awards")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -1164,23 +1150,30 @@ private struct AwardListSheet: View {
 
     private struct AwardRow: View {
         let award: AwardBadge
+        @AppStorage("profileThemeRawValue") private var profileThemeRawValue: String = ProfileTheme.default.rawValue
+        
+        private var themeColors: ProfileTheme.Colors {
+            ProfileTheme(rawValue: profileThemeRawValue)?.colors ?? ProfileTheme.default.colors
+        }
 
         var body: some View {
+            let colors = themeColors
             HStack(spacing: 14) {
                 Image(systemName: award.systemImage)
                     .font(.system(size: 24, weight: .semibold))
-                    .foregroundColor(award.unlocked ? award.accentColor : Color(red: 0.7, green: 0.75, blue: 0.8))
+                    .foregroundColor(award.unlocked ? award.accentColor : colors.subtleText)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(award.title)
                         .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(colors.primaryText)
                     Text(award.detail)
                         .font(.system(size: 13, weight: .regular))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(colors.secondaryText)
                 }
                 Spacer()
                 if award.unlocked {
                     Image(systemName: "checkmark.seal.fill")
-                        .foregroundColor(Color.green)
+                        .foregroundColor(colors.highlight)
                 }
             }
             .padding(.vertical, 6)

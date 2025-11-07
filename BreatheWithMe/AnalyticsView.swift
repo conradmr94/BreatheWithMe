@@ -9,6 +9,15 @@ import Charts
 
 struct AnalyticsView: View {
     @State private var selectedTab: AnalyticsTab = .breathing
+    @AppStorage("profileThemeRawValue") private var profileThemeRawValue: String = ProfileTheme.default.rawValue
+    
+    private var profileTheme: ProfileTheme {
+        ProfileTheme(rawValue: profileThemeRawValue) ?? .default
+    }
+    
+    private var themeColors: ProfileTheme.Colors {
+        profileTheme.colors
+    }
     
     enum AnalyticsTab: String, CaseIterable {
         case breathing = "Breathe"
@@ -27,7 +36,8 @@ struct AnalyticsView: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
+        let colors = themeColors
+        return VStack(spacing: 0) {
             // Tab selector - using a horizontal scrollable picker for better layout
             HStack(spacing: 12) {
                 Spacer()
@@ -37,6 +47,7 @@ struct AnalyticsView: View {
                             selectedTab = tab
                         }
                     }) {
+                        let isSelected = selectedTab == tab
                         VStack(spacing: 5) {
                             Image(systemName: tab.icon)
                                 .font(.system(size: 18, weight: .medium))
@@ -45,13 +56,13 @@ struct AnalyticsView: View {
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.8)
                         }
-                        .foregroundColor(selectedTab == tab ? .white : Color(red: 0.3, green: 0.4, blue: 0.5))
+                        .foregroundColor(isSelected ? colors.cardBackground : colors.secondaryText)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 12)
                         .background(
                             RoundedRectangle(cornerRadius: 14)
-                                .fill(selectedTab == tab ? Color(red: 0.4, green: 0.5, blue: 0.8) : Color.white.opacity(0.5))
-                                .shadow(color: selectedTab == tab ? Color(red: 0.4, green: 0.5, blue: 0.8).opacity(0.4) : Color.black.opacity(0.1), radius: selectedTab == tab ? 8 : 4, x: 0, y: selectedTab == tab ? 4 : 2)
+                                .fill(isSelected ? colors.accent : colors.cardBackground.opacity(profileTheme == .dark ? 0.35 : 0.85))
+                                .shadow(color: isSelected ? colors.accent.opacity(0.35) : colors.cardShadow, radius: isSelected ? 8 : 4, x: 0, y: isSelected ? 4 : 2)
                         )
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -77,8 +88,8 @@ struct AnalyticsView: View {
         .background(
             LinearGradient(
                 gradient: Gradient(colors: [
-                    Color(red: 0.95, green: 0.97, blue: 1.0),
-                    Color(red: 0.9, green: 0.94, blue: 0.98)
+                    colors.backgroundTop,
+                    colors.backgroundBottom
                 ]),
                 startPoint: .top,
                 endPoint: .bottom

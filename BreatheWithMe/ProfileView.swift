@@ -9,6 +9,11 @@ struct ProfileView: View {
     var onDismiss: (() -> Void)? = nil
     var isPresented: Binding<Bool>? = nil
     @StateObject private var statsManager = UserStatsManager()
+    @StateObject private var sessionManager = SessionManager.shared
+    
+    @AppStorage("profileThemeRawValue") private var profileThemeRawValue: String = ProfileTheme.default.rawValue
+    @AppStorage("installDateTimestamp") private var installDateTimestamp: Double = 0
+    @State private var showSettings = false
     
     // Profile picture state
     @State private var profileImage: UIImage?
@@ -33,6 +38,20 @@ struct ProfileView: View {
         "flame.fill"
     ]
 
+    private var profileTheme: ProfileTheme {
+        get { ProfileTheme(rawValue: profileThemeRawValue) ?? .default }
+        set { profileThemeRawValue = newValue.rawValue }
+    }
+    
+    private var themeColors: ProfileTheme.Colors { profileTheme.colors }
+    
+    private var profileThemeBinding: Binding<ProfileTheme> {
+        Binding(
+            get: { ProfileTheme(rawValue: profileThemeRawValue) ?? .default },
+            set: { profileThemeRawValue = $0.rawValue }
+        )
+    }
+
     var body: some View {
         NavigationView {
             ScrollViewReader { proxy in
@@ -44,156 +63,184 @@ struct ProfileView: View {
                             .id("top")
                             .padding(.top, -8)
                         
-                        // Profile Picture
-                        Menu {
-                        Button(action: { showImagePicker = true }) {
-                            Label("Choose from Photos", systemImage: "photo.on.rectangle")
-                        }
-                        
-                        Button(action: { showDefaultPictureOptions = true }) {
-                            Label("Choose Default Icon", systemImage: "person.crop.circle.badge.checkmark")
-                        }
-                    } label: {
-                        ZStack(alignment: .bottomTrailing) {
-                            if let profileImage = profileImage {
-                                Image(uiImage: profileImage)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 100, height: 100)
-                                    .clipShape(Circle())
-                                    .overlay(
-                                        Circle()
-                                            .stroke(Color(red: 0.5, green: 0.6, blue: 0.7), lineWidth: 3)
-                                    )
-                            } else {
-                                Image(systemName: selectedDefaultIcon ?? "person.circle.fill")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 100, height: 100)
-                                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
-                            }
-                            
-                            // Camera icon indicator
-                            Image(systemName: "camera.circle.fill")
-                                .font(.system(size: 32))
-                                .foregroundColor(.white)
-                                .background(
-                                    Circle()
-                                        .fill(Color(red: 0.5, green: 0.6, blue: 0.7))
-                                        .frame(width: 36, height: 36)
-                                )
-                                .offset(x: 4, y: 4)
-                        }
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    VStack(spacing: 8) {
-                        if isEditingName {
-                            HStack(spacing: 8) {
-                                TextField("Enter your name", text: $tempUserName)
-                                    .font(.system(size: 28, weight: .light, design: .default))
-                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
-                                    .multilineTextAlignment(.center)
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                                    .frame(maxWidth: 250)
-                                
-                                Button(action: {
-                                    if !tempUserName.trimmingCharacters(in: .whitespaces).isEmpty {
-                                        userName = tempUserName
-                                        saveUserName(tempUserName)
+                    // Profile Summary Card
+                    VStack {
+                        HStack(alignment: .center, spacing: 24) {
+                            VStack(alignment: .center, spacing: 12) {
+                                Menu {
+                                    Button(action: { showImagePicker = true }) {
+                                        Label("Choose from Photos", systemImage: "photo.on.rectangle")
                                     }
-                                    isEditingName = false
-                                }) {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .font(.system(size: 28))
-                                        .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
-                                }
-                            }
-                        } else {
-                            Button(action: {
-                                tempUserName = userName
-                                isEditingName = true
-                            }) {
-                                HStack(spacing: 6) {
-                                    Text(userName)
-                                        .font(.system(size: 34, weight: .light, design: .default))
-                                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
                                     
-                                    Image(systemName: "pencil.circle")
-                                        .font(.system(size: 20))
-                                        .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                    Button(action: { showDefaultPictureOptions = true }) {
+                                        Label("Choose Default Icon", systemImage: "person.crop.circle.badge.checkmark")
+                                    }
+                                } label: {
+                                    ZStack(alignment: .bottomTrailing) {
+                                        Group {
+                                            if let profileImage = profileImage {
+                                                Image(uiImage: profileImage)
+                                                    .resizable()
+                                                    .scaledToFill()
+                                            } else {
+                                                Image(systemName: selectedDefaultIcon ?? "person.circle.fill")
+                                                    .resizable()
+                                                    .scaledToFit()
+                                                    .foregroundColor(themeColors.accent)
+                                            }
+                                        }
+                                        .frame(width: 96, height: 96)
+                                        .clipShape(Circle())
+                                        .overlay(
+                                            Circle()
+                                                .stroke(themeColors.accent, lineWidth: 3)
+                                        )
+                                        
+                                        Circle()
+                                            .fill(themeColors.accent)
+                                            .frame(width: 28, height: 28)
+                                            .overlay(
+                                                Image(systemName: "checkmark")
+                                                    .font(.system(size: 14, weight: .bold))
+                                                    .foregroundColor(themeColors.cardBackground)
+                                            )
+                                            .offset(x: 6, y: 6)
+                                    }
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                
+                                VStack(spacing: 6) {
+                                    if isEditingName {
+                                        HStack(spacing: 8) {
+                                            TextField("Enter your name", text: $tempUserName)
+                                                .font(.system(size: 26, weight: .light, design: .default))
+                                                .foregroundColor(themeColors.primaryText)
+                                                .multilineTextAlignment(.center)
+                                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                                .frame(maxWidth: 220)
+                                            
+                                            Button(action: {
+                                                if !tempUserName.trimmingCharacters(in: .whitespaces).isEmpty {
+                                                    userName = tempUserName
+                                                    saveUserName(tempUserName)
+                                                }
+                                                isEditingName = false
+                                            }) {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .font(.system(size: 26))
+                                                    .foregroundColor(themeColors.accent)
+                                            }
+                                        }
+                                    } else {
+                                        Button(action: {
+                                            tempUserName = userName
+                                            isEditingName = true
+                                        }) {
+                                            VStack(spacing: 4) {
+                                                Text(userName)
+                                                    .font(.system(size: 30, weight: .semibold, design: .default))
+                                                    .foregroundColor(themeColors.primaryText)
+                                            }
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                    }
+                                    
+                                    Text(statsManager.motivationalMessage)
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundColor(themeColors.secondaryText)
+                                    
+                                    Text(todayString)
+                                        .font(.system(size: 12, weight: .regular))
+                                        .foregroundColor(themeColors.subtleText)
                                 }
                             }
-                            .buttonStyle(PlainButtonStyle())
+                            .frame(maxWidth: .infinity)
+                            
+                            Rectangle()
+                                .fill(themeColors.separator.opacity(0.7))
+                                .frame(width: 1, height: 120)
+                                .cornerRadius(1)
+                            
+                            ProfileStatsBlock(stats: summaryStats, colors: themeColors)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        
-                        Text(statsManager.motivationalMessage)
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
-
-                        Text(todayString)
-                            .font(.system(size: 14, weight: .regular))
-                            .foregroundColor(Color(red: 0.55, green: 0.65, blue: 0.75))
+                        .padding(.vertical, 12)
                     }
-
-                    // Main Stats Card
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 24)
+                            .fill(themeColors.cardBackground)
+                            .shadow(color: themeColors.cardShadow, radius: 25, x: 0, y: 16)
+                    )
+                    
+                    // Activity Overview Card
                     VStack(alignment: .leading, spacing: 12) {
                         NavigationLink(destination: ActivityCalendarView()) {
                             HStack {
                                 Label("Current Streak", systemImage: "flame.fill")
                                     .font(.system(size: 17, weight: .regular))
+                                    .foregroundColor(themeColors.primaryText)
                                 Spacer()
                                 Text(statsManager.currentStreak == 0 ? "—" : "\(statsManager.currentStreak) \(statsManager.currentStreak == 1 ? "day" : "days")")
                                     .font(.system(size: 17, weight: .semibold))
-                                    .foregroundColor(statsManager.currentStreak >= 3 ? Color.orange : Color(red: 0.2, green: 0.3, blue: 0.4))
+                                    .foregroundColor(statsManager.currentStreak >= 3 ? themeColors.highlight : themeColors.primaryText)
                                 Image(systemName: "chevron.right")
                                     .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(Color(red: 0.35, green: 0.45, blue: 0.55).opacity(0.6))
+                                    .foregroundColor(themeColors.subtleText)
                             }
                         }
                         .buttonStyle(PlainButtonStyle())
+                        .tint(themeColors.accent)
                         
                         Divider()
+                            .background(themeColors.separator)
                         
                         HStack {
                             Label("Total Sessions", systemImage: "checkmark.circle.fill")
                                 .font(.system(size: 17, weight: .regular))
+                                .foregroundColor(themeColors.primaryText)
                             Spacer()
                             Text("\(statsManager.totalSessions)")
                                 .font(.system(size: 17, weight: .semibold))
-                                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                .foregroundColor(themeColors.primaryText)
                         }
                         
                         Divider()
+                            .background(themeColors.separator)
                         
                         HStack {
                             Label("Total Time", systemImage: "clock.fill")
                                 .font(.system(size: 17, weight: .regular))
+                                .foregroundColor(themeColors.primaryText)
                             Spacer()
                             Text(statsManager.totalSessions > 0 ? statsManager.totalTimeFormatted : "—")
                                 .font(.system(size: 17, weight: .semibold))
-                                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                .foregroundColor(themeColors.primaryText)
                         }
                         
                         Divider()
+                            .background(themeColors.separator)
                         
                         HStack {
                             Label("Favorite Activity", systemImage: "star.fill")
                                 .font(.system(size: 17, weight: .regular))
+                                .foregroundColor(themeColors.primaryText)
                             Spacer()
                             Text(statsManager.favoriteActivity)
                                 .font(.system(size: 17, weight: .semibold))
-                                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                .foregroundColor(themeColors.primaryText)
                         }
                     }
                     .font(.system(size: 17, weight: .regular))
-                    .foregroundColor(Color(red: 0.35, green: 0.45, blue: 0.55))
-                    .frame(maxWidth: 360)
+                    .foregroundColor(themeColors.primaryText)
+                    .frame(maxWidth: .infinity)
                     .padding()
                     .background(
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(Color.white)
-                            .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
+                            .fill(themeColors.cardBackground)
+                            .shadow(color: themeColors.cardShadow, radius: 20, x: 0, y: 10)
                     )
                     
                     // Additional Stats Card
@@ -201,14 +248,14 @@ struct ProfileView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("More Stats")
                                 .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+                                .foregroundColor(themeColors.secondaryText)
                             
                             HStack {
                                 Text("Active Days")
                                 Spacer()
                                 Text("\(statsManager.totalActiveDays)")
                                     .font(.system(size: 15, weight: .medium))
-                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                    .foregroundColor(themeColors.primaryText)
                             }
                             
                             HStack {
@@ -216,7 +263,7 @@ struct ProfileView: View {
                                 Spacer()
                                 Text("\(statsManager.longestStreak) \(statsManager.longestStreak == 1 ? "day" : "days")")
                                     .font(.system(size: 15, weight: .medium))
-                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                    .foregroundColor(themeColors.primaryText)
                             }
                             
                             HStack {
@@ -224,7 +271,7 @@ struct ProfileView: View {
                                 Spacer()
                                 Text(statsManager.averageSessionDurationFormatted)
                                     .font(.system(size: 15, weight: .medium))
-                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                    .foregroundColor(themeColors.primaryText)
                             }
                             
                             HStack {
@@ -232,17 +279,17 @@ struct ProfileView: View {
                                 Spacer()
                                 Text("\(statsManager.sessionsThisWeek) sessions")
                                     .font(.system(size: 15, weight: .medium))
-                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                    .foregroundColor(themeColors.primaryText)
                             }
                         }
                         .font(.system(size: 15, weight: .regular))
-                        .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
-                        .frame(maxWidth: 360)
+                        .foregroundColor(themeColors.primaryText)
+                        .frame(maxWidth: .infinity)
                         .padding()
                         .background(
                             RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.white)
-                                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
+                                .fill(themeColors.cardBackground)
+                                .shadow(color: themeColors.cardShadow, radius: 20, x: 0, y: 10)
                         )
                     }
 
@@ -252,23 +299,24 @@ struct ProfileView: View {
                             HStack {
                                 Label("Analytics", systemImage: "chart.line.uptrend.xyaxis")
                                     .font(.system(size: 15, weight: .medium))
-                                    .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                                    .foregroundColor(themeColors.primaryText)
                                 Spacer()
                                 Image(systemName: "chevron.right")
                                     .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6).opacity(0.6))
+                                    .foregroundColor(themeColors.subtleText)
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 12)
                             .background(
                                 RoundedRectangle(cornerRadius: 14)
-                                    .fill(Color.white)
-                                    .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 6)
+                                    .fill(themeColors.cardBackground)
+                                    .shadow(color: themeColors.cardShadow, radius: 12, x: 0, y: 6)
                             )
                         }
                         .buttonStyle(PlainButtonStyle())
+                        .tint(themeColors.accent)
                     }
-                    .frame(maxWidth: 360)
+                    .frame(maxWidth: .infinity)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
@@ -305,11 +353,14 @@ struct ProfileView: View {
                     }
                 )
             }
+            .sheet(isPresented: $showSettings) {
+                ProfileSettingsView(selectedTheme: profileThemeBinding)
+            }
             .background(
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        Color(red: 0.95, green: 0.97, blue: 1.0),
-                        Color(red: 0.9, green: 0.94, blue: 0.98)
+                        themeColors.backgroundTop,
+                        themeColors.backgroundBottom
                     ]),
                     startPoint: .top,
                     endPoint: .bottom
@@ -322,6 +373,14 @@ struct ProfileView: View {
                     Button(action: { onDismiss?() }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(themeColors.primaryText)
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { showSettings = true }) {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(themeColors.primaryText)
                     }
                 }
             }
@@ -385,6 +444,222 @@ struct ProfileView: View {
     
     private func saveUserName(_ name: String) {
         UserDefaults.standard.set(name, forKey: "userName")
+    }
+
+    private var installDate: Date {
+        if installDateTimestamp == 0 {
+            let now = Date()
+            installDateTimestamp = now.timeIntervalSince1970
+            return now
+        }
+        return Date(timeIntervalSince1970: installDateTimestamp)
+    }
+    
+    private var daysWithUs: Int {
+        max(Calendar.current.dateComponents([.day], from: installDate, to: Date()).day ?? 0, 0)
+    }
+    
+    private var withUsValue: String {
+        let days = daysWithUs
+        if days < 7 {
+            return "\(days)d"
+        }
+        let weeks = days / 7
+        if weeks < 8 {
+            return "\(weeks) wk"
+        }
+        let months = days / 30
+        if months < 12 {
+            return "\(months) mo"
+        }
+        let years = max(days / 365, 1)
+        return "\(years) yr"
+    }
+    
+    private var averageSleepHours: Double? {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        let sessions = sessionManager.sleepSessions(from: cutoff, to: Date())
+        guard !sessions.isEmpty else { return nil }
+        let totalSeconds = sessions.reduce(0) { $0 + $1.durationSeconds }
+        return Double(totalSeconds) / Double(sessions.count) / 3600.0
+    }
+    
+    private var averageSleepDisplay: String {
+        guard let hours = averageSleepHours else { return "—" }
+        return String(format: "%0.1fh", hours)
+    }
+    
+    private var dayStreakDisplay: String {
+        let streak = max(statsManager.currentStreak, 0)
+        return streak == 0 ? "0" : "\(streak)"
+    }
+    
+    private var summaryStats: [ProfileStatItem] {
+        [
+            ProfileStatItem(value: dayStreakDisplay, label: "Day streak"),
+            ProfileStatItem(value: averageSleepDisplay, label: "Avg sleep"),
+            ProfileStatItem(value: withUsValue, label: "With us")
+        ]
+    }
+}
+
+// MARK: - Profile Theme Model
+enum ProfileTheme: String, CaseIterable, Identifiable {
+    case `default`
+    case dark
+    case white
+    
+    struct Colors {
+        let accent: Color
+        let primaryText: Color
+        let secondaryText: Color
+        let subtleText: Color
+        let highlight: Color
+        let cardBackground: Color
+        let cardShadow: Color
+        let backgroundTop: Color
+        let backgroundBottom: Color
+        let separator: Color
+    }
+    
+    var id: String { rawValue }
+    
+    var displayName: String {
+        switch self {
+        case .default: return "Default"
+        case .dark: return "Dark"
+        case .white: return "White"
+        }
+    }
+    
+    var symbolName: String {
+        switch self {
+        case .default: return "circle.grid.2x1"
+        case .dark: return "moon.fill"
+        case .white: return "sun.max.fill"
+        }
+    }
+    
+    var colors: Colors {
+        switch self {
+        case .default:
+            return Colors(
+                accent: Color(red: 0.5, green: 0.6, blue: 0.7),
+                primaryText: Color(red: 0.2, green: 0.3, blue: 0.4),
+                secondaryText: Color(red: 0.5, green: 0.6, blue: 0.7),
+                subtleText: Color(red: 0.55, green: 0.65, blue: 0.75),
+                highlight: Color.orange,
+                cardBackground: Color.white,
+                cardShadow: Color.black.opacity(0.08),
+                backgroundTop: Color(red: 0.95, green: 0.97, blue: 1.0),
+                backgroundBottom: Color(red: 0.9, green: 0.94, blue: 0.98),
+                separator: Color(red: 0.9, green: 0.94, blue: 0.98)
+            )
+        case .dark:
+            return Colors(
+                accent: Color(red: 0.45, green: 0.68, blue: 0.95),
+                primaryText: Color.white,
+                secondaryText: Color.white.opacity(0.8),
+                subtleText: Color.white.opacity(0.55),
+                highlight: Color.orange,
+                cardBackground: Color(red: 0.12, green: 0.15, blue: 0.2),
+                cardShadow: Color.black.opacity(0.55),
+                backgroundTop: Color(red: 0.04, green: 0.05, blue: 0.08),
+                backgroundBottom: Color(red: 0.09, green: 0.11, blue: 0.16),
+                separator: Color.white.opacity(0.18)
+            )
+        case .white:
+            return Colors(
+                accent: Color(red: 0.62, green: 0.68, blue: 0.78),
+                primaryText: Color(red: 0.18, green: 0.2, blue: 0.24),
+                secondaryText: Color(red: 0.42, green: 0.46, blue: 0.54),
+                subtleText: Color(red: 0.6, green: 0.64, blue: 0.72),
+                highlight: Color(red: 0.93, green: 0.44, blue: 0.27),
+                cardBackground: Color.white,
+                cardShadow: Color.black.opacity(0.08),
+                backgroundTop: Color.white,
+                backgroundBottom: Color(red: 0.96, green: 0.97, blue: 0.99),
+                separator: Color(red: 0.92, green: 0.94, blue: 0.97)
+            )
+        }
+    }
+}
+
+// MARK: - Settings Sheet
+struct ProfileSettingsView: View {
+    @Binding var selectedTheme: ProfileTheme
+    @Environment(\.presentationMode) private var presentationMode
+    
+    var body: some View {
+        NavigationView {
+            List {
+                Section(header: Text("Theme")) {
+                    ForEach(ProfileTheme.allCases) { theme in
+                        Button(action: {
+                            selectedTheme = theme
+                        }) {
+                            HStack(spacing: 12) {
+                                Image(systemName: theme.symbolName)
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundColor(theme.colors.accent)
+                                Text(theme.displayName)
+                                Spacer()
+                                if selectedTheme == theme {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(theme.colors.accent)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .foregroundColor(.primary)
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Settings")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Profile Summary Helpers
+private struct ProfileStatItem: Identifiable {
+    let id = UUID()
+    let value: String
+    let label: String
+}
+
+private struct ProfileStatsBlock: View {
+    let stats: [ProfileStatItem]
+    let colors: ProfileTheme.Colors
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            ForEach(Array(stats.enumerated()), id: \.offset) { index, stat in
+                if index > 0 {
+                    Rectangle()
+                        .fill(colors.separator.opacity(0.7))
+                        .frame(height: 1)
+                        .cornerRadius(1)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(stat.value)
+                        .font(.system(size: 28, weight: .semibold, design: .default))
+                        .foregroundColor(colors.primaryText)
+                    Text(stat.label)
+                        .font(.system(size: 13, weight: .regular, design: .default))
+                        .foregroundColor(colors.secondaryText)
+                        .textCase(.none)
+                }
+            }
+        }
     }
 }
 
