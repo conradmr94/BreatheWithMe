@@ -240,24 +240,8 @@ struct SleepView: View {
                     if !isRunning {
                         let accent = Color(red: 0.4, green: 0.5, blue: 0.8)
                         VStack(alignment: .leading, spacing: 10) {
-                            HStack(spacing: 12) {
-                                Button(action: { toggleAlarm() }) {
-                                    HStack(spacing: 8) {
-                                        Image(systemName: isAlarmEnabled ? "alarm.fill" : "alarm")
-                                            .font(.system(size: 16))
-                                        Text(isAlarmEnabled ? alarmDisplayTime : "Set Alarm")
-                                            .font(.system(size: 15, weight: .medium, design: .default))
-                                    }
-                                    .foregroundColor(isAlarmEnabled ? accent : Color.white.opacity(0.7))
-                                    .padding(.horizontal, 18)
-                                    .padding(.vertical, 10)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 20)
-                                            .fill(isAlarmEnabled ? accent.opacity(0.25) : Color.white.opacity(0.12))
-                                    )
-                                }
-                                .buttonStyle(PlainButtonStyle())
-
+                            HStack {
+                                Spacer()
                                 Button(action: {
                                     alarmTimePickerValue = alarmFireDate
                                     showAlarmSettings = true
@@ -277,6 +261,7 @@ struct SleepView: View {
                                     )
                                 }
                                 .buttonStyle(PlainButtonStyle())
+                                Spacer()
                             }
 
                             if isAlarmEnabled {
@@ -290,12 +275,6 @@ struct SleepView: View {
                                 }
                                 .padding(.horizontal, 4)
                                 .transition(.opacity)
-                            } else {
-                                Text("Tap Alarm Options to configure wake time, sound, and focus lock.")
-                                    .font(.system(size: 12, weight: .regular))
-                                    .foregroundColor(.white.opacity(0.6))
-                                    .padding(.horizontal, 4)
-                                    .transition(.opacity)
                             }
                         }
                     }
