@@ -411,6 +411,18 @@ struct SleepView: View {
             }
         )
     }
+    
+    private var alarmEnabledBinding: Binding<Bool> {
+        Binding<Bool>(
+            get: { isAlarmEnabled },
+            set: { newValue in
+                // Only toggle if the value is actually changing
+                if newValue != isAlarmEnabled {
+                    toggleAlarm()
+                }
+            }
+        )
+    }
 
     private func toggleAlarm() {
         if var existing = alarm {
@@ -635,7 +647,7 @@ struct SleepView: View {
             stopAlarmPreview()
         }) {
             let sheetView = AlarmSettingsSheet(
-                isAlarmEnabled: isAlarmEnabled,
+                isAlarmEnabled: alarmEnabledBinding,
                 alarmDate: alarmTimeBinding,
                 selectedSound: alarmSoundBinding,
                 soundOptions: NoiseGenerator.NoiseType.alarmEligibleCases,
@@ -1177,7 +1189,7 @@ struct AlarmActiveOverlay: View {
 }
 
 private struct AlarmSettingsSheet: View {
-    let isAlarmEnabled: Bool
+    @Binding var isAlarmEnabled: Bool
     @Binding var alarmDate: Date
     @Binding var selectedSound: NoiseGenerator.NoiseType
     let soundOptions: [NoiseGenerator.NoiseType]
@@ -1199,6 +1211,13 @@ private struct AlarmSettingsSheet: View {
 
     private var formContent: some View {
         Form {
+            Section {
+                Toggle(isOn: $isAlarmEnabled) {
+                    Text("Alarm")
+                        .font(.system(size: 15, weight: .semibold))
+                }
+            }
+            
             Section(header: Text("Wake Time")) {
                 DatePicker(
                     "Wake time",
