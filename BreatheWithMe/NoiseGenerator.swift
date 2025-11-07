@@ -39,6 +39,7 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         case city = "City"
         case fire = "Fire"
         case birds = "Birds"
+        case night = "Night"
         
         var description: String {
             switch self {
@@ -56,6 +57,7 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             case .city: return "City"
             case .fire: return "Fire"
             case .birds: return "Birds"
+            case .night: return "Night"
             }
         }
         
@@ -75,6 +77,7 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             case .city: return "building.2"
             case .fire: return "flame"
             case .birds: return "bird"
+            case .night: return "moon.stars"
             }
         }
     }
@@ -157,7 +160,7 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
     
     private func getAudioFilename(for type: NoiseType) -> String {
-        return type.bundleFileName ?? ""
+            return type.bundleFileName ?? ""
     }
     
     private func createPlaceholderAudio(for type: NoiseType) {
@@ -210,6 +213,8 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             generateFirePlaceholder(channelData: channelData, frameCount: frameCount)
         case .birds:
             generateBirdsPlaceholder(channelData: channelData, frameCount: frameCount)
+        case .night:
+            generateNightPlaceholder(channelData: channelData, frameCount: frameCount)
         default:
             break
         }
@@ -366,7 +371,9 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         if isRealAudioType(currentNoiseType) {
             // Apply volume for real audio files
             if let audioPlayer = audioPlayers[currentNoiseType] {
-                audioPlayer.volume = vol
+                let multiplier = volumeMultiplier(for: currentNoiseType)
+                let adjustedVolume = min(1.0, vol * multiplier)
+                audioPlayer.volume = adjustedVolume
             }
         } else {
             // Apply volume for generated noise (reduced for color noise)
@@ -377,7 +384,10 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     
     private func getCurrentVolume() -> Float {
         if isRealAudioType(currentNoiseType) {
-            return audioPlayers[currentNoiseType]?.volume ?? baseVolume
+            let multiplier = volumeMultiplier(for: currentNoiseType)
+            if multiplier == 0 { return baseVolume }
+            let storedVolume = audioPlayers[currentNoiseType]?.volume ?? baseVolume
+            return min(1.0, storedVolume / multiplier)
         } else {
             return player.volume / 0.3 // Account for the reduction
         }
@@ -470,6 +480,8 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             generateFireNoise(channelData: channelData, frameCount: frameCount)
         case .birds:
             generateBirdsNoise(channelData: channelData, frameCount: frameCount)
+        case .night:
+            generateNightNoise(channelData: channelData, frameCount: frameCount)
         case .white:
             generateWhiteNoise(channelData: channelData, frameCount: frameCount)
         case .pink:
@@ -566,6 +578,18 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             let chirp1 = sin(time * 8.0) * abs(sin(time * 0.3)) * 0.08
             let chirp2 = sin(time * 12.0) * abs(sin(time * 0.5)) * 0.06
             channelData[i] = (chirp1 + chirp2) * 0.3
+        }
+    }
+    
+    private func generateNightNoise(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
+        for i in 0..<frameCount {
+            let time = Float(i) / Float(sampleRate)
+            let lowHum = sin(time * 0.2) * 0.18
+            let gentleBreeze = sin(time * 0.9) * 0.07
+            let insect = sin(time * 5.5) * abs(sin(time * 0.4)) * 0.06
+            let distantOwl = sin(time * 2.3) * abs(sin(time * 0.15)) * 0.04
+            let random = Float.random(in: -0.025...0.025)
+            channelData[i] = (lowHum + gentleBreeze + insect + distantOwl + random) * 0.35
         }
     }
     
@@ -682,6 +706,17 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
     }
     
+    private func generateNightPlaceholder(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
+        for i in 0..<frameCount {
+            let time = Float(i) / Float(sampleRate)
+            let lowHum = sin(time * 0.25) * 0.12
+            let distantWind = sin(time * 0.8) * 0.05
+            let insect = sin(time * 6.0) * abs(sin(time * 0.35)) * 0.04
+            let random = Float.random(in: -0.02...0.02)
+            channelData[i] = (lowHum + distantWind + insect + random) * 0.25
+        }
+    }
+    
     deinit {
         stopNoise()
     }
@@ -724,12 +759,27 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
 }
 
+private extension NoiseGenerator {
+    func volumeMultiplier(for type: NoiseType) -> Float {
+        switch type {
+        case .birds:
+            return 4.5
+        case .forest:
+            return 4.0
+        case .night:
+            return 5.0
+        default:
+            return 1.0
+        }
+    }
+}
+
 // MARK: - Alarm Support Helpers
 
 extension NoiseGenerator.NoiseType {
     /// Nature/ambient sounds that have backing audio assets and are eligible for alarms.
     static var alarmEligibleCases: [NoiseGenerator.NoiseType] {
-        [.rain, .ocean, .wind, .thunder, .forest, .cafe, .city, .fire, .birds]
+        [.rain, .ocean, .wind, .thunder, .forest, .cafe, .city, .fire, .birds, .night]
     }
 
     /// Indicates whether this noise type maps to a bundled ambient sound asset.
@@ -749,6 +799,7 @@ extension NoiseGenerator.NoiseType {
         case .city: return "city.mp3"
         case .fire: return "fire.mp3"
         case .birds: return "birds.mp3"
+        case .night: return "night.mp3"
         default: return nil
         }
     }
