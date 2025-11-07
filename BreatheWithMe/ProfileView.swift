@@ -37,7 +37,7 @@ struct ProfileView: View {
         NavigationView {
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(spacing: 24) {
+                        VStack(spacing: 24) {
                         // Invisible anchor at the top for scrolling
                         Color.clear
                             .frame(height: 1)
@@ -243,27 +243,7 @@ struct ProfileView: View {
                     }
 
                     // Bottom stats shortcuts
-                    VStack(spacing: 10) {
-                        NavigationLink(destination: StatsView()) {
-                            HStack {
-                                Label("Stats", systemImage: "chart.bar.doc.horizontal")
-                                    .font(.system(size: 15, weight: .medium))
-                                    .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6).opacity(0.6))
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .fill(Color.white)
-                                    .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 6)
-                            )
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        
+                    VStack(spacing: 10) {                        
                         NavigationLink(destination: AnalyticsView()) {
                             HStack {
                                 Label("Analytics", systemImage: "chart.line.uptrend.xyaxis")
@@ -285,10 +265,10 @@ struct ProfileView: View {
                         .buttonStyle(PlainButtonStyle())
                     }
                     .frame(maxWidth: 360)
-                    .padding(.bottom, 8)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
+                .padding(.bottom, 40)
                 }
                 .onAppear {
                     loadProfileImage()
@@ -341,6 +321,7 @@ struct ProfileView: View {
                     }
                 }
             }
+            .modifier(ToolbarBackgroundModifier())
             .contentShape(Rectangle())
             .simultaneousGesture(
                 DragGesture(minimumDistance: 30, coordinateSpace: .local)
@@ -498,6 +479,17 @@ struct ImagePicker: UIViewControllerRepresentable {
         
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             parent.presentationMode.wrappedValue.dismiss()
+        }
+    }
+}
+
+// MARK: - Toolbar Background Modifier
+struct ToolbarBackgroundModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 16.0, *) {
+            content.toolbarBackground(.hidden, for: .navigationBar)
+        } else {
+            content
         }
     }
 }

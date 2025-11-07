@@ -2,7 +2,7 @@
 //  AnalyticsView.swift
 //  BreatheWithMe
 //
-//  Unified analytics view for all three features: Sleep, Focus, Breathing, plus Insights
+//  Unified analytics view combining stats and analytics for all three features: Sleep, Focus, Breathing, plus Insights
 
 import SwiftUI
 import Charts
@@ -89,10 +89,12 @@ struct AnalyticsView: View {
     }
 }
 
-// MARK: - Sleep Analytics Content
-struct SleepAnalyticsContent: View {
+// MARK: - Breathing Analytics Content (Stats + Analytics)
+struct BreathingAnalyticsContent: View {
     @StateObject private var sessionManager = SessionManager.shared
     @State private var selectedTimeframe: Timeframe = .week
+    @AppStorage("breatheStats") private var breatheStatsData: Data = Data()
+    @StateObject private var userStatsManager = UserStatsManager()
     
     enum Timeframe: String, CaseIterable {
         case week = "7 Days"
@@ -108,17 +110,43 @@ struct SleepAnalyticsContent: View {
         }
     }
     
-    private var sleepSessions: [EnhancedSession] {
+    private var breatheStats: BreatheStats {
+        get {
+            if let decoded = try? JSONDecoder().decode(BreatheStats.self, from: breatheStatsData) {
+                return decoded
+            }
+            return BreatheStats()
+        }
+        set {
+            if let encoded = try? JSONEncoder().encode(newValue) {
+                breatheStatsData = encoded
+            }
+        }
+    }
+    
+    private var sessionsThisWeek: Int {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) else {
+            return 0
+        }
+        
+        return userStatsManager.sessionHistory.filter { session in
+            session.activityType == .breathe && session.date >= weekStart
+        }.count
+    }
+    
+    private var breathingSessions: [EnhancedSession] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -selectedTimeframe.days, to: Date()) ?? Date()
-        return sessionManager.sleepSessions(from: cutoff, to: Date())
+        return sessionManager.breathingSessions(from: cutoff, to: Date())
     }
     
-    private var averageScore: Double? {
-        sessionManager.averageSleepScore(days: selectedTimeframe.days)
+    private var averageStressReduction: Double? {
+        sessionManager.averageStressReduction(days: selectedTimeframe.days)
     }
     
-    private var bedtimeRegularity: (mean: Date, stdDev: TimeInterval)? {
-        sessionManager.bedtimeRegularity(days: selectedTimeframe.days)
+    private var currentStreak: Int {
+        sessionManager.breathingStreak()
     }
     
     var body: some View {
@@ -126,7 +154,7 @@ struct SleepAnalyticsContent: View {
             VStack(spacing: 24) {
                 // Header
                 VStack(spacing: 8) {
-                    Text("Sleep Analytics")
+                    Text("Breathing Analytics")
                         .font(.system(size: 28, weight: .bold))
                         .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
                     
@@ -141,34 +169,263 @@ struct SleepAnalyticsContent: View {
                 }
                 .padding(.top)
                 
-                // Import existing sleep analytics components
-                if let avgScore = averageScore {
-                    SleepScoreCard(score: avgScore, sessions: sleepSessions)
+                // MARK: - Stats Section
+                if breatheStats.sessionsCompleted > 0 {
+                    // Overview Card
+                    VStack(spacing: 16) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Total Sessions")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                Text("\(breatheStats.sessionsCompleted)")
+                                    .font(.system(size: 36, weight: .bold))
+                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                            }
+                            
+                            Spacer()
+                            
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text("Total Time")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                Text(breatheStats.totalTimeFormatted)
+                                    .font(.system(size: 36, weight: .bold))
+                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                            }
+                        }
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.white)
+                            .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
+                    )
+                    .padding(.horizontal, 20)
+                    
+                    // Average Duration
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: "clock.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(Color(red: 0.4, green: 0.7, blue: 0.9))
+                            
+                            Text("Average Duration")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                        }
+                        
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(breatheStats.averageDurationFormatted)
+                                .font(.system(size: 28, weight: .bold))
+                                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                            
+                            Text("per session")
+                                .font(.system(size: 14, weight: .regular))
+                                .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.white)
+                            .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
+                    )
+                    .padding(.horizontal, 20)
+                    
+                    // Session Type Breakdown
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Image(systemName: "chart.bar.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(Color(red: 0.4, green: 0.7, blue: 0.9))
+                            
+                            Text("Session Types")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                        }
+                        
+                        // 4-7-8 Sessions
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("4-7-8 Technique")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                
+                                Text("Inhale 4s • Hold 7s • Exhale 8s")
+                                    .font(.system(size: 13, weight: .regular))
+                                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                            }
+                            
+                            Spacer()
+                            
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text("\(breatheStats.sessions478)")
+                                    .font(.system(size: 24, weight: .bold))
+                                    .foregroundColor(Color(red: 0.6, green: 0.5, blue: 0.8))
+                                
+                                if breatheStats.sessionsCompleted > 0 {
+                                    Text("\(Int(Double(breatheStats.sessions478) / Double(breatheStats.sessionsCompleted) * 100))%")
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                }
+                            }
+                        }
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(red: 0.6, green: 0.5, blue: 0.8).opacity(0.08))
+                        )
+                        
+                        // Standard Sessions
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Standard Breathing")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                
+                                Text("Custom interval breathing")
+                                    .font(.system(size: 13, weight: .regular))
+                                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                            }
+                            
+                            Spacer()
+                            
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text("\(breatheStats.standardSessions)")
+                                    .font(.system(size: 24, weight: .bold))
+                                    .foregroundColor(Color(red: 0.4, green: 0.7, blue: 0.9))
+                                
+                                if breatheStats.sessionsCompleted > 0 {
+                                    Text("\(Int(Double(breatheStats.standardSessions) / Double(breatheStats.sessionsCompleted) * 100))%")
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                }
+                            }
+                        }
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(red: 0.4, green: 0.7, blue: 0.9).opacity(0.08))
+                        )
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.white)
+                            .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
+                    )
+                    .padding(.horizontal, 20)
+                    
+                    // Details
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Details")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                        
+                        HStack {
+                            Image(systemName: "heart.fill")
+                                .foregroundColor(Color(red: 0.9, green: 0.5, blue: 0.5))
+                                .frame(width: 24)
+                            
+                            Text("Longest Session")
+                                .font(.system(size: 15, weight: .regular))
+                                .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                            
+                            Spacer()
+                            
+                            Text(breatheStats.longestSessionSeconds > 0 ? breatheStats.longestSessionFormatted : "—")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+                        }
+                        
+                        Divider()
+                        
+                        HStack {
+                            Image(systemName: "calendar")
+                                .foregroundColor(Color(red: 0.5, green: 0.8, blue: 0.5))
+                                .frame(width: 24)
+                            
+                            Text("This Week")
+                                .font(.system(size: 15, weight: .regular))
+                                .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                            
+                            Spacer()
+                            
+                            Text("\(sessionsThisWeek)")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+                        }
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.white)
+                            .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
+                    )
+                    .padding(.horizontal, 20)
+                } else {
+                    // Empty state
+                    VStack(spacing: 16) {
+                        Image(systemName: "wind")
+                            .font(.system(size: 48))
+                            .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                        
+                        Text("No Sessions Yet")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+                        
+                        Text("Complete your first breathing session\nto see your statistics here")
+                            .font(.system(size: 15, weight: .regular))
+                            .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.vertical, 60)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.white)
+                            .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
+                    )
+                    .padding(.horizontal, 20)
                 }
                 
-                if !sleepSessions.isEmpty {
-                    SleepDurationChart(sessions: sleepSessions)
+                // MARK: - Analytics Section
+                if !breathingSessions.isEmpty {
+                    Divider()
+                        .padding(.vertical, 8)
+                    
+                    Text("Analytics")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                    
+                    StreakCard(streak: currentStreak)
+                    
+                    if let reduction = averageStressReduction {
+                        StressReductionCard(reduction: reduction, sessions: breathingSessions)
+                    }
+                    
+                    ProtocolUsageChart(sessions: breathingSessions)
+                    
+                    BreathingFrequencyChart(sessions: breathingSessions)
+                    
+                    BreathingSummaryStats(sessions: breathingSessions)
                 }
-                
-                if let regularity = bedtimeRegularity {
-                    BedtimeRegularityCard(regularity: regularity)
-                }
-                
-                if !sleepSessions.isEmpty {
-                    SleepEventsCard(sessions: sleepSessions)
-                }
-                
-                SleepSummaryStats(sessions: sleepSessions)
             }
-            .padding()
+            .padding(.bottom, 8)
         }
     }
 }
 
-// MARK: - Focus Analytics Content
+// MARK: - Focus Analytics Content (Stats + Analytics)
 struct FocusAnalyticsContent: View {
     @StateObject private var sessionManager = SessionManager.shared
     @State private var selectedTimeframe: Timeframe = .week
+    @AppStorage("focusStats") private var focusStatsData: Data = Data()
+    @StateObject private var userStatsManager = UserStatsManager()
     
     enum Timeframe: String, CaseIterable {
         case week = "7 Days"
@@ -182,6 +439,32 @@ struct FocusAnalyticsContent: View {
             case .threeMonths: return 90
             }
         }
+    }
+    
+    private var focusStats: FocusStats {
+        get {
+            if let decoded = try? JSONDecoder().decode(FocusStats.self, from: focusStatsData) {
+                return decoded
+            }
+            return FocusStats()
+        }
+        set {
+            if let encoded = try? JSONEncoder().encode(newValue) {
+                focusStatsData = encoded
+            }
+        }
+    }
+    
+    private var focusSessionsThisWeek: Int {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) else {
+            return 0
+        }
+        
+        return userStatsManager.sessionHistory.filter { session in
+            session.activityType == .focus && session.date >= weekStart
+        }.count
     }
     
     private var focusSessions: [EnhancedSession] {
@@ -221,38 +504,284 @@ struct FocusAnalyticsContent: View {
                 }
                 .padding(.top)
                 
-                // Import existing focus analytics components
-                if let rate = completionRate {
-                    CompletionRateCard(rate: rate, sessions: focusSessions)
+                // MARK: - Stats Section
+                if focusStats.focusSessionsCompleted > 0 {
+                    // Overview Card
+                    VStack(spacing: 16) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Focus Sessions")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                Text("\(focusStats.focusSessionsCompleted)")
+                                    .font(.system(size: 36, weight: .bold))
+                                    .foregroundColor(Color(red: 0.9, green: 0.5, blue: 0.3))
+                            }
+                            
+                            Spacer()
+                            
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text("Focus Time")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                Text(focusStats.totalFocusTimeFormatted)
+                                    .font(.system(size: 36, weight: .bold))
+                                    .foregroundColor(Color(red: 0.9, green: 0.5, blue: 0.3))
+                            }
+                        }
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.white)
+                            .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
+                    )
+                    .padding(.horizontal, 20)
+                    
+                    // Average Durations
+                    VStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Image(systemName: "timer")
+                                    .font(.system(size: 18))
+                                    .foregroundColor(Color(red: 0.9, green: 0.5, blue: 0.3))
+                                
+                                Text("Avg Focus")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                            }
+                            
+                            Text(focusStats.averageFocusDurationFormatted)
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(red: 0.9, green: 0.5, blue: 0.3).opacity(0.08))
+                        )
+                        
+                        HStack(spacing: 12) {
+                            if focusStats.shortBreaksCompleted > 0 {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack {
+                                        Image(systemName: "cup.and.saucer.fill")
+                                            .font(.system(size: 18))
+                                            .foregroundColor(Color(red: 0.6, green: 0.8, blue: 0.7))
+                                        
+                                        Text("Avg Short")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                    }
+                                    
+                                    Text(focusStats.averageShortBreakDurationFormatted)
+                                        .font(.system(size: 24, weight: .bold))
+                                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(red: 0.6, green: 0.8, blue: 0.7).opacity(0.08))
+                                )
+                            }
+                            
+                            if focusStats.longBreaksCompleted > 0 {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack {
+                                        Image(systemName: "pause.circle.fill")
+                                            .font(.system(size: 18))
+                                            .foregroundColor(Color(red: 0.7, green: 0.7, blue: 0.9))
+                                        
+                                        Text("Avg Long")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                    }
+                                    
+                                    Text(focusStats.averageLongBreakDurationFormatted)
+                                        .font(.system(size: 24, weight: .bold))
+                                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(red: 0.7, green: 0.7, blue: 0.9).opacity(0.08))
+                                )
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    // Break Types
+                    if focusStats.restSessionsCompleted > 0 {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Image(systemName: "chart.bar.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(Color(red: 0.5, green: 0.8, blue: 0.5))
+                                
+                                Text("Break Types")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                            }
+                            
+                            HStack(spacing: 16) {
+                                VStack(spacing: 8) {
+                                    Text("\(focusStats.shortBreaksCompleted)")
+                                        .font(.system(size: 32, weight: .bold))
+                                        .foregroundColor(Color(red: 0.6, green: 0.8, blue: 0.7))
+                                    
+                                    Text("Short Breaks")
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(red: 0.6, green: 0.8, blue: 0.7).opacity(0.1))
+                                )
+                                
+                                VStack(spacing: 8) {
+                                    Text("\(focusStats.longBreaksCompleted)")
+                                        .font(.system(size: 32, weight: .bold))
+                                        .foregroundColor(Color(red: 0.7, green: 0.7, blue: 0.9))
+                                    
+                                    Text("Long Breaks")
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(red: 0.7, green: 0.7, blue: 0.9).opacity(0.1))
+                                )
+                            }
+                        }
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.white)
+                                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
+                        )
+                        .padding(.horizontal, 20)
+                    }
+                    
+                    // Details
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Details")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                        
+                        HStack {
+                            Image(systemName: "flame.fill")
+                                .foregroundColor(Color(red: 0.9, green: 0.5, blue: 0.3))
+                                .frame(width: 24)
+                            
+                            Text("Longest Focus Session")
+                                .font(.system(size: 15, weight: .regular))
+                                .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                            
+                            Spacer()
+                            
+                            Text(focusStats.longestFocusSessionSeconds > 0 ? focusStats.longestFocusSessionFormatted : "—")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+                        }
+                        
+                        Divider()
+                        
+                        HStack {
+                            Image(systemName: "calendar")
+                                .foregroundColor(Color(red: 0.5, green: 0.8, blue: 0.5))
+                                .frame(width: 24)
+                            
+                            Text("This Week")
+                                .font(.system(size: 15, weight: .regular))
+                                .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                            
+                            Spacer()
+                            
+                            Text("\(focusSessionsThisWeek)")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+                        }
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.white)
+                            .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
+                    )
+                    .padding(.horizontal, 20)
+                } else {
+                    // Empty state
+                    VStack(spacing: 16) {
+                        Image(systemName: "timer")
+                            .font(.system(size: 48))
+                            .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                        
+                        Text("No Sessions Yet")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+                        
+                        Text("Complete your first focus session\nto see your statistics here")
+                            .font(.system(size: 15, weight: .regular))
+                            .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.vertical, 60)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.white)
+                            .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
+                    )
+                    .padding(.horizontal, 20)
                 }
                 
+                // MARK: - Analytics Section
                 if !focusSessions.isEmpty {
+                    Divider()
+                        .padding(.vertical, 8)
+                    
+                    Text("Analytics")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                    
+                    if let rate = completionRate {
+                        CompletionRateCard(rate: rate, sessions: focusSessions)
+                    }
+                    
                     TimeOfDayPerformanceChart(sessions: focusSessions)
-                }
-                
-                if let recommendation = recommendedDuration {
-                    AdaptiveRecommendationCard(recommendedDuration: recommendation)
-                }
-                
-                if !focusSessions.isEmpty {
+                    
+                    if let recommendation = recommendedDuration {
+                        AdaptiveRecommendationCard(recommendedDuration: recommendation)
+                    }
+                    
                     DistractionCard(sessions: focusSessions)
-                }
-                
-                if !focusSessions.isEmpty {
+                    
                     FocusDurationChart(sessions: focusSessions)
+                    
+                    FocusSummaryStats(sessions: focusSessions)
                 }
-                
-                FocusSummaryStats(sessions: focusSessions)
             }
-            .padding()
+            .padding(.bottom, 8)
         }
     }
 }
 
-// MARK: - Breathing Analytics Content
-struct BreathingAnalyticsContent: View {
+// MARK: - Sleep Analytics Content (Stats + Analytics)
+struct SleepAnalyticsContent: View {
     @StateObject private var sessionManager = SessionManager.shared
     @State private var selectedTimeframe: Timeframe = .week
+    @StateObject private var vm = SleepViewModel()
+    @AppStorage("sleepStats") private var sleepStatsData: Data = Data()
     
     enum Timeframe: String, CaseIterable {
         case week = "7 Days"
@@ -268,17 +797,24 @@ struct BreathingAnalyticsContent: View {
         }
     }
     
-    private var breathingSessions: [EnhancedSession] {
+    private var sleepStats: SleepStats {
+        if let decoded = try? JSONDecoder().decode(SleepStats.self, from: sleepStatsData) {
+            return decoded
+        }
+        return SleepStats()
+    }
+    
+    private var sleepSessions: [EnhancedSession] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -selectedTimeframe.days, to: Date()) ?? Date()
-        return sessionManager.breathingSessions(from: cutoff, to: Date())
+        return sessionManager.sleepSessions(from: cutoff, to: Date())
     }
     
-    private var averageStressReduction: Double? {
-        sessionManager.averageStressReduction(days: selectedTimeframe.days)
+    private var averageScore: Double? {
+        sessionManager.averageSleepScore(days: selectedTimeframe.days)
     }
     
-    private var currentStreak: Int {
-        sessionManager.breathingStreak()
+    private var bedtimeRegularity: (mean: Date, stdDev: TimeInterval)? {
+        sessionManager.bedtimeRegularity(days: selectedTimeframe.days)
     }
     
     var body: some View {
@@ -286,7 +822,7 @@ struct BreathingAnalyticsContent: View {
             VStack(spacing: 24) {
                 // Header
                 VStack(spacing: 8) {
-                    Text("Breathing Analytics")
+                    Text("Sleep Analytics")
                         .font(.system(size: 28, weight: .bold))
                         .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
                     
@@ -301,24 +837,229 @@ struct BreathingAnalyticsContent: View {
                 }
                 .padding(.top)
                 
-                // Import existing breathing analytics components
-                StreakCard(streak: currentStreak)
+                // MARK: - Stats Section
+                // Local Sleep Stats
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("In-App Sleep Sessions")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+                    
+                    HStack {
+                        Text("Completed Sessions")
+                        Spacer()
+                        Text("\(sleepStats.sleepSessionsCompleted)")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                    }
+                    
+                    HStack {
+                        Text("Total Sleep Time")
+                        Spacer()
+                        Text(sleepStats.sleepSessionsCompleted > 0 ? sleepStats.totalSleepTimeFormatted : "—")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                    }
+                    
+                    HStack {
+                        Text("Average Session")
+                        Spacer()
+                        Text(sleepStats.averageSleepTimeFormatted)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                    }
+                }
+                .font(.system(size: 17, weight: .regular))
+                .foregroundColor(Color(red: 0.35, green: 0.45, blue: 0.55))
+                .frame(maxWidth: 360)
+                .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color.white)
+                        .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
+                )
+                .padding(.horizontal, 20)
                 
-                if let reduction = averageStressReduction {
-                    StressReductionCard(reduction: reduction, sessions: breathingSessions)
+                // HealthKit Sleep Data
+                if vm.isAuthorized {
+                    if let lastNight = vm.lastNight {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("HealthKit Sleep Data")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+                            
+                            HStack {
+                                Text("Last Night Sleep")
+                                Spacer()
+                                Text(vm.formatHours(lastNight.totalHours))
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                            }
+                            HStack {
+                                Text("14-Day Average")
+                                Spacer()
+                                Text(vm.formatHours(vm.rollingAvgHours14))
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                            }
+                            
+                            Divider().padding(.vertical, 4)
+                            
+                            HStack {
+                                Text("REM Sleep")
+                                Spacer()
+                                Text(String(format: "%.1fh", lastNight.stageHours(.rem)))
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                            }
+                            HStack {
+                                Text("Deep Sleep")
+                                Spacer()
+                                Text(String(format: "%.1fh", lastNight.stageHours(.deep)))
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                            }
+                            HStack {
+                                Text("Core Sleep")
+                                Spacer()
+                                Text(String(format: "%.1fh", lastNight.stageHours(.core)))
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                            }
+                        }
+                        .font(.system(size: 17, weight: .regular))
+                        .foregroundColor(Color(red: 0.35, green: 0.45, blue: 0.55))
+                        .frame(maxWidth: 360)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.white)
+                                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
+                        )
+                        .padding(.horizontal, 20)
+                    } else {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("HealthKit Sleep Data")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+                            
+                            VStack(spacing: 8) {
+                                Image(systemName: "bed.double.fill")
+                                    .font(.system(size: 36))
+                                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7).opacity(0.5))
+                                
+                                Text("No Sleep Data Available")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+                                
+                                Text("Track your sleep with Apple Watch or iPhone to see detailed sleep analysis here.")
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 8)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                        }
+                        .font(.system(size: 17, weight: .regular))
+                        .foregroundColor(Color(red: 0.35, green: 0.45, blue: 0.55))
+                        .frame(maxWidth: 360)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.white)
+                                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
+                        )
+                        .padding(.horizontal, 20)
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("HealthKit Sleep Data")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+                        
+                        VStack(spacing: 12) {
+                            Image(systemName: "heart.text.square.fill")
+                                .font(.system(size: 36))
+                                .foregroundColor(Color(red: 0.9, green: 0.4, blue: 0.4).opacity(0.7))
+                            
+                            Text("HealthKit Not Authorized")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+                            
+                            Text("Enable HealthKit to see detailed sleep analysis from your Apple Watch or iPhone.")
+                                .font(.system(size: 14, weight: .regular))
+                                .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 8)
+                            
+                            Button(action: {
+                                if let url = URL(string: UIApplication.openSettingsURLString) {
+                                    UIApplication.shared.open(url)
+                                }
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "gear")
+                                        .font(.system(size: 14))
+                                    Text("Open Settings")
+                                        .font(.system(size: 15, weight: .medium))
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(red: 0.5, green: 0.6, blue: 0.8))
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .padding(.top, 4)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                    }
+                    .font(.system(size: 17, weight: .regular))
+                    .foregroundColor(Color(red: 0.35, green: 0.45, blue: 0.55))
+                    .frame(maxWidth: 360)
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.white)
+                            .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
+                    )
+                    .padding(.horizontal, 20)
                 }
                 
-                if !breathingSessions.isEmpty {
-                    ProtocolUsageChart(sessions: breathingSessions)
+                // MARK: - Analytics Section
+                if !sleepSessions.isEmpty {
+                    Divider()
+                        .padding(.vertical, 8)
+                    
+                    Text("Analytics")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                    
+                    if let avgScore = averageScore {
+                        SleepScoreCard(score: avgScore, sessions: sleepSessions)
+                    }
+                    
+                    SleepDurationChart(sessions: sleepSessions)
+                    
+                    if let regularity = bedtimeRegularity {
+                        BedtimeRegularityCard(regularity: regularity)
+                    }
+                    
+                    SleepEventsCard(sessions: sleepSessions)
+                    
+                    SleepSummaryStats(sessions: sleepSessions)
                 }
-                
-                if !breathingSessions.isEmpty {
-                    BreathingFrequencyChart(sessions: breathingSessions)
-                }
-                
-                BreathingSummaryStats(sessions: breathingSessions)
             }
             .padding()
+            .padding(.bottom, 8)
+        }
+        .onAppear {
+            vm.onAppear()
         }
     }
 }
@@ -326,4 +1067,3 @@ struct BreathingAnalyticsContent: View {
 #Preview {
     NavigationView { AnalyticsView() }
 }
-

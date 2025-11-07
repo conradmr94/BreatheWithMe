@@ -608,6 +608,7 @@ struct FocusView: View {
                 .padding(.bottom, 60)
             }
         }
+        .ignoresSafeArea(.container, edges: .top)
         .swipeDownToOpenProfile {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
                 showProfile = true
@@ -635,7 +636,6 @@ struct FocusView: View {
         .overlay(infoMessageOverlay)
         .overlay(noiseSettingsOverlay)
         .overlay(durationSettingsOverlay)
-        .ignoresSafeArea(.container, edges: .top)
         .onAppear {
             // Initialize timeRemaining from stored duration on first load
             if !isRunning {
