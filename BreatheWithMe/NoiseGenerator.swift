@@ -763,11 +763,11 @@ private extension NoiseGenerator {
     func volumeMultiplier(for type: NoiseType) -> Float {
         switch type {
         case .birds:
-            return 4.5
+            return 5.5
         case .forest:
             return 4.0
         case .night:
-            return 5.0
+            return 6.0
         default:
             return 1.0
         }
