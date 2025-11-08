@@ -811,11 +811,27 @@ struct SleepView: View {
 }
 
 
+// MARK: - Sound Category Model
+struct SoundCategory {
+    let name: String
+    let icon: String
+    let sounds: [NoiseGenerator.NoiseType]
+    
+    static let allCategories: [SoundCategory] = [
+        SoundCategory(name: "Nature", icon: "leaf", sounds: [.rain, .ocean, .wind, .thunder, .forest, .birds, .night, .cafe, .city, .fire]),
+        SoundCategory(name: "Noise", icon: "waveform", sounds: [.white, .pink, .brown, .blue, .green]),
+        SoundCategory(name: "Frequency", icon: "slider.horizontal.3", sounds: []),
+        SoundCategory(name: "Melody", icon: "music.note", sounds: [])
+    ]
+}
+
 // MARK: - Modal for Sleep Sounds
 struct SleepNoiseOptionsModal: View {
     @Binding var isPresented: Bool
     @ObservedObject var noiseGenerator: NoiseGenerator
     let isRunning: Bool
+    
+    @State private var expandedCategories: Set<String> = []
 
     private let columns: [GridItem] = [
         GridItem(.flexible(), spacing: 12),
@@ -830,32 +846,31 @@ struct SleepNoiseOptionsModal: View {
                 .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
 
             ScrollView {
-                LazyVGrid(columns: columns, spacing: 12) {
-                    ForEach(NoiseGenerator.NoiseType.allCases, id: \.self) { noiseType in
-                        Button(action: {
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                noiseGenerator.setNoiseType(noiseType)
+                VStack(spacing: 12) {
+                    ForEach(SoundCategory.allCategories, id: \.name) { category in
+                        CategorySection(
+                            category: category,
+                            isExpanded: expandedCategories.contains(category.name),
+                            selectedNoiseType: noiseGenerator.selectedNoiseType,
+                            columns: columns,
+                            onToggle: {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    if expandedCategories.contains(category.name) {
+                                        expandedCategories.remove(category.name)
+                                    } else {
+                                        expandedCategories.insert(category.name)
+                                    }
+                                }
+                            },
+                            onSoundSelected: { noiseType in
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    noiseGenerator.setNoiseType(noiseType)
+                                }
+                                if [.white, .pink, .brown, .blue, .green].contains(noiseType) {
+                                    noiseGenerator.showInfoForNoiseType(noiseType)
+                                }
                             }
-                            if [.white, .pink, .brown, .blue, .green].contains(noiseType) {
-                                noiseGenerator.showInfoForNoiseType(noiseType)
-                            }
-                        }) {
-                            VStack(spacing: 6) {
-                                Image(systemName: noiseType.icon)
-                                    .font(.system(size: 20))
-                                Text(noiseType.description)
-                                    .font(.system(size: 12, weight: .medium))
-                                    .multilineTextAlignment(.center)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .foregroundColor(noiseGenerator.selectedNoiseType == noiseType ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(noiseGenerator.selectedNoiseType == noiseType ? Color(red: 0.4, green: 0.5, blue: 0.8) : Color.white.opacity(0.95))
-                            )
-                        }
-                        .buttonStyle(PlainButtonStyle())
+                        )
                     }
                 }
                 .padding(.top, 4)
@@ -920,6 +935,72 @@ struct SleepNoiseOptionsModal: View {
                 .fill(Color.white)
                 .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
         )
+    }
+}
+
+// MARK: - Category Section Component
+struct CategorySection: View {
+    let category: SoundCategory
+    let isExpanded: Bool
+    let selectedNoiseType: NoiseGenerator.NoiseType
+    let columns: [GridItem]
+    let onToggle: () -> Void
+    let onSoundSelected: (NoiseGenerator.NoiseType) -> Void
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            // Category header
+            Button(action: onToggle) {
+                HStack {
+                    Image(systemName: category.icon)
+                        .font(.system(size: 16))
+                        .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.8))
+                    Text(category.name)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                    Spacer()
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color(red: 0.95, green: 0.96, blue: 0.98))
+                )
+            }
+            .buttonStyle(PlainButtonStyle())
+            
+            // Expanded sounds grid
+            if isExpanded {
+                LazyVGrid(columns: columns, spacing: 12) {
+                    ForEach(category.sounds, id: \.self) { noiseType in
+                        Button(action: {
+                            onSoundSelected(noiseType)
+                        }) {
+                            VStack(spacing: 6) {
+                                Image(systemName: noiseType.icon)
+                                    .font(.system(size: 20))
+                                Text(noiseType.description)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .foregroundColor(selectedNoiseType == noiseType ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(selectedNoiseType == noiseType ? Color(red: 0.4, green: 0.5, blue: 0.8) : Color.white.opacity(0.95))
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+                .padding(.top, 4)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
     }
 }
 
