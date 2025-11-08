@@ -637,6 +637,13 @@ struct FocusView: View {
         .overlay(infoMessageOverlay)
         .overlay(noiseSettingsOverlay)
         .overlay(durationSettingsOverlay)
+        .onChange(of: showNoiseSettings) { isPresented in
+            NotificationCenter.default.post(
+                name: .soundModalVisibilityDidChange,
+                object: nil,
+                userInfo: ["isPresented": isPresented]
+            )
+        }
         .onAppear {
             // Initialize timeRemaining from stored duration on first load
             if !isRunning {
@@ -660,6 +667,13 @@ struct FocusView: View {
             if !isRunning && currentMode == .longBreak {
                 timeRemaining = duration(for: currentMode)
             }
+        }
+        .onDisappear {
+            NotificationCenter.default.post(
+                name: .soundModalVisibilityDidChange,
+                object: nil,
+                userInfo: ["isPresented": false]
+            )
         }
     }
     
@@ -913,14 +927,6 @@ struct NoiseOptionsModal: View {
     let accentColor: Color
     let isRunning: Bool
     
-    @State private var expandedCategories: Set<String> = []
-
-    private let columns: [GridItem] = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12)
-    ]
-
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Focus Sounds")
@@ -932,19 +938,8 @@ struct NoiseOptionsModal: View {
                     ForEach(SoundCategory.allCategories, id: \.name) { category in
                         FocusCategorySection(
                             category: category,
-                            isExpanded: expandedCategories.contains(category.name),
                             selectedNoiseType: noiseGenerator.selectedNoiseType,
                             accentColor: accentColor,
-                            columns: columns,
-                            onToggle: {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    if expandedCategories.contains(category.name) {
-                                        expandedCategories.remove(category.name)
-                                    } else {
-                                        expandedCategories.insert(category.name)
-                                    }
-                                }
-                            },
                             onSoundSelected: { noiseType in
                                 withAnimation(.easeInOut(duration: 0.15)) {
                                     noiseGenerator.setNoiseType(noiseType)
@@ -1024,65 +1019,46 @@ struct NoiseOptionsModal: View {
 // MARK: - Focus Category Section Component
 struct FocusCategorySection: View {
     let category: SoundCategory
-    let isExpanded: Bool
     let selectedNoiseType: NoiseGenerator.NoiseType
     let accentColor: Color
-    let columns: [GridItem]
-    let onToggle: () -> Void
     let onSoundSelected: (NoiseGenerator.NoiseType) -> Void
     
     var body: some View {
         VStack(spacing: 8) {
-            // Category header
-            Button(action: onToggle) {
-                HStack {
-                    Image(systemName: category.icon)
-                        .font(.system(size: 16))
-                        .foregroundColor(accentColor)
-                    Text(category.name)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
-                    Spacer()
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color(red: 0.95, green: 0.96, blue: 0.98))
-                )
+            HStack {
+                Image(systemName: category.icon)
+                    .font(.system(size: 16))
+                    .foregroundColor(accentColor)
+                Text(category.name)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                Spacer()
             }
-            .buttonStyle(PlainButtonStyle())
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
             
-            // Expanded sounds grid
-            if isExpanded {
-                LazyVGrid(columns: columns, spacing: 12) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 12) {
                     ForEach(category.sounds, id: \.self) { noiseType in
                         Button(action: {
                             onSoundSelected(noiseType)
                         }) {
-                            VStack(spacing: 6) {
-                                Image(systemName: noiseType.icon)
-                                    .font(.system(size: 20))
-                                Text(noiseType.description)
-                                    .font(.system(size: 12, weight: .medium))
-                                    .multilineTextAlignment(.center)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .foregroundColor(selectedNoiseType == noiseType ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(selectedNoiseType == noiseType ? accentColor : Color.white.opacity(0.95))
-                            )
+                            Text(noiseType.description)
+                                .font(.system(size: 13, weight: .semibold))
+                                .multilineTextAlignment(.center)
+                                .frame(width: 110, height: 120)
+                                .foregroundColor(selectedNoiseType == noiseType ? .white : Color(red: 0.3, green: 0.4, blue: 0.5))
+                                .background(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(selectedNoiseType == noiseType ? accentColor : Color.white.opacity(0.95))
+                                        .shadow(color: Color.black.opacity(0.08), radius: 6, x: 0, y: 4)
+                                )
                         }
                         .buttonStyle(PlainButtonStyle())
                     }
                 }
-                .padding(.top, 4)
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
             }
         }
     }
@@ -1309,4 +1285,3 @@ private struct FocusWheelPicker: View {
 #Preview {
     FocusView()
 }
-

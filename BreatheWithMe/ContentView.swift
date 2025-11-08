@@ -7,9 +7,14 @@ import SwiftUI
 import UIKit
 import Combine
 
+extension Notification.Name {
+    static let soundModalVisibilityDidChange = Notification.Name("soundModalVisibilityDidChange")
+}
+
 struct ContentView: View {
     @State private var selectedTab = 0
     private let maxTabIndex = 2
+    @State private var isSoundModalPresented = false
     @AppStorage("focusLockUntilTimestamp") private var focusLockUntilTimestamp: Double = 0
     @State private var lockNow = Date()
     @State private var showUnlockFocusLockAlert = false
@@ -29,10 +34,19 @@ struct ContentView: View {
     // Swipe tuning: keep these fairly high so precise UI drags don't trigger
     private let minHorizontalFlick: CGFloat = 220   // use predictedEndTranslation.width
     private let maxVerticalDrift: CGFloat   = 80    // ignore "diagonal" swipes
+    private let edgeSwipeMargin: CGFloat    = 50    // require swipe to start near an edge
 
     var body: some View {
         let globalSwipe = DragGesture(minimumDistance: 10, coordinateSpace: .local)
             .onEnded { value in
+                if isSoundModalPresented {
+                    let startX = value.startLocation.x
+                    let width = UIScreen.main.bounds.width
+                    
+                    // When a modal is open, only allow edge-origin swipes so horizontal scrolls keep working
+                    guard startX <= edgeSwipeMargin || startX >= width - edgeSwipeMargin else { return }
+                }
+
                 let dx = value.translation.width
                 let dy = value.translation.height
                 let pdx = value.predictedEndTranslation.width   // better proxy for flick velocity
@@ -69,6 +83,11 @@ struct ContentView: View {
         .onAppear { updateTabColors(for: selectedTab) }
         .onChange(of: selectedTab) { updateTabColors(for: $0) }
         .simultaneousGesture(globalSwipe)
+        .onReceive(NotificationCenter.default.publisher(for: .soundModalVisibilityDidChange)) { notification in
+            if let isPresented = notification.userInfo?["isPresented"] as? Bool {
+                isSoundModalPresented = isPresented
+            }
+        }
         .apply { view in
             if #available(iOS 16.0, *) {
                 view
