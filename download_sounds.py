@@ -105,7 +105,10 @@ def main():
         "cafe.mp3",
         "city.mp3",
         "fire.mp3",
-        "birds.mp3"
+        "birds.mp3",
+        "night.mp3",
+        "nature.mp3",
+        "uplift.mp3",
     ]
     
     print("🎵 Creating placeholder ambient sound files...")

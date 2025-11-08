@@ -10,16 +10,17 @@ import Accelerate
 
 class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private let engine = AVAudioEngine()
-    private let player = AVAudioPlayerNode()
-    private var currentNoiseType: NoiseType = .white
     private let sampleRate: Double = 44100.0
     private var isPlaying = false
     private var audioPlayers: [NoiseType: AVAudioPlayer] = [:]
     private var baseVolume: Float = 0.3 // Store the user's desired volume
     private var fadeTimer: Timer?
+    private var colorPlayerNodes: [NoiseType: AVAudioPlayerNode] = [:]
+    private var colorBuffers: [NoiseType: AVAudioPCMBuffer] = [:]
     
     @Published var isEnabled = false
     @Published var selectedNoiseType: NoiseType = .white
+    @Published var selectedNoiseTypes: Set<NoiseType> = [.white]
     @Published var volume: Float = 0.3 // Much lower default volume
     @Published var showInfoMessage = false
     @Published var infoMessage = ""
@@ -40,6 +41,8 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         case fire = "Fire"
         case birds = "Birds"
         case night = "Night"
+        case nature = "Nature"
+        case uplift = "Uplift"
         
         var description: String {
             switch self {
@@ -58,6 +61,8 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             case .fire: return "Fire"
             case .birds: return "Birds"
             case .night: return "Night"
+            case .nature: return "Nature Escape"
+            case .uplift: return "Morning Uplift"
             }
         }
         
@@ -78,7 +83,87 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             case .fire: return "flame"
             case .birds: return "bird"
             case .night: return "moon.stars"
+            case .nature: return "leaf.arrow.circlepath"
+            case .uplift: return "sun.max"
             }
+        }
+    }
+    
+    private func synchronizePlayback() {
+        guard isEnabled, isPlaying else { return }
+        
+        for type in NoiseType.allCases {
+            if selectedNoiseTypes.contains(type) {
+                if type.isAmbientSound {
+                    startAmbientIfNeeded(type)
+                } else {
+                    startColorNoise(type)
+                }
+            } else {
+                if type.isAmbientSound {
+                    stopAmbient(type)
+                } else {
+                    stopColorNoise(type)
+                }
+            }
+        }
+        
+        applyVolume(volume)
+    }
+    
+    private func startAmbientIfNeeded(_ type: NoiseType) {
+        guard let audioPlayer = audioPlayers[type], isEnabled else { return }
+        if !audioPlayer.isPlaying {
+            audioPlayer.currentTime = 0
+            audioPlayer.numberOfLoops = -1
+            audioPlayer.play()
+            print("✅ Ambient audio started: \(type.rawValue)")
+        }
+    }
+    
+    private func stopAmbient(_ type: NoiseType) {
+        guard let audioPlayer = audioPlayers[type] else { return }
+        if audioPlayer.isPlaying {
+            audioPlayer.stop()
+            audioPlayer.currentTime = 0
+            print("🛑 Ambient audio stopped: \(type.rawValue)")
+        }
+    }
+    
+    private func startColorNoise(_ type: NoiseType) {
+        guard isEnabled else { return }
+        guard let node = colorPlayerNodes[type],
+              let buffer = colorBuffers[type] else { return }
+        
+        if !engine.isRunning {
+            do {
+                try engine.start()
+                print("✅ Audio engine started for color noise")
+            } catch {
+                print("❌ Failed to start audio engine: \(error)")
+                return
+            }
+        }
+        
+        if !node.isPlaying {
+            node.reset()
+            node.scheduleBuffer(buffer, at: nil, options: [.loops], completionHandler: nil)
+            node.play()
+            print("🎧 Color noise started: \(type.rawValue)")
+        }
+    }
+    
+    private func stopColorNoise(_ type: NoiseType) {
+        guard let node = colorPlayerNodes[type] else { return }
+        if node.isPlaying {
+            node.stop()
+            node.reset()
+            print("🛑 Color noise stopped: \(type.rawValue)")
+        }
+        
+        if colorPlayerNodes.values.allSatisfy({ !$0.isPlaying }) {
+            engine.stop()
+            print("🛑 Audio engine stopped (no color noise playing)")
         }
     }
     
@@ -105,18 +190,18 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
     
     private func setupAudioEngine() {
-        // Attach player to engine
-        engine.attach(player)
-        
-        // Connect player to main mixer with proper format
         let mainMixer = engine.mainMixerNode
         let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
-        engine.connect(player, to: mainMixer, format: format)
         
-        // Set volume
-        player.volume = volume
+        for noiseType in NoiseType.allCases where !noiseType.isAmbientSound {
+            let node = AVAudioPlayerNode()
+            engine.attach(node)
+            engine.connect(node, to: mainMixer, format: format)
+            node.volume = volume * 0.3
+            colorPlayerNodes[noiseType] = node
+            colorBuffers[noiseType] = createColorNoiseBuffer(for: noiseType, format: format)
+        }
         
-        // Prepare the engine
         engine.prepare()
     }
     
@@ -226,79 +311,58 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         return data
     }
     
-    func startNoise() {
-        guard !isPlaying else { return }
-        
-        print("🎵 Starting ambient sound...")
-        currentNoiseType = selectedNoiseType
-        isPlaying = true
-        
-        if isRealAudioType(currentNoiseType) {
-            // Use real audio file
-            if let audioPlayer = audioPlayers[currentNoiseType] {
-                audioPlayer.volume = 0 // Start at 0 for fade-in
-                audioPlayer.numberOfLoops = -1 // Ensure infinite looping
-                audioPlayer.play()
-                print("✅ Real audio started: \(currentNoiseType.rawValue) (looping: \(audioPlayer.numberOfLoops))")
-            } else {
-                print("❌ No audio player found for \(currentNoiseType.rawValue)")
-            }
-        } else {
-            // Use generated noise
-            do {
-                try engine.start()
-                print("✅ Audio engine started successfully")
-            } catch {
-                print("❌ Failed to start audio engine: \(error)")
-                return
-            }
-            
-            generateAndPlayNoise()
-            print("🎧 Generated noise started for type: \(currentNoiseType.rawValue)")
+    private func createColorNoiseBuffer(for type: NoiseType, format: AVAudioFormat) -> AVAudioPCMBuffer? {
+        let duration: Double = 8.0
+        let frameCount = AVAudioFrameCount(duration * sampleRate)
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else {
+            return nil
         }
+        buffer.frameLength = frameCount
+        generateNoise(buffer: buffer, type: type)
+        return buffer
+    }
+    
+    func startNoise() {
+        guard isEnabled else { return }
+        guard !selectedNoiseTypes.isEmpty else { return }
         
-        // Fade in the sound over 1 second
+        print("🎵 Starting ambient sound mix...")
+        isPlaying = true
+        synchronizePlayback()
         fadeIn(duration: 1.0)
     }
     
     func stopNoise() {
         guard isPlaying else { return }
         
-        print("🔇 Stopping ambient sound...")
+        print("🔇 Stopping ambient sound mix...")
         isPlaying = false
         
         // Cancel any ongoing fade
         fadeTimer?.invalidate()
         fadeTimer = nil
         
-        if isRealAudioType(currentNoiseType) {
-            // Stop real audio file
-            if let audioPlayer = audioPlayers[currentNoiseType] {
-                audioPlayer.stop()
+        for (type, player) in audioPlayers {
+            if player.isPlaying {
+                player.stop()
+                player.currentTime = 0
+                print("✅ Stopped audio for \(type.rawValue)")
             }
-            print("✅ Real audio stopped")
-        } else {
-            // Stop generated noise
-            player.stop()
-            engine.stop()
-            print("✅ Generated noise stopped")
         }
+        
+        for (type, node) in colorPlayerNodes {
+            if node.isPlaying {
+                node.stop()
+                print("✅ Stopped color node for \(type.rawValue)")
+            }
+        }
+        engine.stop()
     }
     
     func setVolume(_ newVolume: Float) {
         volume = max(0.0, min(1.0, newVolume)) // Allow full volume range
         baseVolume = volume // Update base volume when user changes it
-        
-        if isRealAudioType(currentNoiseType) {
-            // Set volume for real audio files
-            if let audioPlayer = audioPlayers[currentNoiseType] {
-                audioPlayer.volume = volume
-            }
-        } else {
-            // Set volume for generated noise (reduced for color noise)
-            let reducedVolume = volume * 0.3 // Much lower volume for color noise
-            player.volume = reducedVolume
-        }
+        applyVolume(volume)
     }
     
     func fadeIn(duration: TimeInterval = 1.0) {
@@ -368,29 +432,20 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
     
     private func applyVolume(_ vol: Float) {
-        if isRealAudioType(currentNoiseType) {
-            // Apply volume for real audio files
-            if let audioPlayer = audioPlayers[currentNoiseType] {
-                let multiplier = volumeMultiplier(for: currentNoiseType)
-                let adjustedVolume = min(1.0, vol * multiplier)
+        for type in selectedNoiseTypes {
+            let multiplier = volumeMultiplier(for: type)
+            let adjustedVolume = min(1.0, vol * multiplier)
+            if let audioPlayer = audioPlayers[type] {
                 audioPlayer.volume = adjustedVolume
             }
-        } else {
-            // Apply volume for generated noise (reduced for color noise)
-            let reducedVolume = vol * 0.3 // Much lower volume for color noise
-            player.volume = reducedVolume
+            if let node = colorPlayerNodes[type] {
+                node.volume = adjustedVolume * 0.8
+            }
         }
     }
     
     private func getCurrentVolume() -> Float {
-        if isRealAudioType(currentNoiseType) {
-            let multiplier = volumeMultiplier(for: currentNoiseType)
-            if multiplier == 0 { return baseVolume }
-            let storedVolume = audioPlayers[currentNoiseType]?.volume ?? baseVolume
-            return min(1.0, storedVolume / multiplier)
-        } else {
-            return player.volume / 0.3 // Account for the reduction
-        }
+        return baseVolume
     }
     
     func showInfoForNoiseType(_ type: NoiseType) {
@@ -417,44 +472,38 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
     }
     
-    func setNoiseType(_ type: NoiseType) {
+    func toggleNoiseType(_ type: NoiseType) {
+        var updatedSelection = selectedNoiseTypes
+        
+        if updatedSelection.contains(type) {
+            updatedSelection.remove(type)
+        } else {
+            updatedSelection.insert(type)
+        }
+        
+        selectedNoiseTypes = updatedSelection
         selectedNoiseType = type
-        if isPlaying {
-            // Restart with new noise type
+        
+        if selectedNoiseTypes.isEmpty {
             stopNoise()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                self.startNoise()
-            }
+        } else if isEnabled && isPlaying {
+            synchronizePlayback()
         }
     }
     
-    private func generateAndPlayNoise() {
-        let bufferSize: AVAudioFrameCount = 2048 // Larger buffer for better performance
-        let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
-        
-        // Create a repeating buffer
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: bufferSize) else {
-            print("Failed to create audio buffer")
-            return
+    func setNoiseType(_ type: NoiseType) {
+        selectedNoiseTypes = [type]
+        selectedNoiseType = type
+        if isEnabled && isPlaying {
+            synchronizePlayback()
         }
-        buffer.frameLength = bufferSize
-        
-        // Generate noise based on type
-        generateNoise(buffer: buffer, type: currentNoiseType)
-        
-        // Schedule the buffer to play repeatedly
-        player.scheduleBuffer(buffer, at: nil, options: .loops) { [weak self] in
-            // This completion handler is called when the buffer finishes playing
-            // Since we're looping, this won't be called until we stop
-            DispatchQueue.main.async {
-                if let self = self, self.isPlaying {
-                    // Regenerate buffer to avoid memory issues
-                    self.generateAndPlayNoise()
-                }
-            }
-        }
-        
-        player.play()
+    }
+    
+    var selectedNoiseDescription: String {
+        let names = selectedNoiseTypes
+            .sorted(by: { $0.description < $1.description })
+            .map { $0.description }
+        return names.isEmpty ? selectedNoiseType.description : names.joined(separator: ", ")
     }
     
     private func generateNoise(buffer: AVAudioPCMBuffer, type: NoiseType) {
@@ -482,6 +531,10 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             generateBirdsNoise(channelData: channelData, frameCount: frameCount)
         case .night:
             generateNightNoise(channelData: channelData, frameCount: frameCount)
+        case .nature:
+            generateNatureNoise(channelData: channelData, frameCount: frameCount)
+        case .uplift:
+            generateUpliftNoise(channelData: channelData, frameCount: frameCount)
         case .white:
             generateWhiteNoise(channelData: channelData, frameCount: frameCount)
         case .pink:
@@ -590,6 +643,28 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             let distantOwl = sin(time * 2.3) * abs(sin(time * 0.15)) * 0.04
             let random = Float.random(in: -0.025...0.025)
             channelData[i] = (lowHum + gentleBreeze + insect + distantOwl + random) * 0.35
+        }
+    }
+    
+    private func generateNatureNoise(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
+        // Blend of forest ambience with gentle brook
+        for i in 0..<frameCount {
+            let time = Float(i) / Float(sampleRate)
+            let brook = sin(time * 1.2) * 0.08 + sin(time * 0.65) * 0.05
+            let canopy = sin(time * 0.25) * 0.12
+            let birds = sin(time * 6.0) * abs(sin(time * 0.35)) * 0.04
+            channelData[i] = (brook + canopy + birds + Float.random(in: -0.02...0.02)) * 0.35
+        }
+    }
+    
+    private func generateUpliftNoise(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
+        // Soft harmonic pads for uplifting wake-up tone
+        for i in 0..<frameCount {
+            let time = Float(i) / Float(sampleRate)
+            let base = sin(time * 1.8) * 0.12
+            let harmony = sin(time * 2.4) * 0.09
+            let shimmer = sin(time * 7.0) * 0.04
+            channelData[i] = (base + harmony + shimmer) * 0.35
         }
     }
     
@@ -724,10 +799,10 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     // MARK: - AVAudioPlayerDelegate
     
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        // This should not be called since numberOfLoops = -1, but just in case
-        if isPlaying && isRealAudioType(currentNoiseType) {
-            print("🔄 Audio finished, restarting...")
-            player.play()
+        guard isPlaying else { return }
+        if let (type, storedPlayer) = audioPlayers.first(where: { $0.value === player }) {
+            print("🔄 Audio finished for \(type.rawValue), restarting...")
+            storedPlayer.play()
         }
     }
     
@@ -768,6 +843,10 @@ private extension NoiseGenerator {
             return 4.0
         case .night:
             return 16.0
+        case .nature:
+            return 2.5
+        case .uplift:
+            return 1.8
         case .thunder:
             return 0.25
         case .rain:
@@ -785,7 +864,7 @@ private extension NoiseGenerator {
 extension NoiseGenerator.NoiseType {
     /// Nature/ambient sounds that have backing audio assets and are eligible for alarms.
     static var alarmEligibleCases: [NoiseGenerator.NoiseType] {
-        [.rain, .ocean, .wind, .thunder, .forest, .cafe, .city, .fire, .birds, .night]
+        [.rain, .ocean, .wind, .thunder, .forest, .cafe, .city, .fire, .birds, .night, .nature, .uplift]
     }
 
     /// Indicates whether this noise type maps to a bundled ambient sound asset.
@@ -806,6 +885,8 @@ extension NoiseGenerator.NoiseType {
         case .fire: return "fire.mp3"
         case .birds: return "birds.mp3"
         case .night: return "night.mp3"
+        case .nature: return "nature.mp3"
+        case .uplift: return "uplift.mp3"
         default: return nil
         }
     }

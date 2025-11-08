@@ -85,6 +85,20 @@ struct SoundTileView: View {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .stroke(Color.white.opacity(0.05), lineWidth: 0.5)
             )
+            .overlay(alignment: .topTrailing) {
+                if isSelected {
+                    Circle()
+                        .fill(Color.white.opacity(0.9))
+                        .frame(width: 24, height: 24)
+                        .overlay(
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(accentColor)
+                        )
+                        .offset(x: -6, y: 6)
+                        .accessibilityHidden(true)
+                }
+            }
         }
         .buttonStyle(PlainButtonStyle())
         .scaleEffect(isSelected ? 1.02 : 1.0)

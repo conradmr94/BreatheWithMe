@@ -793,7 +793,7 @@ struct FocusView: View {
                         
                         // Track content usage if noise was enabled
                         if noiseGenerator.isEnabled {
-                            meta.contentId = noiseGenerator.selectedNoiseType.description
+                            meta.contentId = noiseGenerator.selectedNoiseDescription
                             meta.contentDuration = sessionDuration
                         }
                         
@@ -926,100 +926,116 @@ struct NoiseOptionsModal: View {
     @ObservedObject var noiseGenerator: NoiseGenerator
     let accentColor: Color
     let isRunning: Bool
+    @State private var showMixerSheet = false
     
     var body: some View {
+        let modalWidth: CGFloat = 400
+        let modalHeight: CGFloat = 680
+        let toggleBinding = Binding(
+            get: { noiseGenerator.isEnabled },
+            set: { newValue in
+                noiseGenerator.isEnabled = newValue
+                if newValue {
+                    if isRunning { noiseGenerator.startNoise() }
+                } else {
+                    noiseGenerator.stopNoise()
+                }
+            }
+        )
+        
         VStack(alignment: .leading, spacing: 16) {
-            Text("Focus Sounds")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
-
+            HStack(spacing: 12) {
+                Text("Focus Sounds")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                Spacer()
+                Toggle(isOn: toggleBinding) {
+                    EmptyView()
+                }
+                .labelsHidden()
+                .toggleStyle(SwitchToggleStyle(tint: accentColor))
+                .accessibilityLabel("Focus sounds toggle")
+            }
+            
             ScrollView {
                 VStack(spacing: 12) {
-                    ForEach(SoundCategory.allCategories, id: \.name) { category in
-                        FocusCategorySection(
-                            category: category,
-                            selectedNoiseType: noiseGenerator.selectedNoiseType,
-                            accentColor: accentColor,
-                            onSoundSelected: { noiseType in
-                                withAnimation(.easeInOut(duration: 0.15)) {
-                                    noiseGenerator.setNoiseType(noiseType)
+                        ForEach(SoundCategory.allCategories, id: \.name) { category in
+                            FocusCategorySection(
+                                category: category,
+                                selectedNoiseTypes: noiseGenerator.selectedNoiseTypes,
+                                accentColor: accentColor,
+                                onSoundSelected: { noiseType in
+                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                        noiseGenerator.toggleNoiseType(noiseType)
+                                    }
+                                    if [.white, .pink, .brown, .blue, .green].contains(noiseType) {
+                                        noiseGenerator.showInfoForNoiseType(noiseType)
+                                    }
                                 }
-                                if [.white, .pink, .brown, .blue, .green].contains(noiseType) {
-                                    noiseGenerator.showInfoForNoiseType(noiseType)
-                                }
-                            }
                         )
                     }
                 }
                 .padding(.top, 4)
             }
-            .frame(maxHeight: 260)
             
-            VStack(spacing: 12) {
-                Text("Enable focus sounds?")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
-                    .frame(maxWidth: .infinity)
-                
-                HStack(spacing: 12) {
-                    Button(action: { 
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            noiseGenerator.isEnabled = false
-                        }
-                        if isRunning { noiseGenerator.stopNoise() }
-                        withAnimation(.easeInOut(duration: 0.2)) { 
-                            isPresented = false 
-                        } 
-                    }) {
-                        Text("No")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color(red: 1.0, green: 1.0, blue: 1.0, opacity: 0.6))
-                            )
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    
-                    Button(action: { 
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            noiseGenerator.isEnabled = true
-                        }
-                        if isRunning { noiseGenerator.startNoise() }
-                        withAnimation(.easeInOut(duration: 0.2)) { 
-                            isPresented = false 
-                        } 
-                    }) {
-                        Text("Yes")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(accentColor)
-                            )
-                    }
-                    .buttonStyle(PlainButtonStyle())
+            Spacer()
+            
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showMixerSheet = true
                 }
+            }) {
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(accentColor, lineWidth: 1.2)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(Color.white)
+                    )
+                    .overlay(
+                        Text("Mix")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(accentColor)
+                    )
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
             }
+            .buttonStyle(PlainButtonStyle())
+            .contentShape(Rectangle())
+            
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isPresented = false
+                }
+            }) {
+                Text("Done")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(accentColor)
+                    )
+            }
+            .buttonStyle(PlainButtonStyle())
         }
-        .padding(16)
-        .frame(maxWidth: 340)
+        .padding(24)
+        .frame(width: modalWidth, height: modalHeight)
         .background(
-            RoundedRectangle(cornerRadius: 20)
+            RoundedRectangle(cornerRadius: 24)
                 .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
+                .shadow(color: Color.black.opacity(0.1), radius: 24, x: 0, y: 12)
         )
+        .sheet(isPresented: $showMixerSheet) {
+            SoundMixerSheetView(accentColor: accentColor)
+        }
     }
 }
 
 // MARK: - Focus Category Section Component
 struct FocusCategorySection: View {
     let category: SoundCategory
-    let selectedNoiseType: NoiseGenerator.NoiseType
+    let selectedNoiseTypes: Set<NoiseGenerator.NoiseType>
     let accentColor: Color
     let onSoundSelected: (NoiseGenerator.NoiseType) -> Void
     
@@ -1042,7 +1058,7 @@ struct FocusCategorySection: View {
                     ForEach(category.sounds, id: \.self) { noiseType in
                         SoundTileView(
                             noiseType: noiseType,
-                            isSelected: selectedNoiseType == noiseType,
+                            isSelected: selectedNoiseTypes.contains(noiseType),
                             accentColor: accentColor,
                             onTap: {
                                 onSoundSelected(noiseType)
@@ -1052,6 +1068,75 @@ struct FocusCategorySection: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
+            }
+        }
+    }
+}
+
+struct SoundMixerSheetView: View {
+    @Environment(\.dismiss) private var dismiss
+    let accentColor: Color
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                accentColor.opacity(0.15),
+                                accentColor.opacity(0.35)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        VStack(spacing: 12) {
+                            Image(systemName: "slider.horizontal.3")
+                                .font(.system(size: 32, weight: .medium))
+                                .foregroundColor(accentColor)
+                            Text("Mixer Coming Soon")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                            Text("Preview different layers, blend intensities, and save presets here.")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(Color(red: 0.35, green: 0.4, blue: 0.5))
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 24)
+                        }
+                        .padding()
+                    )
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 320)
+                
+                Button(action: { dismiss() }) {
+                    Text("Close")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(accentColor)
+                        )
+                }
+                .padding(.horizontal, 24)
+            }
+            .padding(24)
+            .navigationTitle("Sound Mixer")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }.foregroundColor(accentColor)
+                }
+            }
+        }
+        .apply { view in
+            if #available(iOS 16.0, *) {
+                view.presentationDetents([.medium, .large])
+            } else {
+                view
             }
         }
     }
