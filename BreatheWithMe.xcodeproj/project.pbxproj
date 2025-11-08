@@ -13,6 +13,7 @@
 		A1000022000000000000001 /* BreatheView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000023000000000000001 /* BreatheView.swift */; };
 		A1000024000000000000001 /* FocusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000025000000000000001 /* FocusView.swift */; };
 		A1000026000000000000001 /* SleepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000027000000000000001 /* SleepView.swift */; };
+		A10000FE000000000000001 /* SoundTileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000100000000000000001 /* SoundTileView.swift */; };
 		A1000028000000000000001 /* NoiseGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000029000000000000001 /* NoiseGenerator.swift */; };
 		A1000030000000000000001 /* rain.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1000031000000000000001 /* rain.mp3 */; };
 		A1000032000000000000001 /* ocean.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1000033000000000000001 /* ocean.mp3 */; };
@@ -93,6 +94,7 @@
 		A1000093000000000000001 /* NotificationDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationDelegate.swift; sourceTree = "<group>"; };
 		A1000099000000000000001 /* SleepAlarm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepAlarm.swift; sourceTree = "<group>"; };
 		A100009A000000000000001 /* SleepAlarmStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepAlarmStore.swift; sourceTree = "<group>"; };
+		A1000100000000000000001 /* SoundTileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundTileView.swift; sourceTree = "<group>"; };
 		C9E6F5F42EA9BB9100047E58 /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		C9E6F5F62EA9BBA300047E58 /* SleepViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepViewModel.swift; sourceTree = "<group>"; };
 		C9E6F5F82EA9BC4400047E58 /* BreatheWithMe.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BreatheWithMe.entitlements; sourceTree = "<group>"; };
@@ -141,6 +143,7 @@
 				A1000023000000000000001 /* BreatheView.swift */,
 				A1000025000000000000001 /* FocusView.swift */,
 				A1000027000000000000001 /* SleepView.swift */,
+				A1000100000000000000001 /* SoundTileView.swift */,
 				A1000029000000000000001 /* NoiseGenerator.swift */,
 				A1000051000000000000001 /* BellPlayer.swift */,
 				A1000054000000000000001 /* ProfileView.swift */,
@@ -268,6 +271,7 @@
 				A1000024000000000000001 /* FocusView.swift in Sources */,
 				A1000026000000000000001 /* SleepView.swift in Sources */,
 				A1000028000000000000001 /* NoiseGenerator.swift in Sources */,
+				A10000FE000000000000001 /* SoundTileView.swift in Sources */,
 				A1000001000000000000001 /* BreatheWithMeApp.swift in Sources */,
 				A1000052000000000000001 /* BellPlayer.swift in Sources */,
 				A1000053000000000000001 /* ProfileView.swift in Sources */,

@@ -937,6 +937,8 @@ struct CategorySection: View {
     let selectedNoiseType: NoiseGenerator.NoiseType
     let onSoundSelected: (NoiseGenerator.NoiseType) -> Void
     
+    private let tileAccentColor = Color(red: 0.4, green: 0.5, blue: 0.8)
+    
     var body: some View {
         VStack(spacing: 8) {
             HStack {
@@ -954,21 +956,14 @@ struct CategorySection: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 12) {
                     ForEach(category.sounds, id: \.self) { noiseType in
-                        Button(action: {
-                            onSoundSelected(noiseType)
-                        }) {
-                            Text(noiseType.description)
-                                .font(.system(size: 13, weight: .semibold))
-                                .multilineTextAlignment(.center)
-                                .frame(width: 110, height: 120)
-                                .foregroundColor(selectedNoiseType == noiseType ? .white : Color(red: 0.3, green: 0.4, blue: 0.5))
-                                .background(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .fill(selectedNoiseType == noiseType ? Color(red: 0.4, green: 0.5, blue: 0.8) : Color.white.opacity(0.95))
-                                        .shadow(color: Color.black.opacity(0.08), radius: 6, x: 0, y: 4)
-                                )
-                        }
-                        .buttonStyle(PlainButtonStyle())
+                        SoundTileView(
+                            noiseType: noiseType,
+                            isSelected: selectedNoiseType == noiseType,
+                            accentColor: tileAccentColor,
+                            onTap: {
+                                onSoundSelected(noiseType)
+                            }
+                        )
                     }
                 }
                 .padding(.horizontal, 12)
