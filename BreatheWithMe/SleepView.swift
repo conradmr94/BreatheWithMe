@@ -943,7 +943,10 @@ struct SleepNoiseOptionsModal: View {
                 .shadow(color: Color.black.opacity(0.1), radius: 24, x: 0, y: 12)
         )
         .sheet(isPresented: $showMixerSheet) {
-            SoundMixerSheetView(accentColor: accentColor)
+            SoundMixerSheetView(
+                noiseGenerator: noiseGenerator,
+                accentColor: accentColor
+            )
         }
     }
 }

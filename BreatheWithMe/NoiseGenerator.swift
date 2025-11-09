@@ -24,6 +24,7 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published var volume: Float = 0.3 // Much lower default volume
     @Published var showInfoMessage = false
     @Published var infoMessage = ""
+    @Published private(set) var mixLevels: [NoiseType: Float] = [:]
     
     enum NoiseType: String, CaseIterable {
         case white = "White"
@@ -169,6 +170,7 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     
     override init() {
         super.init()
+        mixLevels[selectedNoiseType] = 100.0
         setupAudioSession()
         setupAudioEngine()
         setupAudioFiles()
@@ -432,9 +434,13 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
     
     private func applyVolume(_ vol: Float) {
+        ensureMixLevelsForCurrentSelection()
+        
         for type in selectedNoiseTypes {
             let multiplier = volumeMultiplier(for: type)
-            let adjustedVolume = min(1.0, vol * multiplier)
+            let mixValue = mixLevels[type] ?? 100.0
+            let mixFactor = max(0.0, min(1.0, mixValue / 100.0))
+            let adjustedVolume = min(1.0, vol * multiplier * mixFactor)
             if let audioPlayer = audioPlayers[type] {
                 audioPlayer.volume = adjustedVolume
             }
@@ -477,6 +483,7 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         
         if updatedSelection.contains(type) {
             updatedSelection.remove(type)
+            mixLevels.removeValue(forKey: type)
         } else {
             updatedSelection.insert(type)
         }
@@ -486,14 +493,19 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         
         if selectedNoiseTypes.isEmpty {
             stopNoise()
-        } else if isEnabled && isPlaying {
-            synchronizePlayback()
+        } else {
+            rebalanceMixLevels()
+            if isEnabled && isPlaying {
+                synchronizePlayback()
+            }
         }
     }
     
     func setNoiseType(_ type: NoiseType) {
         selectedNoiseTypes = [type]
         selectedNoiseType = type
+        mixLevels = [type: 100.0]
+        rebalanceMixLevels()
         if isEnabled && isPlaying {
             synchronizePlayback()
         }
@@ -834,7 +846,177 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
 }
 
+extension NoiseGenerator {
+    func mixWeight(for type: NoiseType) -> Float {
+        ensureMixLevelsForCurrentSelection()
+        let fallback = selectedNoiseTypes.isEmpty ? 0.0 : (100.0 / Float(selectedNoiseTypes.count))
+        return max(0.0, min(100.0, mixLevels[type] ?? fallback))
+    }
+    
+    func mixShare(for type: NoiseType) -> Float {
+        ensureMixLevelsForCurrentSelection()
+        let total = selectedNoiseTypes.reduce(0) { $0 + max(0.0, mixLevels[$1] ?? 0) }
+        guard total > 0 else {
+            return selectedNoiseTypes.count <= 1 ? 1.0 : 0.0
+        }
+        return max(0.0, (mixLevels[type] ?? 0) / total)
+    }
+    
+    func setMixWeight(_ value: Float, for type: NoiseType) {
+        guard selectedNoiseTypes.contains(type) else { return }
+        ensureMixLevelsForCurrentSelection()
+        
+        let clamped = max(0.0, min(100.0, value))
+        mixLevels[type] = clamped
+        redistributeMix(afterAdjusting: type)
+        normalizeMixLevelsToHundred()
+        
+        if isEnabled && isPlaying {
+            applyVolume(volume)
+        }
+    }
+    
+    func equalizeMix() {
+        guard !selectedNoiseTypes.isEmpty else { return }
+        rebalanceMixLevels()
+        if isEnabled && isPlaying {
+            applyVolume(volume)
+        }
+    }
+}
+
 private extension NoiseGenerator {
+    func orderedSelectedTypes() -> [NoiseType] {
+        selectedNoiseTypes.sorted { $0.description < $1.description }
+    }
+    
+    func ensureMixLevelsForCurrentSelection() {
+        guard !selectedNoiseTypes.isEmpty else {
+            mixLevels.removeAll()
+            return
+        }
+        
+        let count = selectedNoiseTypes.count
+        let fallback = 100.0 / Float(count)
+        
+        for type in selectedNoiseTypes {
+            if mixLevels[type] == nil {
+                mixLevels[type] = fallback
+            }
+        }
+        
+        let staleKeys = mixLevels.keys.filter { !selectedNoiseTypes.contains($0) }
+        for key in staleKeys {
+            mixLevels.removeValue(forKey: key)
+        }
+        
+        normalizeMixLevelsToHundred()
+    }
+    
+    func rebalanceMixLevels() {
+        guard !selectedNoiseTypes.isEmpty else {
+            mixLevels.removeAll()
+            return
+        }
+        
+        let staleKeys = mixLevels.keys.filter { !selectedNoiseTypes.contains($0) }
+        for key in staleKeys {
+            mixLevels.removeValue(forKey: key)
+        }
+        
+        let ordered = orderedSelectedTypes()
+        let count = ordered.count
+        if count == 1, let only = ordered.first {
+            mixLevels[only] = 100.0
+            return
+        }
+        
+        let equalValue = 100.0 / Float(count)
+        var remaining: Float = 100.0
+        
+        for (index, type) in ordered.enumerated() {
+            if index == count - 1 {
+                mixLevels[type] = max(0.0, remaining)
+            } else {
+                mixLevels[type] = equalValue
+                remaining -= equalValue
+            }
+        }
+    }
+    
+    func normalizeMixLevelsToHundred() {
+        guard !selectedNoiseTypes.isEmpty else { return }
+        let total = selectedNoiseTypes.reduce(0) { $0 + max(0.0, mixLevels[$1] ?? 0) }
+        
+        if abs(total - 100.0) < 0.01 {
+            return
+        }
+        
+        guard total > 0 else {
+            rebalanceMixLevels()
+            return
+        }
+        
+        let scale = 100.0 / total
+        var remaining: Float = 100.0
+        let ordered = orderedSelectedTypes()
+        
+        for (index, type) in ordered.enumerated() {
+            if index == ordered.count - 1 {
+                mixLevels[type] = max(0.0, remaining)
+            } else {
+                let newValue = max(0.0, (mixLevels[type] ?? 0) * scale)
+                mixLevels[type] = newValue
+                remaining -= newValue
+            }
+        }
+    }
+    
+    func redistributeMix(afterAdjusting adjustedType: NoiseType) {
+        let others = orderedSelectedTypes().filter { $0 != adjustedType }
+        guard let adjustedValue = mixLevels[adjustedType] else { return }
+        
+        if others.isEmpty {
+            mixLevels[adjustedType] = 100.0
+            return
+        }
+        
+        let available = max(0.0, 100.0 - adjustedValue)
+        let currentTotal = others.reduce(0) { $0 + max(0.0, mixLevels[$1] ?? 0) }
+        
+        if currentTotal <= 0 {
+            distributeEvenShare(available: available, to: others)
+            return
+        }
+        
+        var remaining = available
+        for (index, type) in others.enumerated() {
+            if index == others.count - 1 {
+                mixLevels[type] = max(0.0, remaining)
+            } else {
+                let weight = max(0.0, mixLevels[type] ?? 0)
+                let newValue = available * (weight / currentTotal)
+                mixLevels[type] = newValue
+                remaining -= newValue
+            }
+        }
+    }
+    
+    func distributeEvenShare(available: Float, to types: [NoiseType]) {
+        guard !types.isEmpty else { return }
+        let equalShare = available / Float(types.count)
+        var remaining = available
+        
+        for (index, type) in types.enumerated() {
+            if index == types.count - 1 {
+                mixLevels[type] = max(0.0, remaining)
+            } else {
+                mixLevels[type] = equalShare
+                remaining -= equalShare
+            }
+        }
+    }
+    
     func volumeMultiplier(for type: NoiseType) -> Float {
         switch type {
         case .birds:

@@ -1027,7 +1027,10 @@ struct NoiseOptionsModal: View {
                 .shadow(color: Color.black.opacity(0.1), radius: 24, x: 0, y: 12)
         )
         .sheet(isPresented: $showMixerSheet) {
-            SoundMixerSheetView(accentColor: accentColor)
+            SoundMixerSheetView(
+                noiseGenerator: noiseGenerator,
+                accentColor: accentColor
+            )
         }
     }
 }
@@ -1075,43 +1078,71 @@ struct FocusCategorySection: View {
 
 struct SoundMixerSheetView: View {
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject var noiseGenerator: NoiseGenerator
     let accentColor: Color
+    
+    private var activeSounds: [NoiseGenerator.NoiseType] {
+        noiseGenerator.selectedNoiseTypes
+            .sorted { $0.description < $1.description }
+    }
+    
+    private var hasMixableSounds: Bool {
+        activeSounds.count > 1
+    }
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 24) {
-                RoundedRectangle(cornerRadius: 24)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                accentColor.opacity(0.15),
-                                accentColor.opacity(0.35)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        VStack(spacing: 12) {
-                            Image(systemName: "slider.horizontal.3")
-                                .font(.system(size: 32, weight: .medium))
-                                .foregroundColor(accentColor)
-                            Text("Mixer Coming Soon")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
-                            Text("Preview different layers, blend intensities, and save presets here.")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(Color(red: 0.35, green: 0.4, blue: 0.5))
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 24)
+            VStack(spacing: 16) {
+                ScrollView {
+                    VStack(spacing: 14) {
+                        if activeSounds.isEmpty {
+                            MixEmptyStateView(
+                                title: "No active sounds",
+                                message: "Choose at least one sound from the Focus or Sleep sheet to begin mixing.",
+                                accentColor: accentColor
+                            )
+                        } else if !hasMixableSounds {
+                            MixEmptyStateView(
+                                title: "Need one more layer",
+                                message: "Turn on another sound to unlock the mixer controls and balance levels.",
+                                accentColor: accentColor
+                            )
+                        } else {
+                            ForEach(activeSounds, id: \.self) { noiseType in
+                                MixSliderRow(
+                                    noiseGenerator: noiseGenerator,
+                                    noiseType: noiseType,
+                                    accentColor: accentColor
+                                )
+                            }
                         }
-                        .padding()
-                    )
+                    }
+                    .padding(.horizontal, 4)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 320)
+                }
+                
+                if hasMixableSounds {
+                    Button(action: {
+                        noiseGenerator.equalizeMix()
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                            Text("Balance Mix")
+                                .font(.system(size: 15, weight: .semibold))
+                        }
+                        .foregroundColor(accentColor)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(accentColor.opacity(0.6), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
                 
                 Button(action: { dismiss() }) {
-                    Text("Close")
+                    Text("Done")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -1121,14 +1152,15 @@ struct SoundMixerSheetView: View {
                                 .fill(accentColor)
                         )
                 }
-                .padding(.horizontal, 24)
+                .buttonStyle(PlainButtonStyle())
             }
             .padding(24)
             .navigationTitle("Sound Mixer")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }.foregroundColor(accentColor)
+                    Button("Close") { dismiss() }
+                        .foregroundColor(accentColor)
                 }
             }
         }
@@ -1139,6 +1171,82 @@ struct SoundMixerSheetView: View {
                 view
             }
         }
+    }
+    
+}
+
+private struct MixEmptyStateView: View {
+    let title: String
+    let message: String
+    let accentColor: Color
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "slider.horizontal.3")
+                .font(.system(size: 32, weight: .medium))
+                .foregroundColor(accentColor)
+            Text(title)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+            Text(message)
+                .font(.system(size: 15))
+                .multilineTextAlignment(.center)
+                .foregroundColor(Color(red: 0.35, green: 0.4, blue: 0.5))
+        }
+        .padding(.vertical, 32)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color(.secondarySystemBackground))
+                .shadow(color: Color.black.opacity(0.05), radius: 12, x: 0, y: 8)
+        )
+    }
+}
+
+private struct MixSliderRow: View {
+    @ObservedObject var noiseGenerator: NoiseGenerator
+    let noiseType: NoiseGenerator.NoiseType
+    let accentColor: Color
+    
+    private var sliderBinding: Binding<Double> {
+        Binding(
+            get: { Double(noiseGenerator.mixWeight(for: noiseType)) },
+            set: { noiseGenerator.setMixWeight(Float($0), for: noiseType) }
+        )
+    }
+    
+    private var shareText: String {
+        let percentage = Int(round(noiseGenerator.mixShare(for: noiseType) * 100))
+        return "\(percentage)% of mix"
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: noiseType.icon)
+                    .font(.system(size: 18))
+                    .foregroundColor(accentColor)
+                Text(noiseType.description)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                Spacer()
+                Text(shareText)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(Color(red: 0.4, green: 0.45, blue: 0.55))
+            }
+            
+            Slider(value: sliderBinding, in: 0...100, step: 1)
+                .tint(accentColor)
+            
+            Text("Higher values boost this layer relative to the others.")
+                .font(.system(size: 12))
+                .foregroundColor(Color(red: 0.45, green: 0.5, blue: 0.6))
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 18)
+                .fill(Color(.secondarySystemBackground))
+        )
     }
 }
 
