@@ -883,6 +883,31 @@ extension NoiseGenerator {
             applyVolume(volume)
         }
     }
+    
+    func applyMix(weights: [NoiseType: Float]) {
+        guard !weights.isEmpty else { return }
+        ensureMixLevelsForCurrentSelection()
+        
+        let ordered = orderedSelectedTypes()
+        var sanitized: [NoiseType: Float] = [:]
+        
+        for type in ordered {
+            if let rawValue = weights[type], !rawValue.isNaN {
+                let clamped = max(0.0, min(100.0, rawValue))
+                sanitized[type] = clamped
+            } else if let existing = mixLevels[type] {
+                sanitized[type] = existing
+            }
+        }
+        
+        guard !sanitized.isEmpty else { return }
+        mixLevels = sanitized
+        normalizeMixLevelsToHundred()
+        
+        if isEnabled && isPlaying {
+            applyVolume(volume)
+        }
+    }
 }
 
 private extension NoiseGenerator {
@@ -1032,7 +1057,7 @@ private extension NoiseGenerator {
         case .thunder:
             return 0.25
         case .rain:
-            return 0.2
+            return 0.4
         case .ocean:
             return 0.35
         default:

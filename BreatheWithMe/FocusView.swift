@@ -1092,9 +1092,9 @@ struct SoundMixerSheetView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 16) {
+            VStack(spacing: 18) {
                 ScrollView {
-                    VStack(spacing: 14) {
+                    VStack(spacing: 18) {
                         if activeSounds.isEmpty {
                             MixEmptyStateView(
                                 title: "No active sounds",
@@ -1103,18 +1103,30 @@ struct SoundMixerSheetView: View {
                             )
                         } else if !hasMixableSounds {
                             MixEmptyStateView(
-                                title: "Need one more layer",
-                                message: "Turn on another sound to unlock the mixer controls and balance levels.",
+                                title: "Add one more layer",
+                                message: "Turn on another sound to unlock the circular mixer and start shaping the blend.",
                                 accentColor: accentColor
                             )
                         } else {
-                            ForEach(activeSounds, id: \.self) { noiseType in
-                                MixSliderRow(
-                                    noiseGenerator: noiseGenerator,
-                                    noiseType: noiseType,
-                                    accentColor: accentColor
-                                )
-                            }
+                            CircularMixControl(
+                                noiseGenerator: noiseGenerator,
+                                sounds: activeSounds,
+                                accentColor: accentColor
+                            )
+                            .frame(height: 360)
+                            .padding(.horizontal, 6)
+                            
+                            Text("Drag the glowing dot closer to a sound icon to boost it. Moving toward the center evens everything out.")
+                                .font(.system(size: 13))
+                                .foregroundColor(Color(red: 0.4, green: 0.45, blue: 0.55))
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 12)
+                            
+                            MixShareGrid(
+                                noiseGenerator: noiseGenerator,
+                                sounds: activeSounds,
+                                accentColor: accentColor
+                            )
                         }
                     }
                     .padding(.horizontal, 4)
@@ -1182,7 +1194,7 @@ private struct MixEmptyStateView: View {
     
     var body: some View {
         VStack(spacing: 12) {
-            Image(systemName: "slider.horizontal.3")
+            Image(systemName: "circle.dotted")
                 .font(.system(size: 32, weight: .medium))
                 .foregroundColor(accentColor)
             Text(title)
@@ -1203,50 +1215,275 @@ private struct MixEmptyStateView: View {
     }
 }
 
-private struct MixSliderRow: View {
+private struct CircularMixControl: View {
     @ObservedObject var noiseGenerator: NoiseGenerator
-    let noiseType: NoiseGenerator.NoiseType
+    let sounds: [NoiseGenerator.NoiseType]
     let accentColor: Color
     
-    private var sliderBinding: Binding<Double> {
-        Binding(
-            get: { Double(noiseGenerator.mixWeight(for: noiseType)) },
-            set: { noiseGenerator.setMixWeight(Float($0), for: noiseType) }
-        )
-    }
+    @State private var normalizedPosition: CGPoint = .zero
+    @State private var isDragging = false
     
-    private var shareText: String {
-        let percentage = Int(round(noiseGenerator.mixShare(for: noiseType) * 100))
-        return "\(percentage)% of mix"
+    private var mixSignature: [Float] {
+        sounds.map { noiseGenerator.mixShare(for: $0) }
     }
     
     var body: some View {
+        GeometryReader { geo in
+            let minSide = min(geo.size.width, geo.size.height)
+            let center = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
+            let dialRadius = max((minSide / 2) - 12, 90)
+            let controlRadius = max(dialRadius - 48, dialRadius * 0.65)
+            let normalizedPoints = perimeterPositions()
+            let dotPosition = CGPoint(
+                x: center.x + normalizedPosition.x * controlRadius,
+                y: center.y + normalizedPosition.y * controlRadius
+            )
+            
+            ZStack {
+                Circle()
+                    .stroke(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                accentColor.opacity(0.35),
+                                accentColor.opacity(0.1)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 2
+                    )
+                    .frame(width: dialRadius * 2, height: dialRadius * 2)
+                    .overlay(
+                        Circle()
+                            .fill(accentColor.opacity(0.05))
+                            .frame(width: dialRadius * 2, height: dialRadius * 2)
+                    )
+                
+                Circle()
+                    .stroke(style: StrokeStyle(lineWidth: 1, dash: [6, 8]))
+                    .foregroundColor(accentColor.opacity(0.25))
+                    .frame(width: controlRadius * 2, height: controlRadius * 2)
+                
+                ForEach(Array(sounds.enumerated()), id: \.element) { index, sound in
+                    if index < normalizedPoints.count {
+                        let basePoint = normalizedPoints[index]
+                        let iconPosition = CGPoint(
+                            x: center.x + basePoint.x * dialRadius,
+                            y: center.y + basePoint.y * dialRadius
+                        )
+                        
+                        Path { path in
+                            path.move(to: iconPosition)
+                            path.addLine(to: dotPosition)
+                        }
+                        .stroke(accentColor.opacity(0.1), lineWidth: 1)
+                        
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 46, height: 46)
+                            .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
+                            .overlay(
+                                Image(systemName: sound.icon)
+                                    .font(.system(size: 20))
+                                    .foregroundColor(accentColor)
+                            )
+                            .position(iconPosition)
+                    }
+                }
+                
+                Circle()
+                    .fill(accentColor.opacity(0.15))
+                    .frame(width: 120, height: 120)
+                
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            gradient: Gradient(colors: [
+                                accentColor,
+                                accentColor.opacity(0.45)
+                            ]),
+                            center: .center,
+                            startRadius: 2,
+                            endRadius: 36
+                        )
+                    )
+                    .frame(width: 34, height: 34)
+                    .shadow(color: accentColor.opacity(0.35), radius: 18, x: 0, y: 10)
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white.opacity(0.6), lineWidth: 1.2)
+                            .frame(width: 34, height: 34)
+                    )
+                    .position(dotPosition)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        isDragging = true
+                        let vector = CGPoint(
+                            x: value.location.x - center.x,
+                            y: value.location.y - center.y
+                        )
+                        let normalized = normalize(vector: vector, maxRadius: controlRadius)
+                        normalizedPosition = normalized
+                        updateMixWeights(using: normalized)
+                    }
+                    .onEnded { _ in
+                        isDragging = false
+                    }
+            )
+        }
+        .onAppear {
+            normalizedPosition = normalizedPointFromMix()
+        }
+        .onChange(of: sounds) { _ in
+            normalizedPosition = normalizedPointFromMix()
+        }
+        .onChange(of: mixSignature) { _ in
+            guard !isDragging else { return }
+            withAnimation(.easeOut(duration: 0.2)) {
+                normalizedPosition = normalizedPointFromMix()
+            }
+        }
+    }
+    
+    private func perimeterPositions() -> [CGPoint] {
+        guard !sounds.isEmpty else { return [] }
+        let count = sounds.count
+        return (0..<count).map { index in
+            let angle = (Double(index) / Double(count)) * (.pi * 2) - .pi / 2
+            return CGPoint(x: cos(angle), y: sin(angle))
+        }
+    }
+    
+    private func normalizedPointFromMix() -> CGPoint {
+        guard !sounds.isEmpty else { return .zero }
+        let positions = perimeterPositions()
+        var result = CGPoint.zero
+        
+        for (index, share) in mixSignature.enumerated() where index < positions.count {
+            let fraction = CGFloat(share)
+            result.x += positions[index].x * fraction
+            result.y += positions[index].y * fraction
+        }
+        return result
+    }
+    
+    private func normalize(vector: CGPoint, maxRadius: CGFloat) -> CGPoint {
+        guard maxRadius > 0 else { return .zero }
+        var normalized = CGPoint(x: vector.x / maxRadius, y: vector.y / maxRadius)
+        let length = normalized.magnitude
+        if length > 1 {
+            normalized.x /= length
+            normalized.y /= length
+        }
+        return normalized
+    }
+    
+    private func updateMixWeights(using normalized: CGPoint) {
+        let positions = perimeterPositions()
+        guard !positions.isEmpty else { return }
+        
+        var rawWeights: [NoiseGenerator.NoiseType: CGFloat] = [:]
+        var total: CGFloat = 0
+        let softness: CGFloat = 0.15
+        
+        for (index, sound) in sounds.enumerated() where index < positions.count {
+            let distance = normalized.distance(to: positions[index])
+            let weight = 1 / ((distance + softness) * (distance + softness))
+            rawWeights[sound] = weight
+            total += weight
+        }
+        
+        guard total > 0 else { return }
+        var scaled: [NoiseGenerator.NoiseType: Float] = [:]
+        
+        for sound in sounds {
+            if let weight = rawWeights[sound] {
+                let fraction = weight / total
+                scaled[sound] = Float(fraction * 100)
+            }
+        }
+        
+        noiseGenerator.applyMix(weights: scaled)
+    }
+}
+
+private struct MixShareGrid: View {
+    @ObservedObject var noiseGenerator: NoiseGenerator
+    let sounds: [NoiseGenerator.NoiseType]
+    let accentColor: Color
+    
+    var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            Text("Mix Breakdown")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(Color(red: 0.25, green: 0.3, blue: 0.4))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
+                ForEach(sounds, id: \.self) { sound in
+                    MixShareCard(
+                        noiseType: sound,
+                        share: noiseGenerator.mixShare(for: sound),
+                        accentColor: accentColor
+                    )
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct MixShareCard: View {
+    let noiseType: NoiseGenerator.NoiseType
+    let share: Float
+    let accentColor: Color
+    
+    private var shareText: String {
+        "\(Int(round(share * 100)))%"
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: noiseType.icon)
-                    .font(.system(size: 18))
+                    .font(.system(size: 16))
                     .foregroundColor(accentColor)
+                    .frame(width: 28, height: 28)
+                    .background(
+                        Circle()
+                            .fill(accentColor.opacity(0.12))
+                    )
                 Text(noiseType.description)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
                 Spacer()
                 Text(shareText)
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(Color(red: 0.4, green: 0.45, blue: 0.55))
+                    .foregroundColor(Color(red: 0.45, green: 0.5, blue: 0.6))
             }
             
-            Slider(value: sliderBinding, in: 0...100, step: 1)
-                .tint(accentColor)
-            
-            Text("Higher values boost this layer relative to the others.")
-                .font(.system(size: 12))
-                .foregroundColor(Color(red: 0.45, green: 0.5, blue: 0.6))
+            ProgressView(value: Double(share), total: 1.0)
+                .progressViewStyle(LinearProgressViewStyle(tint: accentColor))
         }
-        .padding(16)
+        .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: 18)
+            RoundedRectangle(cornerRadius: 16)
                 .fill(Color(.secondarySystemBackground))
         )
+    }
+}
+
+private extension CGPoint {
+    var magnitude: CGFloat {
+        sqrt(x * x + y * y)
+    }
+    
+    func distance(to other: CGPoint) -> CGFloat {
+        hypot(x - other.x, y - other.y)
     }
 }
 
