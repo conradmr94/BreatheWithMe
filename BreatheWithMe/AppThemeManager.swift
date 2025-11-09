@@ -91,3 +91,47 @@ class AppThemeManager: ObservableObject {
     }
 }
 
+// MARK: - Analytics Palette Helpers
+struct AnalyticsPalette {
+    let colors: ProfileTheme.Colors
+    let usesDarkAppearance: Bool
+    
+    var primaryText: Color { colors.primaryText }
+    var secondaryText: Color { colors.secondaryText }
+    var subtleText: Color { colors.subtleText }
+    var accent: Color { colors.accent }
+    var accentSoft: Color { colors.accent.opacity(usesDarkAppearance ? 0.25 : 0.12) }
+    var highlight: Color { colors.highlight }
+    var cardBackground: Color { colors.cardBackground }
+    var cardShadow: Color { colors.cardShadow }
+    var separator: Color { colors.separator }
+    
+    func elevatedAccent(opacity: Double = 0.18) -> Color {
+        colors.accent.opacity(usesDarkAppearance ? 0.28 : opacity)
+    }
+}
+
+private struct AnalyticsPaletteKey: EnvironmentKey {
+    static let defaultValue = AnalyticsPalette(
+        colors: ProfileTheme.default.colors(for: .light),
+        usesDarkAppearance: false
+    )
+}
+
+extension EnvironmentValues {
+    var analyticsPalette: AnalyticsPalette {
+        get { self[AnalyticsPaletteKey.self] }
+        set { self[AnalyticsPaletteKey.self] = newValue }
+    }
+}
+
+extension View {
+    func analyticsCardStyle(_ palette: AnalyticsPalette, cornerRadius: CGFloat = 16, shadowRadius: CGFloat = 10, shadowYOffset: CGFloat = 5) -> some View {
+        background(
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .fill(palette.cardBackground)
+                .shadow(color: palette.cardShadow, radius: shadowRadius, x: 0, y: shadowYOffset)
+        )
+    }
+}
+

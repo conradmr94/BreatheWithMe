@@ -541,8 +541,8 @@ enum ProfileTheme: String, CaseIterable, Identifiable {
     func colors(for systemColorScheme: ColorScheme) -> Colors {
         switch self {
         case .default:
-            // System theme - match system color scheme
-            return systemColorScheme == .dark ? darkColors : lightColors
+            // Brand default theme stays consistent regardless of system appearance
+            return lightThemeColors
         case .dark:
             return darkColors
         case .light:
@@ -606,7 +606,7 @@ enum ProfileTheme: String, CaseIterable, Identifiable {
     func colorScheme(for systemColorScheme: ColorScheme) -> ColorScheme {
         switch self {
         case .default:
-            return systemColorScheme
+            return .light
         case .dark:
             return .dark
         case .light:

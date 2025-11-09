@@ -38,6 +38,7 @@ struct ContentView: View {
     private let maxVerticalDrift: CGFloat   = 80    // ignore "diagonal" swipes
 
     var body: some View {
+        let themeColors = themeManager.themeColors(for: systemColorScheme)
         let globalSwipe = DragGesture(minimumDistance: 10, coordinateSpace: .local)
             .onEnded { value in
                 guard !isSoundModalPresented else { return }
@@ -74,7 +75,8 @@ struct ContentView: View {
                 .tabItem { Label("Sleep", systemImage: "moon.stars.fill") }
                 .tag(2)
         }
-        .accentColor(Color(red: 0.65, green: 0.8, blue: 0.92))
+        .accentColor(themeColors.accent)
+        .tint(themeColors.accent)
         .onAppear { updateTabColors(for: selectedTab) }
         .onChange(of: selectedTab) { updateTabColors(for: $0) }
         .simultaneousGesture(globalSwipe)
@@ -124,6 +126,17 @@ struct ContentView: View {
             Text("Focus Lock keeps the app blocked until your scheduled wake time. Unlocking early will end the session now.")
         }
         .preferredColorScheme(appColorScheme)
+        .background(
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    themeColors.backgroundTop,
+                    themeColors.backgroundBottom
+                ]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        )
     }
 
     private var focusLockRemaining: TimeInterval {
@@ -212,11 +225,14 @@ struct ContentView: View {
 
     /// Dynamically update unselected tab icon/text color
     private func updateTabColors(for tab: Int) {
+        let themeColors = themeManager.themeColors(for: systemColorScheme)
+        let tintColor: UIColor
         if tab == 2 {
-            UITabBar.appearance().unselectedItemTintColor = UIColor(white: 0.9, alpha: 1.0)
+            tintColor = UIColor(themeColors.subtleText)
         } else {
-            UITabBar.appearance().unselectedItemTintColor = UIColor.systemGray
+            tintColor = UIColor(themeColors.secondaryText)
         }
+        UITabBar.appearance().unselectedItemTintColor = tintColor
     }
 
     private var appColorScheme: ColorScheme {

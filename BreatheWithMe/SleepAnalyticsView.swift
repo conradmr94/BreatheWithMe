@@ -9,6 +9,9 @@ import SwiftUI
 import Charts
 
 struct SleepAnalyticsView: View {
+    @EnvironmentObject private var themeManager: AppThemeManager
+    @Environment(\.colorScheme) private var systemColorScheme
+    
     @StateObject private var sessionManager = SessionManager.shared
     @State private var selectedTimeframe: Timeframe = .week
     
@@ -39,14 +42,27 @@ struct SleepAnalyticsView: View {
         sessionManager.bedtimeRegularity(days: selectedTimeframe.days)
     }
     
+    private var resolvedColorScheme: ColorScheme {
+        themeManager.colorScheme(for: systemColorScheme)
+    }
+    
+    private var themeColors: ProfileTheme.Colors {
+        themeManager.themeColors(for: systemColorScheme)
+    }
+    
+    private var palette: AnalyticsPalette {
+        AnalyticsPalette(colors: themeColors, usesDarkAppearance: resolvedColorScheme == .dark)
+    }
+    
     var body: some View {
+        let colors = themeColors
         ScrollView {
             VStack(spacing: 24) {
                 // Header
                 VStack(spacing: 8) {
                     Text("Sleep Analytics")
                         .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(palette.primaryText)
                     
                     // Timeframe selector
                     Picker("Timeframe", selection: $selectedTimeframe) {
@@ -87,13 +103,15 @@ struct SleepAnalyticsView: View {
         .background(
             LinearGradient(
                 gradient: Gradient(colors: [
-                    Color(red: 0.15, green: 0.15, blue: 0.25),
-                    Color(red: 0.1, green: 0.1, blue: 0.2)
+                    colors.backgroundTop,
+                    colors.backgroundBottom
                 ]),
                 startPoint: .top,
                 endPoint: .bottom
             )
         )
+        .preferredColorScheme(resolvedColorScheme)
+        .environment(\.analyticsPalette, palette)
     }
 }
 
@@ -101,14 +119,15 @@ struct SleepAnalyticsView: View {
 struct SleepScoreCard: View {
     let score: Double
     let sessions: [EnhancedSession]
+    @Environment(\.analyticsPalette) private var palette
     
     private var scoreColor: Color {
         if score >= 80 {
-            return .green
+            return palette.highlight
         } else if score >= 60 {
-            return .yellow
+            return palette.accent
         } else {
-            return .red
+            return palette.accent.opacity(0.7)
         }
     }
     
@@ -116,7 +135,7 @@ struct SleepScoreCard: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Average Sleep Score")
                 .font(.system(size: 16, weight: .medium))
-                .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                .foregroundColor(palette.primaryText)
             
             HStack(alignment: .lastTextBaseline, spacing: 8) {
                 Text("\(Int(score))")
@@ -125,7 +144,7 @@ struct SleepScoreCard: View {
                 
                 Text("/ 100")
                     .font(.system(size: 20, weight: .regular))
-                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                    .foregroundColor(palette.secondaryText)
             }
             
             // Score breakdown
@@ -137,26 +156,23 @@ struct SleepScoreCard: View {
                     let poor = scores.filter { $0 < 60 }.count
                     
                     HStack(spacing: 16) {
-                        StatBadge(label: "Excellent", count: excellent, color: .green)
-                        StatBadge(label: "Good", count: good, color: .yellow)
-                        StatBadge(label: "Poor", count: poor, color: .red)
+                        StatBadge(label: "Excellent", count: excellent, color: palette.highlight)
+                        StatBadge(label: "Good", count: good, color: palette.accent)
+                        StatBadge(label: "Poor", count: poor, color: palette.accent.opacity(0.7))
                     }
                 }
             }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
-        )
+        .analyticsCardStyle(palette, shadowRadius: 20, shadowYOffset: 10)
     }
 }
 
 // MARK: - Sleep Duration Chart
 struct SleepDurationChart: View {
     let sessions: [EnhancedSession]
+    @Environment(\.analyticsPalette) private var palette
     
     private var chartData: [(date: Date, hours: Double)] {
         let calendar = Calendar.current
@@ -175,7 +191,7 @@ struct SleepDurationChart: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Sleep Duration Trend")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                .foregroundColor(palette.primaryText)
             
             if #available(iOS 16.0, *) {
                 Chart(chartData, id: \.date) { dataPoint in
@@ -183,7 +199,7 @@ struct SleepDurationChart: View {
                         x: .value("Date", dataPoint.date, unit: .day),
                         y: .value("Hours", dataPoint.hours)
                     )
-                    .foregroundStyle(Color(red: 0.4, green: 0.5, blue: 0.8))
+                    .foregroundStyle(palette.accent)
                     .cornerRadius(4)
                 }
                 .frame(height: 200)
@@ -206,17 +222,14 @@ struct SleepDurationChart: View {
             }
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
-        )
+        .analyticsCardStyle(palette, shadowRadius: 20, shadowYOffset: 10)
     }
 }
 
 // MARK: - Bedtime Regularity Card
 struct BedtimeRegularityCard: View {
     let regularity: (mean: Date, stdDev: TimeInterval)
+    @Environment(\.analyticsPalette) private var palette
     
     private var meanTimeString: String {
         let formatter = DateFormatter()
@@ -227,11 +240,11 @@ struct BedtimeRegularityCard: View {
     private var regularityStatus: (text: String, color: Color) {
         let stdDevMinutes = regularity.stdDev / 60
         if stdDevMinutes < 15 {
-            return ("Very Regular", .green)
+            return ("Very Regular", palette.highlight)
         } else if stdDevMinutes < 30 {
-            return ("Regular", .yellow)
+            return ("Regular", palette.accent)
         } else {
-            return ("Irregular", .red)
+            return ("Irregular", palette.accent.opacity(0.7))
         }
     }
     
@@ -239,16 +252,16 @@ struct BedtimeRegularityCard: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Bedtime Regularity")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                .foregroundColor(palette.primaryText)
             
             HStack(alignment: .lastTextBaseline, spacing: 8) {
                 Text(meanTimeString)
                     .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                    .foregroundColor(palette.primaryText)
                 
                 Text("avg bedtime")
                     .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                    .foregroundColor(palette.secondaryText)
             }
             
             HStack {
@@ -260,21 +273,18 @@ struct BedtimeRegularityCard: View {
                 
                 Text("±\(Int(regularity.stdDev / 60)) min")
                     .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                    .foregroundColor(palette.secondaryText)
             }
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
-        )
+        .analyticsCardStyle(palette, shadowRadius: 20, shadowYOffset: 10)
     }
 }
 
 // MARK: - Sleep Events Card
 struct SleepEventsCard: View {
     let sessions: [EnhancedSession]
+    @Environment(\.analyticsPalette) private var palette
     
     private var totalSnoreMinutes: Int {
         sessions.compactMap { $0.meta.snoreMinutes }.reduce(0, +)
@@ -294,42 +304,39 @@ struct SleepEventsCard: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Sleep Events")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                .foregroundColor(palette.primaryText)
             
             HStack(spacing: 20) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(totalSnoreMinutes)")
                         .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.orange)
+                        .foregroundColor(palette.highlight)
                     Text("min snoring")
                         .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                        .foregroundColor(palette.secondaryText)
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(Int(averageWakeups))")
                         .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.blue)
+                        .foregroundColor(palette.accent)
                     Text("avg wakeups")
                         .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                        .foregroundColor(palette.secondaryText)
                 }
                 
                 Spacer()
             }
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
-        )
+        .analyticsCardStyle(palette, shadowRadius: 20, shadowYOffset: 10)
     }
 }
 
 // MARK: - Sleep Summary Stats
 struct SleepSummaryStats: View {
     let sessions: [EnhancedSession]
+    @Environment(\.analyticsPalette) private var palette
     
     private var totalSleepHours: Double {
         Double(sessions.reduce(0) { $0 + $1.durationSeconds }) / 3600.0
@@ -348,7 +355,7 @@ struct SleepSummaryStats: View {
         VStack(spacing: 12) {
             Text("Summary")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                .foregroundColor(palette.primaryText)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
             HStack(spacing: 16) {
@@ -372,11 +379,7 @@ struct SleepSummaryStats: View {
             }
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
-        )
+        .analyticsCardStyle(palette, shadowRadius: 20, shadowYOffset: 10)
     }
 }
 
@@ -385,6 +388,7 @@ struct StatBadge: View {
     let label: String
     let count: Int
     let color: Color
+    @Environment(\.analyticsPalette) private var palette
     
     var body: some View {
         HStack(spacing: 4) {
@@ -394,7 +398,7 @@ struct StatBadge: View {
             
             Text("\(label): \(count)")
                 .font(.system(size: 12, weight: .medium))
-                .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                .foregroundColor(palette.secondaryText)
         }
     }
 }
@@ -403,26 +407,27 @@ struct StatCard: View {
     let title: String
     let value: String
     let icon: String
+    @Environment(\.analyticsPalette) private var palette
     
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 24))
-                .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                .foregroundColor(palette.accent)
             
             Text(value)
                 .font(.system(size: 20, weight: .bold))
-                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                .foregroundColor(palette.primaryText)
             
             Text(title)
                 .font(.system(size: 12, weight: .regular))
-                .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                .foregroundColor(palette.secondaryText)
         }
         .frame(maxWidth: .infinity)
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(red: 0.95, green: 0.97, blue: 1.0))
+                .fill(palette.accentSoft)
         )
     }
 }
@@ -430,6 +435,7 @@ struct StatCard: View {
 // MARK: - Simple Bar Chart for iOS 15
 struct SimpleBarChart: View {
     let data: [Double]
+    @Environment(\.analyticsPalette) private var palette
     
     private var maxValue: Double {
         data.max() ?? 1.0
@@ -440,7 +446,7 @@ struct SimpleBarChart: View {
             HStack(alignment: .bottom, spacing: 4) {
                 ForEach(Array(data.enumerated()), id: \.offset) { index, value in
                     RoundedRectangle(cornerRadius: 2)
-                        .fill(Color(red: 0.4, green: 0.5, blue: 0.8))
+                        .fill(palette.accent)
                         .frame(
                             width: (geometry.size.width - CGFloat(data.count - 1) * 4) / CGFloat(data.count),
                             height: geometry.size.height * CGFloat(value / maxValue)

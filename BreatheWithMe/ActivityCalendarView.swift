@@ -32,26 +32,26 @@ struct DateItem: Identifiable {
 }
 
 struct ActivityCalendarView: View {
+    @EnvironmentObject private var themeManager: AppThemeManager
+    @Environment(\.colorScheme) private var systemColorScheme
+    
     @StateObject private var statsManager = UserStatsManager()
     @State private var selectedMonth = Date()
     @State private var selectedDateItem: DateItem?
     @State private var showingShareSheet = false
     @State private var showingAwardsSheet = false
-    @AppStorage("profileThemeRawValue") private var profileThemeRawValue: String = ProfileTheme.default.rawValue
-    
-    private var profileTheme: ProfileTheme {
-        ProfileTheme(rawValue: profileThemeRawValue) ?? .default
-    }
-    
-    private var themeColors: ProfileTheme.Colors {
-        profileTheme.colors
-    }
     
     private let calendar = Calendar.current
     private let daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     
+    private var palette: AnalyticsPalette {
+        let scheme = themeManager.colorScheme(for: systemColorScheme)
+        let colors = themeManager.themeColors(for: systemColorScheme)
+        return AnalyticsPalette(colors: colors, usesDarkAppearance: scheme == .dark)
+    }
+    
     var body: some View {
-        let colors = themeColors
+        let palette = self.palette
         return ScrollView {
             VStack(spacing: 24) {
                 // Header with streak info
@@ -61,20 +61,20 @@ struct ActivityCalendarView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "flame.fill")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(statsManager.currentStreak >= 3 ? colors.highlight : colors.accent)
+                                .foregroundColor(statsManager.currentStreak >= 3 ? palette.highlight : palette.accent)
                             Text("Current Streak")
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                .foregroundColor(colors.secondaryText)
+                                .foregroundColor(palette.secondaryText)
                                 .textCase(.uppercase)
                         }
                         
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
                             Text("\(statsManager.currentStreak)")
                                 .font(.system(size: 40, weight: .bold, design: .rounded))
-                                .foregroundColor(statsManager.currentStreak >= 3 ? colors.highlight : colors.primaryText)
+                                .foregroundColor(statsManager.currentStreak >= 3 ? palette.highlight : palette.primaryText)
                             Text(statsManager.currentStreak == 1 ? "day" : "days")
                                 .font(.system(size: 16, weight: .medium, design: .rounded))
-                                .foregroundColor(colors.secondaryText)
+                                .foregroundColor(palette.secondaryText)
                                 .padding(.bottom, 4)
                         }
                     }
@@ -82,11 +82,11 @@ struct ActivityCalendarView: View {
                     .padding(18)
                     .background(
                         RoundedRectangle(cornerRadius: 20)
-                            .fill(colors.cardBackground)
-                            .shadow(color: colors.cardShadow, radius: 16, x: 0, y: 8)
+                            .fill(palette.cardBackground)
+                            .shadow(color: palette.cardShadow, radius: 16, x: 0, y: 8)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 20)
-                                    .strokeBorder(colors.separator.opacity(0.6), lineWidth: 1)
+                                    .strokeBorder(palette.separator.opacity(0.6), lineWidth: 1)
                             )
                     )
                     
@@ -95,20 +95,20 @@ struct ActivityCalendarView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "chart.line.uptrend.xyaxis")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(colors.accent)
+                                .foregroundColor(palette.accent)
                             Text("Best")
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                .foregroundColor(colors.secondaryText)
+                                .foregroundColor(palette.secondaryText)
                                 .textCase(.uppercase)
                         }
                         
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
                             Text("\(statsManager.longestStreak)")
                                 .font(.system(size: 40, weight: .bold, design: .rounded))
-                                .foregroundColor(colors.primaryText)
+                                .foregroundColor(palette.primaryText)
                             Text(statsManager.longestStreak == 1 ? "day" : "days")
                                 .font(.system(size: 16, weight: .medium, design: .rounded))
-                                .foregroundColor(colors.secondaryText)
+                                .foregroundColor(palette.secondaryText)
                                 .padding(.bottom, 4)
                         }
                     }
@@ -116,11 +116,11 @@ struct ActivityCalendarView: View {
                     .padding(18)
                     .background(
                         RoundedRectangle(cornerRadius: 20)
-                            .fill(colors.cardBackground)
-                            .shadow(color: colors.cardShadow, radius: 16, x: 0, y: 8)
+                            .fill(palette.cardBackground)
+                            .shadow(color: palette.cardShadow, radius: 16, x: 0, y: 8)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 20)
-                                    .strokeBorder(colors.separator.opacity(0.6), lineWidth: 1)
+                                    .strokeBorder(palette.separator.opacity(0.6), lineWidth: 1)
                             )
                     )
                 }
@@ -131,18 +131,12 @@ struct ActivityCalendarView: View {
                     Button(action: previousMonth) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                            .foregroundColor(palette.secondaryText)
                             .frame(width: 36, height: 36)
                             .background(
                                 Circle()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [Color.white.opacity(0.95), Color.white.opacity(0.85)],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                    .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
+                                    .fill(palette.cardBackground)
+                                    .shadow(color: palette.cardShadow.opacity(0.7), radius: 8, x: 0, y: 4)
                             )
                     }
                     
@@ -150,25 +144,19 @@ struct ActivityCalendarView: View {
                     
                     Text(monthYearString)
                         .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundColor(Color(red: 0.15, green: 0.25, blue: 0.35))
+                        .foregroundColor(palette.primaryText)
                     
                     Spacer()
                     
                     Button(action: nextMonth) {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(canGoToNextMonth ? Color(red: 0.4, green: 0.5, blue: 0.6) : Color.gray.opacity(0.3))
+                            .foregroundColor(canGoToNextMonth ? palette.secondaryText : palette.secondaryText.opacity(0.3))
                             .frame(width: 36, height: 36)
                             .background(
                                 Circle()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [Color.white.opacity(0.95), Color.white.opacity(0.85)],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                    .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
+                                    .fill(palette.cardBackground)
+                                    .shadow(color: palette.cardShadow.opacity(0.7), radius: 8, x: 0, y: 4)
                             )
                     }
                     .disabled(!canGoToNextMonth)
@@ -182,7 +170,7 @@ struct ActivityCalendarView: View {
                         ForEach(daysOfWeek, id: \.self) { day in
                             Text(day)
                                 .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                .foregroundColor(Color(red: 0.45, green: 0.55, blue: 0.65))
+                                .foregroundColor(palette.secondaryText)
                                 .textCase(.uppercase)
                                 .frame(maxWidth: .infinity)
                         }
@@ -213,17 +201,11 @@ struct ActivityCalendarView: View {
                 .padding(20)
                 .background(
                     RoundedRectangle(cornerRadius: 20)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.white.opacity(0.95), Color.white.opacity(0.85)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .shadow(color: Color.black.opacity(0.06), radius: 16, x: 0, y: 8)
+                        .fill(palette.cardBackground)
+                        .shadow(color: palette.cardShadow, radius: 16, x: 0, y: 8)
                         .overlay(
                             RoundedRectangle(cornerRadius: 20)
-                                .strokeBorder(Color.white.opacity(0.8), lineWidth: 1)
+                                .strokeBorder(palette.separator.opacity(0.4), lineWidth: 1)
                         )
                 )
                 .padding(.horizontal, 20)
@@ -232,19 +214,19 @@ struct ActivityCalendarView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Activity Rings")
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color(red: 0.25, green: 0.35, blue: 0.45))
+                        .foregroundColor(palette.primaryText)
                     
                     VStack(alignment: .leading, spacing: 14) {
                         HStack(spacing: 12) {
                             ZStack {
                                 Circle()
-                                    .stroke(Color.gray.opacity(0.15), lineWidth: 2.5)
+                                    .stroke(palette.separator.opacity(0.3), lineWidth: 2.5)
                                     .frame(width: 28, height: 28)
                                 Circle()
                                     .trim(from: 0.0, to: 0.33)
                                     .stroke(
                                         LinearGradient(
-                                            colors: [Color(red: 0.7, green: 0.85, blue: 1.0), Color(red: 0.5, green: 0.75, blue: 0.95)],
+                                            colors: [palette.accent.opacity(0.5), palette.accent],
                                             startPoint: .topLeading,
                                             endPoint: .bottomTrailing
                                         ),
@@ -257,23 +239,23 @@ struct ActivityCalendarView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("1-2 sessions")
                                     .font(.system(size: 14, weight: .medium, design: .rounded))
-                                    .foregroundColor(Color(red: 0.25, green: 0.35, blue: 0.45))
+                                    .foregroundColor(palette.primaryText)
                                 Text("33% ring")
                                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                    .foregroundColor(palette.secondaryText)
                             }
                         }
                         
                         HStack(spacing: 12) {
                             ZStack {
                                 Circle()
-                                    .stroke(Color.gray.opacity(0.15), lineWidth: 2.5)
+                                    .stroke(palette.separator.opacity(0.3), lineWidth: 2.5)
                                     .frame(width: 28, height: 28)
                                 Circle()
                                     .trim(from: 0.0, to: 0.66)
                                     .stroke(
                                         LinearGradient(
-                                            colors: [Color(red: 0.5, green: 0.8, blue: 1.0), Color(red: 0.3, green: 0.7, blue: 0.95)],
+                                            colors: [palette.accent.opacity(0.6), palette.accent],
                                             startPoint: .topLeading,
                                             endPoint: .bottomTrailing
                                         ),
@@ -286,23 +268,23 @@ struct ActivityCalendarView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("3-4 sessions")
                                     .font(.system(size: 14, weight: .medium, design: .rounded))
-                                    .foregroundColor(Color(red: 0.25, green: 0.35, blue: 0.45))
+                                    .foregroundColor(palette.primaryText)
                                 Text("66% ring")
                                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                    .foregroundColor(palette.secondaryText)
                             }
                         }
                         
                         HStack(spacing: 12) {
                             ZStack {
                                 Circle()
-                                    .stroke(Color.gray.opacity(0.15), lineWidth: 2.5)
+                                    .stroke(palette.separator.opacity(0.3), lineWidth: 2.5)
                                     .frame(width: 28, height: 28)
                                 Circle()
                                     .trim(from: 0.0, to: 1.0)
                                     .stroke(
                                         LinearGradient(
-                                            colors: [Color(red: 0.3, green: 0.7, blue: 1.0), Color(red: 0.0, green: 0.5, blue: 0.9)],
+                                            colors: [palette.highlight.opacity(0.7), palette.highlight],
                                             startPoint: .topLeading,
                                             endPoint: .bottomTrailing
                                         ),
@@ -315,10 +297,10 @@ struct ActivityCalendarView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("5+ sessions")
                                     .font(.system(size: 14, weight: .medium, design: .rounded))
-                                    .foregroundColor(Color(red: 0.25, green: 0.35, blue: 0.45))
+                                    .foregroundColor(palette.primaryText)
                                 Text("Complete ring")
                                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                                    .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                                    .foregroundColor(palette.secondaryText)
                             }
                         }
                     }
@@ -327,17 +309,11 @@ struct ActivityCalendarView: View {
                 .padding(18)
                 .background(
                     RoundedRectangle(cornerRadius: 20)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.white.opacity(0.95), Color.white.opacity(0.85)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .shadow(color: Color.black.opacity(0.06), radius: 16, x: 0, y: 8)
+                        .fill(palette.cardBackground)
+                        .shadow(color: palette.cardShadow, radius: 16, x: 0, y: 8)
                         .overlay(
                             RoundedRectangle(cornerRadius: 20)
-                                .strokeBorder(Color.white.opacity(0.8), lineWidth: 1)
+                                .strokeBorder(palette.separator.opacity(0.4), lineWidth: 1)
                         )
                 )
                 .padding(.horizontal, 20)
@@ -348,10 +324,10 @@ struct ActivityCalendarView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "star.circle.fill")
                                 .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(Color(red: 0.95, green: 0.75, blue: 0.2))
+                                .foregroundColor(palette.highlight)
                             Text("Awards")
                                 .font(.system(size: 15, weight: .semibold, design: .rounded))
-                                .foregroundColor(Color(red: 0.25, green: 0.35, blue: 0.45))
+                                .foregroundColor(palette.primaryText)
                             Spacer()
                             Button {
                                 showingAwardsSheet = true
@@ -362,10 +338,10 @@ struct ActivityCalendarView: View {
                                     Image(systemName: "chevron.right")
                                         .font(.system(size: 12, weight: .semibold))
                                 }
-                                .foregroundColor(Color(red: 0.35, green: 0.45, blue: 0.55))
+                                .foregroundColor(palette.secondaryText)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 6)
-                                .background(Color.white.opacity(0.7))
+                                .background(palette.cardBackground.opacity(0.8))
                                 .clipShape(Capsule())
                             }
                             .buttonStyle(.plain)
@@ -382,10 +358,10 @@ struct ActivityCalendarView: View {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(award.title)
                                             .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                            .foregroundColor(award.unlocked ? Color(red: 0.2, green: 0.3, blue: 0.4) : Color(red: 0.55, green: 0.6, blue: 0.7))
+                                            .foregroundColor(award.unlocked ? palette.primaryText : palette.secondaryText)
                                         Text(award.detail)
                                             .font(.system(size: 12, weight: .regular, design: .rounded))
-                                            .foregroundColor(Color(red: 0.55, green: 0.65, blue: 0.75))
+                                            .foregroundColor(palette.subtleText)
                                             .lineLimit(2)
                                     }
                                 }
@@ -406,17 +382,11 @@ struct ActivityCalendarView: View {
                     .padding(18)
                     .background(
                         RoundedRectangle(cornerRadius: 20)
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color.white.opacity(0.95), Color.white.opacity(0.85)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .shadow(color: Color.black.opacity(0.06), radius: 16, x: 0, y: 8)
+                            .fill(palette.cardBackground)
+                            .shadow(color: palette.cardShadow, radius: 16, x: 0, y: 8)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 20)
-                                    .strokeBorder(Color.white.opacity(0.8), lineWidth: 1)
+                                    .strokeBorder(palette.separator.opacity(0.4), lineWidth: 1)
                             )
                     )
                     .padding(.horizontal, 20)
@@ -427,10 +397,10 @@ struct ActivityCalendarView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "chart.bar.fill")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(Color(red: 0.5, green: 0.6, blue: 0.7))
+                            .foregroundColor(palette.accent)
                         Text("This Month")
                             .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundColor(Color(red: 0.25, green: 0.35, blue: 0.45))
+                            .foregroundColor(palette.primaryText)
                     }
                     
                     VStack(spacing: 12) {
@@ -438,52 +408,46 @@ struct ActivityCalendarView: View {
                             HStack(spacing: 8) {
                                 Image(systemName: "calendar.badge.checkmark")
                                     .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(Color(red: 0.4, green: 0.7, blue: 0.9))
+                                    .foregroundColor(palette.accent)
                                     .frame(width: 24)
                                 Text("Active Days")
                                     .font(.system(size: 15, weight: .medium, design: .rounded))
-                                    .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+                                    .foregroundColor(palette.primaryText)
                             }
                             Spacer()
                             Text("\(activeDaysThisMonth)")
                                 .font(.system(size: 20, weight: .bold, design: .rounded))
-                                .foregroundColor(Color(red: 0.15, green: 0.25, blue: 0.35))
+                                .foregroundColor(palette.primaryText)
                         }
                         
                         Divider()
-                            .background(Color(red: 0.85, green: 0.9, blue: 0.95))
+                            .background(palette.separator)
                         
                         HStack {
                             HStack(spacing: 8) {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(Color(red: 0.5, green: 0.8, blue: 0.5))
+                                    .foregroundColor(palette.highlight)
                                     .frame(width: 24)
                                 Text("Total Sessions")
                                     .font(.system(size: 15, weight: .medium, design: .rounded))
-                                    .foregroundColor(Color(red: 0.3, green: 0.4, blue: 0.5))
+                                    .foregroundColor(palette.primaryText)
                             }
                             Spacer()
                             Text("\(sessionsThisMonth)")
                                 .font(.system(size: 20, weight: .bold, design: .rounded))
-                                .foregroundColor(Color(red: 0.15, green: 0.25, blue: 0.35))
+                                .foregroundColor(palette.primaryText)
                         }
                     }
                 }
                 .padding(18)
                 .background(
                     RoundedRectangle(cornerRadius: 20)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.white.opacity(0.95), Color.white.opacity(0.85)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .shadow(color: Color.black.opacity(0.06), radius: 16, x: 0, y: 8)
+                        .fill(palette.cardBackground)
+                        .shadow(color: palette.cardShadow, radius: 16, x: 0, y: 8)
                         .overlay(
                             RoundedRectangle(cornerRadius: 20)
-                                .strokeBorder(Color.white.opacity(0.8), lineWidth: 1)
+                                .strokeBorder(palette.separator.opacity(0.4), lineWidth: 1)
                         )
                 )
                 .padding(.horizontal, 20)
@@ -493,8 +457,8 @@ struct ActivityCalendarView: View {
         .background(
             LinearGradient(
                 gradient: Gradient(colors: [
-                    Color(red: 0.95, green: 0.97, blue: 1.0),
-                    Color(red: 0.9, green: 0.94, blue: 0.98)
+                    palette.colors.backgroundTop,
+                    palette.colors.backgroundBottom
                 ]),
                 startPoint: .top,
                 endPoint: .bottom
@@ -515,6 +479,7 @@ struct ActivityCalendarView: View {
                 showingShareSheet = true
             })
         }
+        .environment(\.analyticsPalette, palette)
     }
     
     // MARK: - Helper Properties
@@ -1190,6 +1155,7 @@ struct DayCell: View {
     let isCurrentMonth: Bool
     
     @State private var isPressed = false
+    @Environment(\.analyticsPalette) private var palette
     
     // Activity completion percentage (0.0 to 1.0)
     private var activityProgress: Double {
@@ -1236,12 +1202,12 @@ struct DayCell: View {
                 .fill(
                     isToday 
                         ? LinearGradient(
-                            colors: [Color(red: 0.5, green: 0.6, blue: 0.7), Color(red: 0.4, green: 0.5, blue: 0.6)],
+                            colors: [palette.accent.opacity(0.85), palette.accent],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                         : LinearGradient(
-                            colors: [Color.white.opacity(0.6), Color.white.opacity(0.3)],
+                            colors: [palette.cardBackground.opacity(0.9), palette.cardBackground.opacity(0.7)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -1251,7 +1217,7 @@ struct DayCell: View {
                         .strokeBorder(
                             isToday 
                                 ? Color.clear 
-                                : Color.white.opacity(0.5),
+                                : palette.separator.opacity(0.4),
                             lineWidth: 0.5
                         )
                 )
@@ -1271,7 +1237,7 @@ struct DayCell: View {
                 // Background ring (subtle gray)
                 Circle()
                     .stroke(
-                        Color.gray.opacity(isToday ? 0.2 : 0.15),
+                        palette.separator.opacity(isToday ? 0.2 : 0.15),
                         lineWidth: 2.5
                     )
                     .frame(width: 36, height: 36)
@@ -1282,10 +1248,10 @@ struct DayCell: View {
                 .font(.system(size: 15, weight: isToday ? .semibold : (hasActivity ? .medium : .regular), design: .rounded))
                 .foregroundColor(
                     isToday 
-                        ? .white 
+                        ? palette.colors.cardBackground 
                         : (isCurrentMonth 
-                            ? Color(red: 0.15, green: 0.25, blue: 0.35) 
-                            : Color.gray.opacity(0.35))
+                            ? palette.primaryText 
+                            : palette.subtleText.opacity(0.6))
                 )
         }
         .frame(width: 44, height: 44)

@@ -9,6 +9,9 @@ import SwiftUI
 import Charts
 
 struct BreathingAnalyticsView: View {
+    @EnvironmentObject private var themeManager: AppThemeManager
+    @Environment(\.colorScheme) private var systemColorScheme
+    
     @StateObject private var sessionManager = SessionManager.shared
     @State private var selectedTimeframe: Timeframe = .week
     
@@ -39,14 +42,27 @@ struct BreathingAnalyticsView: View {
         sessionManager.breathingStreak()
     }
     
+    private var resolvedColorScheme: ColorScheme {
+        themeManager.colorScheme(for: systemColorScheme)
+    }
+    
+    private var themeColors: ProfileTheme.Colors {
+        themeManager.themeColors(for: systemColorScheme)
+    }
+    
+    private var palette: AnalyticsPalette {
+        AnalyticsPalette(colors: themeColors, usesDarkAppearance: resolvedColorScheme == .dark)
+    }
+    
     var body: some View {
+        let colors = themeColors
         ScrollView {
             VStack(spacing: 24) {
                 // Header
                 VStack(spacing: 8) {
                     Text("Breathing Analytics")
                         .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                        .foregroundColor(palette.primaryText)
                     
                     // Timeframe selector
                     Picker("Timeframe", selection: $selectedTimeframe) {
@@ -85,35 +101,38 @@ struct BreathingAnalyticsView: View {
         .background(
             LinearGradient(
                 gradient: Gradient(colors: [
-                    Color(red: 0.95, green: 0.97, blue: 1.0),
-                    Color(red: 0.88, green: 0.93, blue: 0.98)
+                    colors.backgroundTop,
+                    colors.backgroundBottom
                 ]),
                 startPoint: .top,
                 endPoint: .bottom
             )
         )
+        .preferredColorScheme(resolvedColorScheme)
+        .environment(\.analyticsPalette, palette)
     }
 }
 
 // MARK: - Streak Card
 struct StreakCard: View {
     let streak: Int
+    @Environment(\.analyticsPalette) private var palette
     
     var body: some View {
         VStack(spacing: 16) {
             HStack {
                 Image(systemName: "flame.fill")
                     .font(.system(size: 32))
-                    .foregroundColor(.orange)
+                    .foregroundColor(palette.highlight)
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(streak)")
                         .font(.system(size: 48, weight: .bold))
-                        .foregroundColor(Color(red: 0.65, green: 0.8, blue: 0.92))
+                        .foregroundColor(palette.accent)
                     
                     Text("day streak")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                        .foregroundColor(palette.secondaryText)
                 }
                 
                 Spacer()
@@ -122,20 +141,20 @@ struct StreakCard: View {
             if streak > 0 {
                 Text("Keep it up! 🎉")
                     .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                    .foregroundColor(palette.secondaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 Text("Start your streak today!")
                     .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                    .foregroundColor(palette.secondaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
+                .fill(palette.cardBackground)
+                .shadow(color: palette.cardShadow, radius: 10, x: 0, y: 5)
         )
     }
 }
@@ -144,14 +163,15 @@ struct StreakCard: View {
 struct StressReductionCard: View {
     let reduction: Double
     let sessions: [EnhancedSession]
+    @Environment(\.analyticsPalette) private var palette
     
     private var reductionColor: Color {
         if reduction >= 1.5 {
-            return .green
+            return palette.highlight
         } else if reduction >= 1.0 {
-            return Color(red: 0.65, green: 0.8, blue: 0.92)
+            return palette.accent
         } else {
-            return .orange
+            return palette.accent.opacity(0.8)
         }
     }
     
@@ -163,7 +183,7 @@ struct StressReductionCard: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Average Stress Reduction")
                 .font(.system(size: 16, weight: .medium))
-                .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                .foregroundColor(palette.primaryText)
             
             HStack(alignment: .lastTextBaseline, spacing: 8) {
                 Text(String(format: "%.1f", reduction))
@@ -172,12 +192,12 @@ struct StressReductionCard: View {
                 
                 Text("points")
                     .font(.system(size: 16, weight: .regular))
-                    .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                    .foregroundColor(palette.secondaryText)
             }
             
             Text("Based on \(sessionsWithStressData.count) sessions with stress ratings")
                 .font(.system(size: 12, weight: .regular))
-                .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6).opacity(0.8))
+                .foregroundColor(palette.subtleText)
             
             // Stress reduction breakdown
             if !sessionsWithStressData.isEmpty {
@@ -190,9 +210,9 @@ struct StressReductionCard: View {
                 let minimal = reductions.filter { $0 < 1 }.count
                 
                 HStack(spacing: 16) {
-                    StatBadge(label: "Significant", count: significant, color: .green)
-                    StatBadge(label: "Moderate", count: moderate, color: Color(red: 0.65, green: 0.8, blue: 0.92))
-                    StatBadge(label: "Minimal", count: minimal, color: .orange)
+                    StatBadge(label: "Significant", count: significant, color: palette.highlight)
+                    StatBadge(label: "Moderate", count: moderate, color: palette.accent)
+                    StatBadge(label: "Minimal", count: minimal, color: palette.accent.opacity(0.7))
                 }
             }
         }
@@ -200,8 +220,8 @@ struct StressReductionCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
+                .fill(palette.cardBackground)
+                .shadow(color: palette.cardShadow, radius: 10, x: 0, y: 5)
         )
     }
 }
@@ -209,6 +229,7 @@ struct StressReductionCard: View {
 // MARK: - Protocol Usage Chart
 struct ProtocolUsageChart: View {
     let sessions: [EnhancedSession]
+    @Environment(\.analyticsPalette) private var palette
     
     private var protocolCounts: [(protocolId: String, count: Int)] {
         var counts: [String: Int] = [:]
@@ -236,7 +257,7 @@ struct ProtocolUsageChart: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Protocol Usage")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                .foregroundColor(palette.primaryText)
             
             if #available(iOS 16.0, *) {
                 Chart(protocolCounts, id: \.protocolId) { data in
@@ -244,7 +265,7 @@ struct ProtocolUsageChart: View {
                         x: .value("Count", data.count),
                         y: .value("Protocol", protocolName(for: data.protocolId))
                     )
-                    .foregroundStyle(Color(red: 0.65, green: 0.8, blue: 0.92))
+                    .foregroundStyle(palette.accent)
                     .cornerRadius(4)
                 }
                 .frame(height: CGFloat(protocolCounts.count * 40))
@@ -261,13 +282,13 @@ struct ProtocolUsageChart: View {
                         HStack {
                             Text(protocolName(for: data.protocolId))
                                 .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                                .foregroundColor(palette.primaryText)
                             
                             Spacer()
                             
                             Text("\(data.count)")
                                 .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(Color(red: 0.65, green: 0.8, blue: 0.92))
+                                .foregroundColor(palette.accent)
                         }
                     }
                 }
@@ -276,8 +297,8 @@ struct ProtocolUsageChart: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
+                .fill(palette.cardBackground)
+                .shadow(color: palette.cardShadow, radius: 10, x: 0, y: 5)
         )
     }
 }
@@ -285,6 +306,7 @@ struct ProtocolUsageChart: View {
 // MARK: - Breathing Frequency Chart
 struct BreathingFrequencyChart: View {
     let sessions: [EnhancedSession]
+    @Environment(\.analyticsPalette) private var palette
     
     private var chartData: [(date: Date, count: Int)] {
         let calendar = Calendar.current
@@ -303,7 +325,7 @@ struct BreathingFrequencyChart: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Session Frequency")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                .foregroundColor(palette.primaryText)
             
             if #available(iOS 16.0, *) {
                 Chart(chartData, id: \.date) { dataPoint in
@@ -311,7 +333,7 @@ struct BreathingFrequencyChart: View {
                         x: .value("Date", dataPoint.date, unit: .day),
                         y: .value("Sessions", dataPoint.count)
                     )
-                    .foregroundStyle(Color(red: 0.65, green: 0.8, blue: 0.92))
+                    .foregroundStyle(palette.accent)
                     .cornerRadius(4)
                 }
                 .frame(height: 200)
@@ -329,8 +351,8 @@ struct BreathingFrequencyChart: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
+                .fill(palette.cardBackground)
+                .shadow(color: palette.cardShadow, radius: 10, x: 0, y: 5)
         )
     }
 }
@@ -338,6 +360,7 @@ struct BreathingFrequencyChart: View {
 // MARK: - Breathing Summary Stats
 struct BreathingSummaryStats: View {
     let sessions: [EnhancedSession]
+    @Environment(\.analyticsPalette) private var palette
     
     private var totalMinutes: Double {
         Double(sessions.reduce(0) { $0 + $1.durationSeconds }) / 60.0
@@ -356,7 +379,7 @@ struct BreathingSummaryStats: View {
         VStack(spacing: 12) {
             Text("Summary")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                .foregroundColor(palette.primaryText)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
             HStack(spacing: 16) {
@@ -382,8 +405,8 @@ struct BreathingSummaryStats: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
+                .fill(palette.cardBackground)
+                .shadow(color: palette.cardShadow, radius: 10, x: 0, y: 5)
         )
     }
 }

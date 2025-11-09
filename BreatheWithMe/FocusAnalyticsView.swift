@@ -9,6 +9,9 @@ import SwiftUI
 import Charts
 
 struct FocusAnalyticsView: View {
+    @EnvironmentObject private var themeManager: AppThemeManager
+    @Environment(\.colorScheme) private var systemColorScheme
+    
     @StateObject private var sessionManager = SessionManager.shared
     @State private var selectedTimeframe: Timeframe = .week
     
@@ -43,14 +46,27 @@ struct FocusAnalyticsView: View {
         sessionManager.recommendedFocusDuration()
     }
     
+    private var resolvedColorScheme: ColorScheme {
+        themeManager.colorScheme(for: systemColorScheme)
+    }
+    
+    private var themeColors: ProfileTheme.Colors {
+        themeManager.themeColors(for: systemColorScheme)
+    }
+    
+    private var palette: AnalyticsPalette {
+        AnalyticsPalette(colors: themeColors, usesDarkAppearance: resolvedColorScheme == .dark)
+    }
+    
     var body: some View {
+        let colors = themeColors
         ScrollView {
             VStack(spacing: 24) {
                 // Header
                 VStack(spacing: 8) {
                     Text("Focus Analytics")
                         .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                        .foregroundColor(palette.primaryText)
                     
                     // Timeframe selector
                     Picker("Timeframe", selection: $selectedTimeframe) {
@@ -96,13 +112,15 @@ struct FocusAnalyticsView: View {
         .background(
             LinearGradient(
                 gradient: Gradient(colors: [
-                    Color(red: 0.95, green: 0.97, blue: 1.0),
-                    Color(red: 0.88, green: 0.93, blue: 0.98)
+                    colors.backgroundTop,
+                    colors.backgroundBottom
                 ]),
                 startPoint: .top,
                 endPoint: .bottom
             )
         )
+        .preferredColorScheme(resolvedColorScheme)
+        .environment(\.analyticsPalette, palette)
     }
 }
 
@@ -110,14 +128,16 @@ struct FocusAnalyticsView: View {
 struct CompletionRateCard: View {
     let rate: Double
     let sessions: [EnhancedSession]
+    @Environment(\.analyticsPalette) private var palette
     
     private var rateColor: Color {
-        if rate >= 0.8 {
-            return .green
-        } else if rate >= 0.6 {
-            return .yellow
-        } else {
-            return .red
+        switch rate {
+        case let value where value >= 0.8:
+            return palette.highlight
+        case let value where value >= 0.6:
+            return palette.accent
+        default:
+            return palette.accent.opacity(0.7)
         }
     }
     
@@ -133,7 +153,7 @@ struct CompletionRateCard: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Completion Rate")
                 .font(.system(size: 16, weight: .medium))
-                .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                .foregroundColor(palette.primaryText)
             
             HStack(alignment: .lastTextBaseline, spacing: 8) {
                 Text("\(Int(rate * 100))%")
@@ -142,14 +162,14 @@ struct CompletionRateCard: View {
                 
                 Text("\(completedCount)/\(totalCount) sessions")
                     .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                    .foregroundColor(palette.secondaryText)
             }
             
             // Progress bar
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(Color(red: 0.9, green: 0.9, blue: 0.9))
+                        .fill(palette.cardBackground.opacity(palette.usesDarkAppearance ? 0.4 : 0.2))
                     
                     RoundedRectangle(cornerRadius: 4)
                         .fill(rateColor)
@@ -160,17 +180,14 @@ struct CompletionRateCard: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
-        )
+        .analyticsCardStyle(palette)
     }
 }
 
 // MARK: - Time-of-Day Performance Chart
 struct TimeOfDayPerformanceChart: View {
     let sessions: [EnhancedSession]
+    @Environment(\.analyticsPalette) private var palette
     
     private var hourlyData: [(hour: Int, started: Int, completed: Int)] {
         var hourStats: [Int: (started: Int, completed: Int)] = [:]
@@ -189,7 +206,7 @@ struct TimeOfDayPerformanceChart: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Time-of-Day Performance")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                .foregroundColor(palette.primaryText)
             
             if #available(iOS 16.0, *) {
                 Chart(hourlyData, id: \.hour) { data in
@@ -197,13 +214,13 @@ struct TimeOfDayPerformanceChart: View {
                         x: .value("Hour", data.hour),
                         y: .value("Sessions", data.started)
                     )
-                    .foregroundStyle(Color(red: 0.9, green: 0.6, blue: 0.5).opacity(0.3))
+                    .foregroundStyle(palette.accent.opacity(0.35))
                     
                     BarMark(
                         x: .value("Hour", data.hour),
                         y: .value("Completed", data.completed)
                     )
-                    .foregroundStyle(Color(red: 0.9, green: 0.6, blue: 0.5))
+                    .foregroundStyle(palette.accent)
                 }
                 .frame(height: 200)
                 .chartXAxis {
@@ -224,22 +241,19 @@ struct TimeOfDayPerformanceChart: View {
             }
             
             HStack(spacing: 16) {
-                LegendItem(color: Color(red: 0.9, green: 0.6, blue: 0.5), label: "Completed")
-                LegendItem(color: Color(red: 0.9, green: 0.6, blue: 0.5).opacity(0.3), label: "Started")
+                LegendItem(color: palette.accent, label: "Completed")
+                LegendItem(color: palette.accent.opacity(0.35), label: "Started")
             }
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
-        )
+        .analyticsCardStyle(palette)
     }
 }
 
 // MARK: - Adaptive Recommendation Card
 struct AdaptiveRecommendationCard: View {
     let recommendedDuration: Int
+    @Environment(\.analyticsPalette) private var palette
     
     private var durationString: String {
         let minutes = recommendedDuration / 60
@@ -250,16 +264,16 @@ struct AdaptiveRecommendationCard: View {
         HStack(spacing: 16) {
             Image(systemName: "lightbulb.fill")
                 .font(.system(size: 32))
-                .foregroundColor(Color(red: 0.9, green: 0.6, blue: 0.5))
+                .foregroundColor(palette.accent)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text("Try \(durationString)")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                    .foregroundColor(palette.primaryText)
                 
                 Text("Based on your recent completion rate")
                     .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                    .foregroundColor(palette.secondaryText)
             }
             
             Spacer()
@@ -267,7 +281,7 @@ struct AdaptiveRecommendationCard: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color(red: 0.9, green: 0.6, blue: 0.5).opacity(0.1))
+                .fill(palette.accent.opacity(palette.usesDarkAppearance ? 0.25 : 0.12))
         )
     }
 }
@@ -275,6 +289,7 @@ struct AdaptiveRecommendationCard: View {
 // MARK: - Distraction Card
 struct DistractionCard: View {
     let sessions: [EnhancedSession]
+    @Environment(\.analyticsPalette) private var palette
     
     private var totalDistractions: Int {
         sessions.compactMap { $0.meta.distractions }.reduce(0, +)
@@ -299,42 +314,39 @@ struct DistractionCard: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Distraction Tracking")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                .foregroundColor(palette.primaryText)
             
             HStack(spacing: 24) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(Int(averageDistractions))")
                         .font(.system(size: 32, weight: .bold))
-                        .foregroundColor(Color(red: 0.9, green: 0.6, blue: 0.5))
+                        .foregroundColor(palette.accent)
                     Text("avg per session")
                         .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                        .foregroundColor(palette.secondaryText)
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(String(format: "%.1f", distractionRate))
                         .font(.system(size: 32, weight: .bold))
-                        .foregroundColor(Color(red: 0.9, green: 0.6, blue: 0.5))
+                        .foregroundColor(palette.accent)
                     Text("per hour")
                         .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                        .foregroundColor(palette.secondaryText)
                 }
                 
                 Spacer()
             }
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
-        )
+        .analyticsCardStyle(palette)
     }
 }
 
 // MARK: - Focus Duration Chart
 struct FocusDurationChart: View {
     let sessions: [EnhancedSession]
+    @Environment(\.analyticsPalette) private var palette
     
     private var chartData: [(date: Date, minutes: Double)] {
         let calendar = Calendar.current
@@ -353,7 +365,7 @@ struct FocusDurationChart: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Focus Time Trend")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                .foregroundColor(palette.primaryText)
             
             if #available(iOS 16.0, *) {
                 Chart(chartData, id: \.date) { dataPoint in
@@ -361,7 +373,7 @@ struct FocusDurationChart: View {
                         x: .value("Date", dataPoint.date, unit: .day),
                         y: .value("Minutes", dataPoint.minutes)
                     )
-                    .foregroundStyle(Color(red: 0.9, green: 0.6, blue: 0.5))
+                    .foregroundStyle(palette.accent)
                     .interpolationMethod(.catmullRom)
                     
                     AreaMark(
@@ -370,7 +382,7 @@ struct FocusDurationChart: View {
                     )
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [Color(red: 0.9, green: 0.6, blue: 0.5).opacity(0.3), Color.clear],
+                            colors: [palette.accent.opacity(0.3), Color.clear],
                             startPoint: .top,
                             endPoint: .bottom
                         )
@@ -390,17 +402,14 @@ struct FocusDurationChart: View {
             }
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
-        )
+        .analyticsCardStyle(palette)
     }
 }
 
 // MARK: - Focus Summary Stats
 struct FocusSummaryStats: View {
     let sessions: [EnhancedSession]
+    @Environment(\.analyticsPalette) private var palette
     
     private var totalFocusMinutes: Double {
         Double(sessions.reduce(0) { $0 + $1.durationSeconds }) / 60.0
@@ -419,7 +428,7 @@ struct FocusSummaryStats: View {
         VStack(spacing: 12) {
             Text("Summary")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                .foregroundColor(palette.primaryText)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
             HStack(spacing: 16) {
@@ -443,11 +452,7 @@ struct FocusSummaryStats: View {
             }
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
-        )
+        .analyticsCardStyle(palette)
     }
 }
 
@@ -455,6 +460,7 @@ struct FocusSummaryStats: View {
 struct LegendItem: View {
     let color: Color
     let label: String
+    @Environment(\.analyticsPalette) private var palette
     
     var body: some View {
         HStack(spacing: 6) {
@@ -464,13 +470,14 @@ struct LegendItem: View {
             
             Text(label)
                 .font(.system(size: 12, weight: .regular))
-                .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                .foregroundColor(palette.secondaryText)
         }
     }
 }
 
 struct SimpleLineChart: View {
     let data: [Double]
+    @Environment(\.analyticsPalette) private var palette
     
     private var maxValue: Double {
         data.max() ?? 1.0
@@ -494,7 +501,7 @@ struct SimpleLineChart: View {
                     }
                 }
             }
-            .stroke(Color(red: 0.9, green: 0.6, blue: 0.5), lineWidth: 2)
+            .stroke(palette.accent, lineWidth: 2)
         }
     }
 }
