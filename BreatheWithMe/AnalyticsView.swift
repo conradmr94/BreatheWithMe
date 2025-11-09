@@ -33,6 +33,7 @@ struct AnalyticsView: View {
         case breathing = "Breathe"
         case focus = "Focus"
         case sleep = "Sleep"
+        case walk = "Walk"
         case insights = "Insights"
         
         var icon: String {
@@ -40,6 +41,7 @@ struct AnalyticsView: View {
             case .breathing: return "wind"
             case .focus: return "brain.head.profile"
             case .sleep: return "moon.stars.fill"
+            case .walk: return "figure.walk"
             case .insights: return "sparkles"
             }
         }
@@ -91,6 +93,8 @@ struct AnalyticsView: View {
                     FocusAnalyticsContent()
                 case .breathing:
                     BreathingAnalyticsContent()
+                case .walk:
+                    WalkAnalyticsContent()
                 case .insights:
                     CrossFeatureAnalyticsView()
                 }
@@ -110,6 +114,15 @@ struct AnalyticsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .preferredColorScheme(resolvedColorScheme)
         .environment(\.analyticsPalette, palette)
+    }
+}
+
+struct WalkAnalyticsContent: View {
+    @EnvironmentObject private var themeManager: AppThemeManager
+    
+    var body: some View {
+        WalkStatsView()
+            .environmentObject(themeManager)
     }
 }
 

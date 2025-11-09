@@ -15,7 +15,7 @@ struct ContentView: View {
     @EnvironmentObject var themeManager: AppThemeManager
     @Environment(\.colorScheme) var systemColorScheme
     @State private var selectedTab = 0
-    private let maxTabIndex = 2
+    private let maxTabIndex = 3
     @State private var isSoundModalPresented = false
     @AppStorage("focusLockUntilTimestamp") private var focusLockUntilTimestamp: Double = 0
     @State private var lockNow = Date()
@@ -67,13 +67,17 @@ struct ContentView: View {
                 .tabItem { Label("Breathe", systemImage: "wind") }
                 .tag(0)
 
+            WalkView()
+                .tabItem { Label("Walk", systemImage: "figure.walk") }
+                .tag(1)
+
             FocusView()
                 .tabItem { Label("Focus", systemImage: "timer") }
-                .tag(1)
+                .tag(2)
 
             SleepView()
                 .tabItem { Label("Sleep", systemImage: "moon.stars.fill") }
-                .tag(2)
+                .tag(3)
         }
         .accentColor(themeColors.accent)
         .tint(themeColors.accent)
@@ -226,13 +230,7 @@ struct ContentView: View {
     /// Dynamically update unselected tab icon/text color
     private func updateTabColors(for tab: Int) {
         let themeColors = themeManager.themeColors(for: systemColorScheme)
-        let tintColor: UIColor
-        if tab == 2 {
-            tintColor = UIColor(themeColors.subtleText)
-        } else {
-            tintColor = UIColor(themeColors.secondaryText)
-        }
-        UITabBar.appearance().unselectedItemTintColor = tintColor
+        UITabBar.appearance().unselectedItemTintColor = UIColor(themeColors.secondaryText.opacity(0.6))
     }
 
     private var appColorScheme: ColorScheme {

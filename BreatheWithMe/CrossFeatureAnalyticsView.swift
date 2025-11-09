@@ -39,6 +39,9 @@ struct CrossFeatureAnalyticsView: View {
                 // Daily Readiness Card
                 DailyReadinessCard(readiness: dailyReadiness)
                 
+                // Walk Impact Card
+                WalkImpactCard()
+                
                 // Sleep-Focus Correlation
                 if let correlation = sleepFocusCorrelation {
                     SleepFocusCorrelationCard(correlation: correlation)
@@ -99,6 +102,24 @@ struct FeatureSummaryCard: View {
         return (avgReduction, totalTime, sessions.count)
     }
     
+    private var walkStats: (steps: Int, distanceKm: Double, calories: Double, stress: Double, sessions: Int) {
+        let summary = sessionManager.walkSummary(days: 30)
+        return (
+            steps: summary.steps,
+            distanceKm: summary.distanceMeters / 1_000.0,
+            calories: summary.calories,
+            stress: summary.stress,
+            sessions: summary.sessions
+        )
+    }
+    
+    private let numberFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 0
+        return formatter
+    }()
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("30-Day Summary")
@@ -149,6 +170,28 @@ struct FeatureSummaryCard: View {
                 tertiaryStat: "\(breathingStats.sessions)",
                 tertiaryLabel: "Sessions"
             )
+            
+            Divider()
+                .background(palette.separator)
+            
+            // Walk Summary
+            FeatureStatRow(
+                icon: "figure.walk.circle.fill",
+                title: "Walk",
+                color: Color(red: 0.32, green: 0.65, blue: 0.6),
+                primaryStat: numberFormatter.string(from: NSNumber(value: walkStats.steps)) ?? "0",
+                primaryLabel: "Steps",
+                secondaryStat: String(format: "%.1f km", walkStats.distanceKm),
+                secondaryLabel: "Distance",
+                tertiaryStat: walkStats.calories > 0 ? String(format: "%.0f kcal", walkStats.calories) : "--",
+                tertiaryLabel: "Calories"
+            )
+            
+            if walkStats.stress > 0 {
+                Text("Average stress relief score: \(String(format: "%.0f /100", walkStats.stress))")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(palette.secondaryText)
+            }
         }
         .padding()
         .analyticsCardStyle(palette)
@@ -278,6 +321,81 @@ struct DailyReadinessCard: View {
         }
         .padding()
         .analyticsCardStyle(palette)
+    }
+}
+
+// MARK: - Walk Impact Card
+struct WalkImpactCard: View {
+    @Environment(\.analyticsPalette) private var palette
+    @StateObject private var sessionManager = SessionManager.shared
+    
+    private var summary: (distanceKm: Double, steps: Int, calories: Double, stress: Double, sessions: Int) {
+        let data = sessionManager.walkSummary(days: 7)
+        return (
+            distanceKm: data.distanceMeters / 1_000.0,
+            steps: data.steps,
+            calories: data.calories,
+            stress: data.stress,
+            sessions: data.sessions
+        )
+    }
+    
+    private let numberFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 0
+        return formatter
+    }()
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Mindful Walk Highlights")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(palette.primaryText)
+            
+            Text("Past 7 days")
+                .font(.system(size: 12, weight: .regular))
+                .foregroundColor(palette.secondaryText)
+            
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+                statBlock(
+                    value: numberFormatter.string(from: NSNumber(value: summary.steps)) ?? "0",
+                    label: "Steps"
+                )
+                statBlock(
+                    value: String(format: "%.1f km", summary.distanceKm),
+                    label: "Distance"
+                )
+                statBlock(
+                    value: String(format: "%.0f kcal", summary.calories),
+                    label: "Calories"
+                )
+                statBlock(
+                    value: summary.stress > 0 ? String(format: "%.0f /100", summary.stress) : "--",
+                    label: "Stress Relief"
+                )
+            }
+            
+            if summary.sessions > 0 {
+                Text("Logged \(summary.sessions) mindful walks this week")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(palette.secondaryText)
+            }
+        }
+        .padding()
+        .analyticsCardStyle(palette)
+    }
+    
+    private func statBlock(value: String, label: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(value)
+                .font(.system(size: 20, weight: .bold))
+                .foregroundColor(palette.primaryText)
+            Text(label)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(palette.secondaryText)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -416,11 +534,13 @@ struct ActivityBalanceCard: View {
         let sleep = sessionManager.sessions(ofType: .sleep, from: Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()).count
         let focus = sessionManager.sessions(ofType: .focus, from: Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()).count
         let breathing = sessionManager.sessions(ofType: .breathing, from: Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()).count
+        let walk = sessionManager.sessions(ofType: .walk, from: Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()).count
         
         return [
             (type: "Sleep", count: sleep, color: Color(red: 0.4, green: 0.5, blue: 0.8)),
             (type: "Focus", count: focus, color: Color(red: 0.9, green: 0.6, blue: 0.5)),
-            (type: "Breathe", count: breathing, color: Color(red: 0.65, green: 0.8, blue: 0.92))
+            (type: "Breathe", count: breathing, color: Color(red: 0.65, green: 0.8, blue: 0.92)),
+            (type: "Walk", count: walk, color: Color(red: 0.32, green: 0.65, blue: 0.6))
         ].sorted { $0.count > $1.count }
     }
     

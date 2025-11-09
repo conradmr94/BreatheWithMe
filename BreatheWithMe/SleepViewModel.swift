@@ -30,7 +30,7 @@ final class SleepViewModel: ObservableObject {
                     Task { await self?.reloadLast14Days() }
                 }
             } catch {
-                lastError = error.localizedDescription
+                handleHealthKitError(error)
             }
         }
     }
@@ -58,7 +58,7 @@ final class SleepViewModel: ObservableObject {
             summaries = list
             await loadLatestRespiratoryRate()
         } catch {
-            lastError = error.localizedDescription
+            handleHealthKitError(error)
         }
     }
 
@@ -72,7 +72,7 @@ final class SleepViewModel: ObservableObject {
                 respiratoryRateUpdated = sample.endDate
             }
         } catch {
-            lastError = error.localizedDescription
+            handleHealthKitError(error)
         }
     }
 
@@ -84,6 +84,25 @@ final class SleepViewModel: ObservableObject {
             out[day, default: []].append(s)
         }
         return out
+    }
+
+    private func handleHealthKitError(_ error: Error) {
+        if let hkError = error as? HealthKitAccessError {
+            switch hkError {
+            case .unavailable:
+                lastError = "Health data isn’t available on this device. Connect a physical iPhone or Apple Watch to sync sleep details."
+            case .authorizationDenied:
+                lastError = "Health permissions were denied. Update Settings › Health › Data Access so we can load your sleep insights."
+            case .authorizationRestricted:
+                lastError = "Health permissions are restricted on this device."
+            case .authorizationNotDetermined:
+                lastError = "Health permissions haven’t been granted yet."
+            case .underlying(let underlying):
+                lastError = underlying.localizedDescription
+            }
+        } else {
+            lastError = error.localizedDescription
+        }
     }
 
     var lastNight: SleepDaySummary? { summaries.first }

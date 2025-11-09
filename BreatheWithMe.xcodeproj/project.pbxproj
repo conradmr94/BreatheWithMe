@@ -53,6 +53,9 @@
 		C9E6F5F52EA9BB9700047E58 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9E6F5F42EA9BB9100047E58 /* HealthKitManager.swift */; };
 		C9E6F5F72EA9BBA800047E58 /* SleepViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9E6F5F62EA9BBA300047E58 /* SleepViewModel.swift */; };
 		A1000112000000000000001 /* AppThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000113000000000000001 /* AppThemeManager.swift */; };
+		E1C0B101000000000000001 /* WalkSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C0A001000000000000001 /* WalkSessionManager.swift */; };
+		E1C0B102000000000000001 /* WalkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C0A002000000000000001 /* WalkView.swift */; };
+		E1C0B103000000000000001 /* WalkStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C0A003000000000000001 /* WalkStatsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -103,6 +106,9 @@
 		C9E6F5F42EA9BB9100047E58 /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		C9E6F5F62EA9BBA300047E58 /* SleepViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepViewModel.swift; sourceTree = "<group>"; };
 		A1000113000000000000001 /* AppThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppThemeManager.swift; sourceTree = "<group>"; };
+		E1C0A001000000000000001 /* WalkSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkSessionManager.swift; sourceTree = "<group>"; };
+		E1C0A002000000000000001 /* WalkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkView.swift; sourceTree = "<group>"; };
+		E1C0A003000000000000001 /* WalkStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkStatsView.swift; sourceTree = "<group>"; };
 		C9E6F5F82EA9BC4400047E58 /* BreatheWithMe.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BreatheWithMe.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -133,6 +139,7 @@
 				C9E6F5F42EA9BB9100047E58 /* HealthKitManager.swift */,
 				A1000113000000000000001 /* AppThemeManager.swift */,
 				A1000071000000000000001 /* SessionManager.swift */,
+				E1C0A001000000000000001 /* WalkSessionManager.swift */,
 				A1000073000000000000001 /* SleepScoreCalculator.swift */,
 				A1000075000000000000001 /* AudioEventDetector.swift */,
 				A1000077000000000000001 /* BreathingProtocols.swift */,
@@ -150,6 +157,7 @@
 				A1000023000000000000001 /* BreatheView.swift */,
 				A1000025000000000000001 /* FocusView.swift */,
 				A1000027000000000000001 /* SleepView.swift */,
+				E1C0A002000000000000001 /* WalkView.swift */,
 				A1000100000000000000001 /* SoundTileView.swift */,
 				A1000029000000000000001 /* NoiseGenerator.swift */,
 				A1000051000000000000001 /* BellPlayer.swift */,
@@ -157,6 +165,7 @@
 				A1000060000000000000001 /* BreatheStatsView.swift */,
 				A1000062000000000000001 /* FocusStatsView.swift */,
 				A1000064000000000000001 /* SleepStatsView.swift */,
+				E1C0A003000000000000001 /* WalkStatsView.swift */,
 				A1000068000000000000001 /* ActivityCalendarView.swift */,
 				A1000067000000000000001 /* UserStatsManager.swift */,
 				A1000056000000000000001 /* SwipeDownToOpenProfile.swift */,
@@ -309,6 +318,9 @@
 				A1000090000000000000001 /* AnalyticsView.swift in Sources */,
 				A1000097000000000000001 /* SleepAlarm.swift in Sources */,
 				A1000098000000000000001 /* SleepAlarmStore.swift in Sources */,
+				E1C0B101000000000000001 /* WalkSessionManager.swift in Sources */,
+				E1C0B102000000000000001 /* WalkView.swift in Sources */,
+				E1C0B103000000000000001 /* WalkStatsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -449,6 +461,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "This app uses HealthKit to track your sleep patterns and provide personalized breathing exercises based on your health data.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "This app writes mindful minutes and sleep sessions to HealthKit so your progress stays in sync.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to map mindful walks and calculate distance.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "Motion & Fitness access lets us read step counts during your mindful walks.";
 				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "This app needs notifications to alert you when your sleep alarm goes off.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -482,6 +496,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "This app uses HealthKit to track your sleep patterns and provide personalized breathing exercises based on your health data.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "This app writes mindful minutes and sleep sessions to HealthKit so your progress stays in sync.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to map mindful walks and calculate distance.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "Motion & Fitness access lets us read step counts during your mindful walks.";
 				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "This app needs notifications to alert you when your sleep alarm goes off.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

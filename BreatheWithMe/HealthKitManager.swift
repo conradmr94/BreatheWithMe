@@ -74,16 +74,55 @@ final class HealthKitManager: ObservableObject {
     private var mindfulType: HKCategoryType {
         HKObjectType.categoryType(forIdentifier: .mindfulSession)!
     }
+    private var stepCountType: HKQuantityType {
+        HKObjectType.quantityType(forIdentifier: .stepCount)!
+    }
+    private var walkingDistanceType: HKQuantityType {
+        HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!
+    }
+    private var activeEnergyType: HKQuantityType {
+        HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!
+    }
+    private var heartRateType: HKQuantityType {
+        HKObjectType.quantityType(forIdentifier: .heartRate)!
+    }
 
     // MARK: Authorization
     func requestAuthorization() async throws {
         guard HKHealthStore.isHealthDataAvailable() else {
-            throw NSError(domain: "HealthKit", code: 1, userInfo: [NSLocalizedDescriptionKey: "Health data not available"])
+            throw HealthKitAccessError.unavailable
         }
-        try await store.requestAuthorization(
-            toShare: [mindfulType],
-            read: [sleepType, respiratoryRateType, mindfulType]
-        )
+        let shareTypes: Set<HKSampleType> = [mindfulType]
+        let readTypes: Set<HKObjectType> = [
+            sleepType,
+            respiratoryRateType,
+            mindfulType,
+            stepCountType,
+            walkingDistanceType,
+            activeEnergyType,
+            heartRateType
+        ]
+        do {
+            try await store.requestAuthorization(toShare: shareTypes, read: readTypes)
+            if store.authorizationStatus(for: stepCountType) == .sharingDenied {
+                throw HealthKitAccessError.authorizationDenied
+            }
+        } catch let error as HKError {
+            switch error.code {
+            case .errorHealthDataUnavailable:
+                throw HealthKitAccessError.unavailable
+            case .errorHealthDataRestricted:
+                throw HealthKitAccessError.authorizationRestricted
+            case .errorAuthorizationDenied:
+                throw HealthKitAccessError.authorizationDenied
+            case .errorAuthorizationNotDetermined:
+                throw HealthKitAccessError.authorizationNotDetermined
+            default:
+                throw HealthKitAccessError.underlying(error)
+            }
+        } catch {
+            throw HealthKitAccessError.underlying(error)
+        }
     }
 
     // MARK: Fetch window
@@ -108,6 +147,85 @@ final class HealthKitManager: ObservableObject {
         }
         store.execute(observer)
         store.enableBackgroundDelivery(for: sleepType, frequency: .hourly) { _, _ in }
+    }
+    
+    // MARK: - Walking & Activity Metrics
+    private func sumQuantity(_ type: HKQuantityType, unit: HKUnit, start: Date, end: Date) async throws -> Double {
+        try await withCheckedThrowingContinuation { continuation in
+            let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+            let query = HKStatisticsQuery(quantityType: type, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, statistics, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                } else if let quantity = statistics?.sumQuantity() {
+                    continuation.resume(returning: quantity.doubleValue(for: unit))
+                } else {
+                    continuation.resume(returning: 0)
+                }
+            }
+            store.execute(query)
+        }
+    }
+    
+    private func averageQuantity(_ type: HKQuantityType, unit: HKUnit, start: Date, end: Date) async throws -> Double? {
+        try await withCheckedThrowingContinuation { continuation in
+            let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+            let query = HKStatisticsQuery(quantityType: type, quantitySamplePredicate: predicate, options: .discreteAverage) { _, statistics, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                } else if let quantity = statistics?.averageQuantity() {
+                    continuation.resume(returning: quantity.doubleValue(for: unit))
+                } else {
+                    continuation.resume(returning: nil)
+                }
+            }
+            store.execute(query)
+        }
+    }
+    
+    func stepCount(for interval: DateInterval) async throws -> Double {
+        try await sumQuantity(stepCountType, unit: HKUnit.count(), start: interval.start, end: interval.end)
+    }
+    
+    func walkingDistance(for interval: DateInterval) async throws -> Double {
+        try await sumQuantity(walkingDistanceType, unit: HKUnit.meter(), start: interval.start, end: interval.end)
+    }
+    
+    func activeEnergy(for interval: DateInterval) async throws -> Double {
+        try await sumQuantity(activeEnergyType, unit: HKUnit.kilocalorie(), start: interval.start, end: interval.end)
+    }
+    
+    func averageHeartRate(for interval: DateInterval) async throws -> Double? {
+        try await averageQuantity(heartRateType, unit: HKUnit.count().unitDivided(by: HKUnit.minute()), start: interval.start, end: interval.end)
+    }
+    
+    func todayStepCount() async throws -> Double {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: Date())
+        let interval = DateInterval(start: start, duration: 60 * 60 * 24)
+        return try await stepCount(for: interval)
+    }
+    
+    func todayWalkingDistance() async throws -> Double {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: Date())
+        let interval = DateInterval(start: start, end: Date())
+        return try await walkingDistance(for: interval)
+    }
+    
+    func recentStepHistory(days: Int) async throws -> [(date: Date, steps: Double)] {
+        let calendar = Calendar.current
+        var results: [(Date, Double)] = []
+        
+        for offset in 0..<days {
+            guard let day = calendar.date(byAdding: .day, value: -offset, to: Date()) else { continue }
+            let start = calendar.startOfDay(for: day)
+            let end = calendar.date(byAdding: .day, value: 1, to: start)!
+            let interval = DateInterval(start: start, end: end)
+            let steps = try await stepCount(for: interval)
+            results.append((start, steps))
+        }
+        
+        return results.sorted { $0.0 < $1.0 }
     }
     
     // MARK: - Sleep Event Analysis
@@ -230,5 +348,28 @@ final class HealthKitManager: ObservableObject {
             partial + sample.endDate.timeIntervalSince(sample.startDate)
         }
         return totalSeconds / 60.0
+    }
+}
+
+enum HealthKitAccessError: LocalizedError {
+    case unavailable
+    case authorizationDenied
+    case authorizationRestricted
+    case authorizationNotDetermined
+    case underlying(Error)
+    
+    var errorDescription: String? {
+        switch self {
+        case .unavailable:
+            return "Health data isn’t available on this device. HealthKit requires a physical iPhone or Apple Watch."
+        case .authorizationDenied:
+            return "Health permissions were denied. Open Settings › Health › Data Access to allow BreatheWithMe to read your activity data."
+        case .authorizationRestricted:
+            return "Health permissions are restricted on this device."
+        case .authorizationNotDetermined:
+            return "Health permissions haven’t been granted yet."
+        case .underlying(let error):
+            return error.localizedDescription
+        }
     }
 }

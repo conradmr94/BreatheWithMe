@@ -541,44 +541,43 @@ enum ProfileTheme: String, CaseIterable, Identifiable {
     func colors(for systemColorScheme: ColorScheme) -> Colors {
         switch self {
         case .default:
-            // Brand default theme stays consistent regardless of system appearance
-            return lightThemeColors
+            return systemColorScheme == .dark ? darkColors : defaultLightColors
         case .dark:
             return darkColors
         case .light:
-            return lightThemeColors
+            return pureLightColors
         }
     }
     
     // Original BreatheView colors (for system theme when light)
-    private var lightColors: Colors {
+    private var defaultLightColors: Colors {
         Colors(
-            accent: Color(red: 0.65, green: 0.8, blue: 0.92),
-            primaryText: Color(red: 0.2, green: 0.3, blue: 0.4),
-            secondaryText: Color(red: 0.4, green: 0.5, blue: 0.6),
-            subtleText: Color(red: 0.55, green: 0.65, blue: 0.75),
-            highlight: Color.orange,
+            accent: Color(red: 0.60, green: 0.76, blue: 0.92),
+            primaryText: Color(red: 0.20, green: 0.28, blue: 0.37),
+            secondaryText: Color(red: 0.42, green: 0.50, blue: 0.59),
+            subtleText: Color(red: 0.56, green: 0.63, blue: 0.72),
+            highlight: Color(red: 0.99, green: 0.72, blue: 0.42),
             cardBackground: Color.white,
             cardShadow: Color.black.opacity(0.08),
-            backgroundTop: Color(red: 0.95, green: 0.97, blue: 1.0),
-            backgroundBottom: Color(red: 0.88, green: 0.93, blue: 0.98),
-            separator: Color(red: 0.9, green: 0.94, blue: 0.98)
+            backgroundTop: Color(red: 0.94, green: 0.97, blue: 1.0),
+            backgroundBottom: Color(red: 0.87, green: 0.92, blue: 0.98),
+            separator: Color(red: 0.89, green: 0.93, blue: 0.97)
         )
     }
     
-    // Light theme colors (same as original BreatheView colors)
-    private var lightThemeColors: Colors {
+    // Light theme colors (brighter, cleaner white palette)
+    private var pureLightColors: Colors {
         Colors(
-            accent: Color(red: 0.65, green: 0.8, blue: 0.92),
-            primaryText: Color(red: 0.2, green: 0.3, blue: 0.4),
-            secondaryText: Color(red: 0.4, green: 0.5, blue: 0.6),
-            subtleText: Color(red: 0.55, green: 0.65, blue: 0.75),
-            highlight: Color.orange,
+            accent: Color(red: 0.78, green: 0.85, blue: 0.96),
+            primaryText: Color(red: 0.23, green: 0.30, blue: 0.40),
+            secondaryText: Color(red: 0.46, green: 0.54, blue: 0.63),
+            subtleText: Color(red: 0.57, green: 0.64, blue: 0.73),
+            highlight: Color(red: 0.98, green: 0.69, blue: 0.36),
             cardBackground: Color.white,
-            cardShadow: Color.black.opacity(0.08),
-            backgroundTop: Color(red: 0.95, green: 0.97, blue: 1.0),
-            backgroundBottom: Color(red: 0.88, green: 0.93, blue: 0.98),
-            separator: Color(red: 0.9, green: 0.94, blue: 0.98)
+            cardShadow: Color.black.opacity(0.04),
+            backgroundTop: Color.white,
+            backgroundBottom: Color(red: 0.98, green: 0.99, blue: 1.0),
+            separator: Color(red: 0.92, green: 0.95, blue: 0.98)
         )
     }
     
@@ -600,7 +599,7 @@ enum ProfileTheme: String, CaseIterable, Identifiable {
     
     // For backward compatibility - returns light colors by default
     var colors: Colors {
-        lightColors
+        defaultLightColors
     }
 
     func colorScheme(for systemColorScheme: ColorScheme) -> ColorScheme {

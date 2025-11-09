@@ -20,6 +20,7 @@ struct SessionRecord: Codable, Identifiable {
         case focus = "Focus"
         case rest = "Rest"
         case sleep = "Sleep"
+        case walk = "Walk"
     }
     
     init(id: UUID = UUID(), date: Date = Date(), activityType: ActivityType, durationSeconds: Int) {
@@ -37,6 +38,7 @@ class UserStatsManager: ObservableObject {
     @AppStorage("focusStats") private var focusStatsData: Data = Data()
     @AppStorage("sessionHistory") private var sessionHistoryData: Data = Data()
     @AppStorage("lastActivityDate") private var lastActivityDateString: String = ""
+    @AppStorage("walkStats") private var walkStatsData: Data = Data()
     
     // MARK: - Computed Properties
     
@@ -65,6 +67,14 @@ class UserStatsManager: ObservableObject {
         return SleepStats()
     }
     
+    /// Get WalkStats from storage
+    var walkStats: WalkStats {
+        if let decoded = try? JSONDecoder().decode(WalkStats.self, from: walkStatsData) {
+            return decoded
+        }
+        return WalkStats()
+    }
+    
     /// Get session history from storage
     var sessionHistory: [SessionRecord] {
         if let decoded = try? JSONDecoder().decode([SessionRecord].self, from: sessionHistoryData) {
@@ -86,7 +96,8 @@ class UserStatsManager: ObservableObject {
     var totalSessions: Int {
         breatheStats.sessionsCompleted + 
         focusStats.focusSessionsCompleted + 
-        sleepStats.sleepSessionsCompleted
+        sleepStats.sleepSessionsCompleted +
+        walkStats.walkSessionsCompleted
     }
     
     /// Total time spent across all activities (in seconds)
@@ -94,7 +105,8 @@ class UserStatsManager: ObservableObject {
         breatheStats.totalTimeSeconds + 
         focusStats.totalFocusTimeSeconds + 
         focusStats.totalRestTimeSeconds +
-        sleepStats.totalSleepTimeSeconds
+        sleepStats.totalSleepTimeSeconds +
+        walkStats.totalWalkingTimeSeconds
     }
     
     /// Formatted total time
@@ -125,20 +137,22 @@ class UserStatsManager: ObservableObject {
         let breatheCount = sessionHistory.filter { $0.activityType == .breathe }.count
         let focusCount = sessionHistory.filter { $0.activityType == .focus }.count
         let sleepCount = sessionHistory.filter { $0.activityType == .sleep }.count
+        let walkCount = sessionHistory.filter { $0.activityType == .walk }.count
         
         // Handle no sessions case
-        if breatheCount == 0 && focusCount == 0 && sleepCount == 0 {
+        if breatheCount == 0 && focusCount == 0 && sleepCount == 0 && walkCount == 0 {
             return "None yet"
         }
         
         // Find the activity with the most sessions
-        let maxCount = max(breatheCount, focusCount, sleepCount)
+        let maxCount = max(breatheCount, focusCount, sleepCount, walkCount)
         
         // Check if multiple activities are tied for first place
         let topActivities = [
             (name: "Breathe", count: breatheCount),
             (name: "Focus", count: focusCount),
-            (name: "Sleep", count: sleepCount)
+            (name: "Sleep", count: sleepCount),
+            (name: "Walk", count: walkCount)
         ].filter { $0.count == maxCount }
         
         // If all three are equal (or two are tied at the top)
