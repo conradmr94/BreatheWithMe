@@ -44,6 +44,7 @@ struct SleepStats: Codable {
 }
 
 struct SleepView: View {
+    @EnvironmentObject var themeManager: AppThemeManager
     @State private var showProfile: Bool = false
     @State private var isRunning = false
     @State private var elapsedSeconds: Int = 0
@@ -110,9 +111,12 @@ struct SleepView: View {
     
     private var backgroundView: some View {
         ZStack {
-            // Deep night gradient
+            // Deep night gradient - use theme background for dark mode, otherwise keep night theme
             LinearGradient(
-                gradient: Gradient(colors: [
+                gradient: Gradient(colors: themeManager.currentTheme == .dark ? [
+                    themeManager.themeColors.backgroundTop,
+                    themeManager.themeColors.backgroundBottom
+                ] : [
                     Color(red: 0.15, green: 0.15, blue: 0.25),
                     Color(red: 0.1, green: 0.1, blue: 0.2),
                     Color(red: 0.05, green: 0.05, blue: 0.15)
@@ -633,7 +637,6 @@ struct SleepView: View {
             mainContentView
         }
         .ignoresSafeArea(.container, edges: .top)
-        .preferredColorScheme(.dark)
         .swipeDownToOpenProfile {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) { showProfile = true }
         }
@@ -644,7 +647,7 @@ struct SleepView: View {
                 },
                 isPresented: $showProfile
             )
-            .preferredColorScheme(.light)
+            .environmentObject(themeManager)
         }
         .apply { view in
             if #available(iOS 16.0, *) {

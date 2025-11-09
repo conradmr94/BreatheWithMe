@@ -103,7 +103,6 @@ struct FocusAnalyticsView: View {
                 endPoint: .bottom
             )
         )
-        .preferredColorScheme(.light)
     }
 }
 
@@ -503,4 +502,3 @@ struct SimpleLineChart: View {
 #Preview {
     FocusAnalyticsView()
 }
-

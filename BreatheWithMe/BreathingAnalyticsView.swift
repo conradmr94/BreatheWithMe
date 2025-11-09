@@ -92,7 +92,6 @@ struct BreathingAnalyticsView: View {
                 endPoint: .bottom
             )
         )
-        .preferredColorScheme(.light)
     }
 }
 
@@ -392,4 +391,3 @@ struct BreathingSummaryStats: View {
 #Preview {
     BreathingAnalyticsView()
 }
-

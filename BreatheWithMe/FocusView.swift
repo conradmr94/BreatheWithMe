@@ -130,6 +130,7 @@ struct FocusStats: Codable {
 }
 
 struct FocusView: View {
+    @EnvironmentObject var themeManager: AppThemeManager
     @State private var showProfile: Bool = false
     @State private var isRunning = false
     @State private var isPaused = false
@@ -210,10 +211,8 @@ struct FocusView: View {
     var backgroundGradient: some View {
         LinearGradient(
             gradient: Gradient(colors: [
-                Color(red: 0.95, green: 0.97, blue: 1.0),
-                Color(red: currentMode.color.red * 0.3 + 0.7,
-                      green: currentMode.color.green * 0.3 + 0.7,
-                      blue: currentMode.color.blue * 0.3 + 0.7)
+                themeManager.themeColors.backgroundTop,
+                themeManager.themeColors.backgroundBottom
             ]),
             startPoint: .top,
             endPoint: .bottom
@@ -233,12 +232,12 @@ struct FocusView: View {
             if !isRunning {
                 Text(currentMode.title)
                     .font(.system(size: 34, weight: .light, design: .default))
-                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                    .foregroundColor(themeManager.themeColors.primaryText)
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 
                 Text(currentMode.subtitle)
                     .font(.system(size: 16, weight: .regular, design: .default))
-                    .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                    .foregroundColor(themeManager.themeColors.secondaryText)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
@@ -340,12 +339,12 @@ struct FocusView: View {
                     Text("Durations")
                         .font(.system(size: 15, weight: .medium, design: .default))
                 }
-                .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                .foregroundColor(themeManager.themeColors.secondaryText)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 20)
-                        .fill(Color(red: 1.0, green: 1.0, blue: 1.0, opacity: 0.6))
+                        .fill(themeManager.themeColors.cardBackground.opacity(0.6))
                 )
             }
             .buttonStyle(PlainButtonStyle())
@@ -362,12 +361,12 @@ struct FocusView: View {
                     Text("Sounds")
                         .font(.system(size: 15, weight: .medium, design: .default))
                 }
-                .foregroundColor(noiseGenerator.isEnabled ? currentModeColor : Color(red: 0.4, green: 0.5, blue: 0.6))
+                .foregroundColor(noiseGenerator.isEnabled ? currentModeColor : themeManager.themeColors.secondaryText)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 20)
-                        .fill(noiseGenerator.isEnabled ? currentModeColor.opacity(0.25) : Color(red: 1.0, green: 1.0, blue: 1.0, opacity: 0.6))
+                        .fill(noiseGenerator.isEnabled ? currentModeColor.opacity(0.25) : themeManager.themeColors.cardBackground.opacity(0.6))
                 )
             }
             .buttonStyle(PlainButtonStyle())
@@ -408,12 +407,12 @@ struct FocusView: View {
                             Text(isAutoCycleMode ? "End Cycle" : "Reset")
                                 .font(.system(size: 16, weight: .regular, design: .default))
                         }
-                        .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                        .foregroundColor(themeManager.themeColors.secondaryText)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 12)
                         .background(
                             RoundedRectangle(cornerRadius: 20)
-                                .fill(Color(red: 1.0, green: 1.0, blue: 1.0, opacity: 0.7))
+                                .fill(themeManager.themeColors.cardBackground.opacity(0.7))
                         )
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -443,12 +442,12 @@ struct FocusView: View {
                     Text("Auto-cycle mode")
                         .font(.system(size: 15, weight: .medium, design: .default))
                 }
-                .foregroundColor(isAutoCycleMode ? currentModeColor : Color(red: 0.4, green: 0.5, blue: 0.6))
+                .foregroundColor(isAutoCycleMode ? currentModeColor : themeManager.themeColors.secondaryText)
                 .padding(.horizontal, 24)
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 20)
-                        .fill(isAutoCycleMode ? currentModeColor.opacity(0.25) : Color(red: 1.0, green: 1.0, blue: 1.0, opacity: 0.6))
+                        .fill(isAutoCycleMode ? currentModeColor.opacity(0.25) : themeManager.themeColors.cardBackground.opacity(0.6))
                 )
             }
             .buttonStyle(PlainButtonStyle())
@@ -466,12 +465,12 @@ struct FocusView: View {
             Button(action: { selectMode(.work) }) {
                 Text("Focus")
                     .font(.system(size: 14, weight: .medium, design: .default))
-                    .foregroundColor(currentMode == .work ? Color.white : Color(red: 0.4, green: 0.5, blue: 0.6))
+                    .foregroundColor(currentMode == .work ? Color.white : themeManager.themeColors.secondaryText)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
                     .background(
                         RoundedRectangle(cornerRadius: 18)
-                            .fill(currentMode == .work ? currentModeColor : Color(red: 1.0, green: 1.0, blue: 1.0, opacity: 0.6))
+                            .fill(currentMode == .work ? currentModeColor : themeManager.themeColors.cardBackground.opacity(0.6))
                     )
             }
             .buttonStyle(PlainButtonStyle())
@@ -479,12 +478,12 @@ struct FocusView: View {
             Button(action: { selectMode(.shortBreak) }) {
                 Text("Rest")
                     .font(.system(size: 14, weight: .medium, design: .default))
-                    .foregroundColor(currentMode == .shortBreak ? Color.white : Color(red: 0.4, green: 0.5, blue: 0.6))
+                    .foregroundColor(currentMode == .shortBreak ? Color.white : themeManager.themeColors.secondaryText)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
                     .background(
                         RoundedRectangle(cornerRadius: 18)
-                            .fill(currentMode == .shortBreak ? currentModeColor : Color(red: 1.0, green: 1.0, blue: 1.0, opacity: 0.6))
+                            .fill(currentMode == .shortBreak ? currentModeColor : themeManager.themeColors.cardBackground.opacity(0.6))
                     )
             }
             .buttonStyle(PlainButtonStyle())
@@ -492,12 +491,12 @@ struct FocusView: View {
             Button(action: { selectMode(.longBreak) }) {
                 Text("Long Rest")
                     .font(.system(size: 14, weight: .medium, design: .default))
-                    .foregroundColor(currentMode == .longBreak ? Color.white : Color(red: 0.4, green: 0.5, blue: 0.6))
+                    .foregroundColor(currentMode == .longBreak ? Color.white : themeManager.themeColors.secondaryText)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
                     .background(
                         RoundedRectangle(cornerRadius: 18)
-                            .fill(currentMode == .longBreak ? currentModeColor : Color(red: 1.0, green: 1.0, blue: 1.0, opacity: 0.6))
+                            .fill(currentMode == .longBreak ? currentModeColor : themeManager.themeColors.cardBackground.opacity(0.6))
                     )
             }
             .buttonStyle(PlainButtonStyle())
@@ -624,7 +623,7 @@ struct FocusView: View {
                 },
                 isPresented: $showProfile
             )
-            .preferredColorScheme(.light)
+            .environmentObject(themeManager)
         }
         .apply { view in
             if #available(iOS 16.0, *) {

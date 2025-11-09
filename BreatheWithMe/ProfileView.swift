@@ -6,12 +6,12 @@
 import SwiftUI
 
 struct ProfileView: View {
+    @EnvironmentObject var themeManager: AppThemeManager
     var onDismiss: (() -> Void)? = nil
     var isPresented: Binding<Bool>? = nil
     @StateObject private var statsManager = UserStatsManager()
     @StateObject private var sessionManager = SessionManager.shared
     
-    @AppStorage("profileThemeRawValue") private var profileThemeRawValue: String = ProfileTheme.default.rawValue
     @AppStorage("installDateTimestamp") private var installDateTimestamp: Double = 0
     @State private var showSettings = false
     
@@ -38,17 +38,14 @@ struct ProfileView: View {
         "flame.fill"
     ]
 
-    private var profileTheme: ProfileTheme {
-        get { ProfileTheme(rawValue: profileThemeRawValue) ?? .default }
-        set { profileThemeRawValue = newValue.rawValue }
-    }
-    
-    private var themeColors: ProfileTheme.Colors { profileTheme.colors }
+    private var themeColors: ProfileTheme.Colors { themeManager.themeColors }
     
     private var profileThemeBinding: Binding<ProfileTheme> {
         Binding(
-            get: { ProfileTheme(rawValue: profileThemeRawValue) ?? .default },
-            set: { profileThemeRawValue = $0.rawValue }
+            get: { themeManager.currentTheme },
+            set: { newTheme in
+                themeManager.profileThemeRawValue = newTheme.rawValue
+            }
         )
     }
 
@@ -507,7 +504,7 @@ struct ProfileView: View {
 enum ProfileTheme: String, CaseIterable, Identifiable {
     case `default`
     case dark
-    case white
+    case light
     
     struct Colors {
         let accent: Color
@@ -528,7 +525,7 @@ enum ProfileTheme: String, CaseIterable, Identifiable {
         switch self {
         case .default: return "Default"
         case .dark: return "Dark"
-        case .white: return "White"
+        case .light: return "Light"
         }
     }
     
@@ -536,23 +533,24 @@ enum ProfileTheme: String, CaseIterable, Identifiable {
         switch self {
         case .default: return "circle.grid.2x1"
         case .dark: return "moon.fill"
-        case .white: return "sun.max.fill"
+        case .light: return "sun.max.fill"
         }
     }
     
     var colors: Colors {
         switch self {
         case .default:
+            // Original BreatheView colors
             return Colors(
-                accent: Color(red: 0.5, green: 0.6, blue: 0.7),
+                accent: Color(red: 0.65, green: 0.8, blue: 0.92),
                 primaryText: Color(red: 0.2, green: 0.3, blue: 0.4),
-                secondaryText: Color(red: 0.5, green: 0.6, blue: 0.7),
+                secondaryText: Color(red: 0.4, green: 0.5, blue: 0.6),
                 subtleText: Color(red: 0.55, green: 0.65, blue: 0.75),
                 highlight: Color.orange,
                 cardBackground: Color.white,
                 cardShadow: Color.black.opacity(0.08),
                 backgroundTop: Color(red: 0.95, green: 0.97, blue: 1.0),
-                backgroundBottom: Color(red: 0.9, green: 0.94, blue: 0.98),
+                backgroundBottom: Color(red: 0.88, green: 0.93, blue: 0.98),
                 separator: Color(red: 0.9, green: 0.94, blue: 0.98)
             )
         case .dark:
@@ -568,7 +566,7 @@ enum ProfileTheme: String, CaseIterable, Identifiable {
                 backgroundBottom: Color(red: 0.09, green: 0.11, blue: 0.16),
                 separator: Color.white.opacity(0.18)
             )
-        case .white:
+        case .light:
             return Colors(
                 accent: Color(red: 0.62, green: 0.68, blue: 0.78),
                 primaryText: Color(red: 0.18, green: 0.2, blue: 0.24),
@@ -581,6 +579,15 @@ enum ProfileTheme: String, CaseIterable, Identifiable {
                 backgroundBottom: Color(red: 0.96, green: 0.97, blue: 0.99),
                 separator: Color(red: 0.92, green: 0.94, blue: 0.97)
             )
+        }
+    }
+
+    var colorScheme: ColorScheme {
+        switch self {
+        case .dark:
+            return .dark
+        default:
+            return .light
         }
     }
 }
@@ -782,5 +789,4 @@ struct ToolbarBackgroundModifier: ViewModifier {
 #Preview {
     ProfileView()
 }
-
 

@@ -94,7 +94,6 @@ struct SleepAnalyticsView: View {
                 endPoint: .bottom
             )
         )
-        .preferredColorScheme(.dark)
     }
 }
 
@@ -455,4 +454,3 @@ struct SimpleBarChart: View {
 #Preview {
     SleepAnalyticsView()
 }
-

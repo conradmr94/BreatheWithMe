@@ -12,6 +12,7 @@ extension Notification.Name {
 }
 
 struct ContentView: View {
+    @EnvironmentObject var themeManager: AppThemeManager
     @State private var selectedTab = 0
     private let maxTabIndex = 2
     @State private var isSoundModalPresented = false
@@ -85,7 +86,7 @@ struct ContentView: View {
             if #available(iOS 16.0, *) {
                 view
                     .toolbarBackground(.visible, for: .tabBar)
-                    .toolbarColorScheme(selectedTab == 2 ? .dark : .light, for: .tabBar)
+                    .toolbarColorScheme(appColorScheme, for: .tabBar)
             } else { view }
         }
 
@@ -107,6 +108,7 @@ struct ContentView: View {
         } message: {
             Text("Focus Lock keeps the app blocked until your scheduled wake time. Unlocking early will end the session now.")
         }
+        .preferredColorScheme(appColorScheme)
     }
 
     private var focusLockRemaining: TimeInterval {
@@ -201,6 +203,10 @@ struct ContentView: View {
             UITabBar.appearance().unselectedItemTintColor = UIColor.systemGray
         }
     }
+
+    private var appColorScheme: ColorScheme {
+        themeManager.colorScheme
+    }
 }
 
 // Helper extension for conditional view modifiers
@@ -208,4 +214,7 @@ extension View {
     func apply<V: View>(@ViewBuilder _ block: (Self) -> V) -> V { block(self) }
 }
 
-#Preview { ContentView() }
+#Preview { 
+    ContentView()
+        .environmentObject(AppThemeManager())
+}
