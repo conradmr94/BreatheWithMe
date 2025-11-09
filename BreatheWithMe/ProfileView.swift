@@ -7,6 +7,7 @@ import SwiftUI
 
 struct ProfileView: View {
     @EnvironmentObject var themeManager: AppThemeManager
+    @Environment(\.colorScheme) var systemColorScheme
     var onDismiss: (() -> Void)? = nil
     var isPresented: Binding<Bool>? = nil
     @StateObject private var statsManager = UserStatsManager()
@@ -38,7 +39,7 @@ struct ProfileView: View {
         "flame.fill"
     ]
 
-    private var themeColors: ProfileTheme.Colors { themeManager.themeColors }
+    private var themeColors: ProfileTheme.Colors { themeManager.themeColors(for: systemColorScheme) }
     
     private var profileThemeBinding: Binding<ProfileTheme> {
         Binding(
@@ -523,7 +524,7 @@ enum ProfileTheme: String, CaseIterable, Identifiable {
     
     var displayName: String {
         switch self {
-        case .default: return "Default"
+        case .default: return "System"
         case .dark: return "Dark"
         case .light: return "Light"
         }
@@ -531,57 +532,89 @@ enum ProfileTheme: String, CaseIterable, Identifiable {
     
     var symbolName: String {
         switch self {
-        case .default: return "circle.grid.2x1"
+        case .default: return "circle.lefthalf.filled"
         case .dark: return "moon.fill"
         case .light: return "sun.max.fill"
         }
     }
     
-    var colors: Colors {
+    func colors(for systemColorScheme: ColorScheme) -> Colors {
         switch self {
         case .default:
-            // Original BreatheView colors
-            return Colors(
-                accent: Color(red: 0.65, green: 0.8, blue: 0.92),
-                primaryText: Color(red: 0.2, green: 0.3, blue: 0.4),
-                secondaryText: Color(red: 0.4, green: 0.5, blue: 0.6),
-                subtleText: Color(red: 0.55, green: 0.65, blue: 0.75),
-                highlight: Color.orange,
-                cardBackground: Color.white,
-                cardShadow: Color.black.opacity(0.08),
-                backgroundTop: Color(red: 0.95, green: 0.97, blue: 1.0),
-                backgroundBottom: Color(red: 0.88, green: 0.93, blue: 0.98),
-                separator: Color(red: 0.9, green: 0.94, blue: 0.98)
-            )
+            // System theme - match system color scheme
+            return systemColorScheme == .dark ? darkColors : lightColors
         case .dark:
-            return Colors(
-                accent: Color(red: 0.45, green: 0.68, blue: 0.95),
-                primaryText: Color.white,
-                secondaryText: Color.white.opacity(0.8),
-                subtleText: Color.white.opacity(0.55),
-                highlight: Color.orange,
-                cardBackground: Color(red: 0.12, green: 0.15, blue: 0.2),
-                cardShadow: Color.black.opacity(0.55),
-                backgroundTop: Color(red: 0.04, green: 0.05, blue: 0.08),
-                backgroundBottom: Color(red: 0.09, green: 0.11, blue: 0.16),
-                separator: Color.white.opacity(0.18)
-            )
+            return darkColors
         case .light:
-            return Colors(
-                accent: Color(red: 0.62, green: 0.68, blue: 0.78),
-                primaryText: Color(red: 0.18, green: 0.2, blue: 0.24),
-                secondaryText: Color(red: 0.42, green: 0.46, blue: 0.54),
-                subtleText: Color(red: 0.6, green: 0.64, blue: 0.72),
-                highlight: Color(red: 0.93, green: 0.44, blue: 0.27),
-                cardBackground: Color.white,
-                cardShadow: Color.black.opacity(0.08),
-                backgroundTop: Color.white,
-                backgroundBottom: Color(red: 0.96, green: 0.97, blue: 0.99),
-                separator: Color(red: 0.92, green: 0.94, blue: 0.97)
-            )
+            return lightThemeColors
         }
     }
+    
+    // Original BreatheView colors (for system theme when light)
+    private var lightColors: Colors {
+        Colors(
+            accent: Color(red: 0.65, green: 0.8, blue: 0.92),
+            primaryText: Color(red: 0.2, green: 0.3, blue: 0.4),
+            secondaryText: Color(red: 0.4, green: 0.5, blue: 0.6),
+            subtleText: Color(red: 0.55, green: 0.65, blue: 0.75),
+            highlight: Color.orange,
+            cardBackground: Color.white,
+            cardShadow: Color.black.opacity(0.08),
+            backgroundTop: Color(red: 0.95, green: 0.97, blue: 1.0),
+            backgroundBottom: Color(red: 0.88, green: 0.93, blue: 0.98),
+            separator: Color(red: 0.9, green: 0.94, blue: 0.98)
+        )
+    }
+    
+    // Light theme colors (same as original BreatheView colors)
+    private var lightThemeColors: Colors {
+        Colors(
+            accent: Color(red: 0.65, green: 0.8, blue: 0.92),
+            primaryText: Color(red: 0.2, green: 0.3, blue: 0.4),
+            secondaryText: Color(red: 0.4, green: 0.5, blue: 0.6),
+            subtleText: Color(red: 0.55, green: 0.65, blue: 0.75),
+            highlight: Color.orange,
+            cardBackground: Color.white,
+            cardShadow: Color.black.opacity(0.08),
+            backgroundTop: Color(red: 0.95, green: 0.97, blue: 1.0),
+            backgroundBottom: Color(red: 0.88, green: 0.93, blue: 0.98),
+            separator: Color(red: 0.9, green: 0.94, blue: 0.98)
+        )
+    }
+    
+    // Dark theme colors
+    private var darkColors: Colors {
+        Colors(
+            accent: Color(red: 0.45, green: 0.68, blue: 0.95),
+            primaryText: Color.white,
+            secondaryText: Color.white.opacity(0.8),
+            subtleText: Color.white.opacity(0.55),
+            highlight: Color.orange,
+            cardBackground: Color(red: 0.12, green: 0.15, blue: 0.2),
+            cardShadow: Color.black.opacity(0.55),
+            backgroundTop: Color(red: 0.04, green: 0.05, blue: 0.08),
+            backgroundBottom: Color(red: 0.09, green: 0.11, blue: 0.16),
+            separator: Color.white.opacity(0.18)
+        )
+    }
+    
+    // For backward compatibility - returns light colors by default
+    var colors: Colors {
+        lightColors
+    }
 
+    func colorScheme(for systemColorScheme: ColorScheme) -> ColorScheme {
+        switch self {
+        case .default:
+            return systemColorScheme
+        case .dark:
+            return .dark
+        case .light:
+            return .light
+        }
+    }
+    
+    // For backward compatibility
     var colorScheme: ColorScheme {
         switch self {
         case .dark:

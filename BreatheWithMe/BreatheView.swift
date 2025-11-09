@@ -61,6 +61,7 @@ struct BreatheStats: Codable {
 
 struct BreatheView: View {
     @EnvironmentObject var themeManager: AppThemeManager
+    @Environment(\.colorScheme) var systemColorScheme
     @State private var showProfile: Bool = false
     @State private var isBreathing = false
     @State private var scale: CGFloat = 1.0
@@ -102,6 +103,11 @@ struct BreatheView: View {
             }
         }
     }
+    
+    // Theme colors that react to system color scheme changes
+    private var themeColors: ProfileTheme.Colors {
+        themeManager.themeColors(for: systemColorScheme)
+    }
 
     // Show/hide the duration picker window
     @State private var showDurationPicker: Bool = false
@@ -134,8 +140,8 @@ struct BreatheView: View {
             // Soft gradient background
             LinearGradient(
                 gradient: Gradient(colors: [
-                    themeManager.themeColors.backgroundTop,
-                    themeManager.themeColors.backgroundBottom
+                    themeColors.backgroundTop,
+                    themeColors.backgroundBottom
                 ]),
                 startPoint: .top,
                 endPoint: .bottom
@@ -148,12 +154,12 @@ struct BreatheView: View {
                     if !isBreathing {
                         Text("Breathe")
                             .font(.system(size: 34, weight: .light, design: .default))
-                            .foregroundColor(themeManager.themeColors.primaryText)
+                            .foregroundColor(themeColors.primaryText)
                             .transition(.opacity .combined(with: .move(edge: .top)))
                         
                         Text("Find your calm")
                             .font(.system(size: 16, weight: .regular, design: .default))
-                            .foregroundColor(themeManager.themeColors.secondaryText)
+                            .foregroundColor(themeColors.secondaryText)
                             .transition(.opacity .combined(with: .move(edge: .top)))
                     }
                 }
@@ -196,8 +202,8 @@ struct BreatheView: View {
                                 .fill(
                                     LinearGradient(
                                         gradient: Gradient(colors: [
-                                            themeManager.themeColors.accent,
-                                            themeManager.themeColors.accent.opacity(0.8)
+                                            themeColors.accent,
+                                            themeColors.accent.opacity(0.8)
                                         ]),
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
@@ -205,7 +211,7 @@ struct BreatheView: View {
                                 )
                                 .frame(width: 220, height: 220)
                                 .scaleEffect(isBreathing ? scale : 1.0)
-                                .shadow(color: themeManager.themeColors.accent.opacity(0.3), radius: 30, x: 0, y: 10)
+                                .shadow(color: themeColors.accent.opacity(0.3), radius: 30, x: 0, y: 10)
                                 .animation(
                                     isBreathing ? .easeInOut(duration: currentPhaseDuration()) : .easeInOut(duration: 0.5),
                                     value: scale
@@ -312,17 +318,17 @@ struct BreatheView: View {
                         VStack(spacing: 8) {
                             Text("\(formatTime(remainingTime))")
                                 .font(.system(size: 48, weight: .thin, design: .default))
-                                .foregroundColor(themeManager.themeColors.primaryText)
+                                .foregroundColor(themeColors.primaryText)
                             
                             Button(action: stopBreathing) {
                                 Text("Stop")
                                     .font(.system(size: 16, weight: .regular, design: .default))
-                                    .foregroundColor(themeManager.themeColors.accent)
+                                    .foregroundColor(themeColors.accent)
                                     .padding(.horizontal, 30)
                                     .padding(.vertical, 12)
                                     .background(
                                         RoundedRectangle(cornerRadius: 20)
-                                            .fill(themeManager.themeColors.cardBackground.opacity(0.6))
+                                            .fill(themeColors.cardBackground.opacity(0.6))
                                     )
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -343,15 +349,15 @@ struct BreatheView: View {
                                         .font(.system(size: 15, weight: .medium, design: .default))
                                 }
                                 .foregroundColor(bellSoundEnabled ?
-                                                 themeManager.themeColors.accent :
-                                                 themeManager.themeColors.secondaryText)
+                                                 themeColors.accent :
+                                                 themeColors.secondaryText)
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 8)
                                 .background(
                                     RoundedRectangle(cornerRadius: 20)
                                         .fill(bellSoundEnabled ?
-                                              themeManager.themeColors.accent.opacity(0.25) :
-                                              themeManager.themeColors.cardBackground.opacity(0.6))
+                                              themeColors.accent.opacity(0.25) :
+                                              themeColors.cardBackground.opacity(0.6))
                                 )
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -375,18 +381,18 @@ struct BreatheView: View {
                                                     .padding(.horizontal, 6)
                                                     .padding(.vertical, 3)
                                                     .background(
-                                                        Capsule().fill(themeManager.themeColors.accent.opacity(0.25))
+                                                        Capsule().fill(themeColors.accent.opacity(0.25))
                                                     )
                                             }
                                         }
                                         .font(.system(size: 13, weight: .medium, design: .default))
-                                        .foregroundColor(themeManager.themeColors.accent)
+                                        .foregroundColor(themeColors.accent)
                                         .tracking(1.5)
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 8)
                                         .background(
                                             RoundedRectangle(cornerRadius: 16)
-                                                .fill(themeManager.themeColors.cardBackground.opacity(0.6))
+                                                .fill(themeColors.cardBackground.opacity(0.6))
                                         )
                                     } else {
                                         // Fallback on earlier versions
@@ -402,17 +408,17 @@ struct BreatheView: View {
                                 }) {
                                     Text("4-7-8")
                                         .font(.system(size: 13, weight: .semibold))
-                                        .foregroundColor(use478 ? .white : themeManager.themeColors.secondaryText)
+                                        .foregroundColor(use478 ? .white : themeColors.secondaryText)
                                         .tracking(1.0)
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 8)
                                         .background(
                                             RoundedRectangle(cornerRadius: 16)
-                                                .fill(use478 ? themeManager.themeColors.accent : themeManager.themeColors.cardBackground.opacity(0.95))
+                                                .fill(use478 ? themeColors.accent : themeColors.cardBackground.opacity(0.95))
                                         )
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 16)
-                                                .stroke(themeManager.themeColors.separator.opacity(0.5), lineWidth: 1)
+                                                .stroke(themeColors.separator.opacity(0.5), lineWidth: 1)
                                         )
                                 }
                                 .buttonStyle(PlainButtonStyle())

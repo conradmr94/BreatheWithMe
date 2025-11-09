@@ -13,6 +13,7 @@ extension Notification.Name {
 
 struct ContentView: View {
     @EnvironmentObject var themeManager: AppThemeManager
+    @Environment(\.colorScheme) var systemColorScheme
     @State private var selectedTab = 0
     private let maxTabIndex = 2
     @State private var isSoundModalPresented = false
@@ -94,6 +95,20 @@ struct ContentView: View {
             tabContent
             if focusLockActive {
                 focusLockOverlay
+            }
+        }
+        .onAppear {
+            // Update system color scheme when view appears
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = windowScene.windows.first {
+                themeManager.updateSystemColorScheme(from: window.traitCollection)
+            }
+        }
+        .onChange(of: systemColorScheme) { _ in
+            // Update when system color scheme changes
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = windowScene.windows.first {
+                themeManager.updateSystemColorScheme(from: window.traitCollection)
             }
         }
         .onReceive(focusLockTimer) { date in
@@ -205,7 +220,7 @@ struct ContentView: View {
     }
 
     private var appColorScheme: ColorScheme {
-        themeManager.colorScheme
+        themeManager.colorScheme(for: systemColorScheme)
     }
 }
 
