@@ -177,6 +177,18 @@ struct FocusView: View {
         themeManager.themeColors(for: systemColorScheme)
     }
     
+    private var usesDarkAppearance: Bool {
+        themeManager.colorScheme(for: systemColorScheme) == .dark
+    }
+    
+    private var controlSurfaceColor: Color {
+        usesDarkAppearance ? themeColors.cardBackground.opacity(0.7) : themeColors.cardBackground.opacity(0.96)
+    }
+    
+    private var controlBorderColor: Color {
+        usesDarkAppearance ? Color.white.opacity(0.15) : themeColors.separator.opacity(0.85)
+    }
+    
     enum PomodoroMode {
         case work, shortBreak, longBreak
         
@@ -350,7 +362,11 @@ struct FocusView: View {
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 20)
-                        .fill(themeColors.cardBackground.opacity(0.6))
+                        .fill(controlSurfaceColor)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(controlBorderColor, lineWidth: 1)
+                        )
                 )
             }
             .buttonStyle(PlainButtonStyle())
@@ -372,7 +388,11 @@ struct FocusView: View {
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 20)
-                        .fill(noiseGenerator.isEnabled ? currentModeColor.opacity(0.25) : themeColors.cardBackground.opacity(0.6))
+                        .fill(noiseGenerator.isEnabled ? currentModeColor.opacity(0.25) : controlSurfaceColor)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(noiseGenerator.isEnabled ? Color.clear : controlBorderColor, lineWidth: 1)
+                        )
                 )
             }
             .buttonStyle(PlainButtonStyle())
@@ -418,7 +438,11 @@ struct FocusView: View {
                         .padding(.vertical, 12)
                         .background(
                             RoundedRectangle(cornerRadius: 20)
-                                .fill(themeColors.cardBackground.opacity(0.7))
+                                .fill(controlSurfaceColor)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 20)
+                                        .stroke(controlBorderColor, lineWidth: 1)
+                                )
                         )
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -453,7 +477,11 @@ struct FocusView: View {
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 20)
-                        .fill(isAutoCycleMode ? currentModeColor.opacity(0.25) : themeColors.cardBackground.opacity(0.6))
+                        .fill(isAutoCycleMode ? currentModeColor.opacity(0.25) : controlSurfaceColor)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(isAutoCycleMode ? Color.clear : controlBorderColor, lineWidth: 1)
+                        )
                 )
             }
             .buttonStyle(PlainButtonStyle())
@@ -476,7 +504,11 @@ struct FocusView: View {
                     .padding(.vertical, 10)
                     .background(
                         RoundedRectangle(cornerRadius: 18)
-                            .fill(currentMode == .work ? currentModeColor : themeColors.cardBackground.opacity(0.6))
+                            .fill(currentMode == .work ? currentModeColor : controlSurfaceColor)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18)
+                                    .stroke(currentMode == .work ? Color.clear : controlBorderColor, lineWidth: 1)
+                            )
                     )
             }
             .buttonStyle(PlainButtonStyle())
@@ -489,7 +521,11 @@ struct FocusView: View {
                     .padding(.vertical, 10)
                     .background(
                         RoundedRectangle(cornerRadius: 18)
-                            .fill(currentMode == .shortBreak ? currentModeColor : themeColors.cardBackground.opacity(0.6))
+                            .fill(currentMode == .shortBreak ? currentModeColor : controlSurfaceColor)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18)
+                                    .stroke(currentMode == .shortBreak ? Color.clear : controlBorderColor, lineWidth: 1)
+                            )
                     )
             }
             .buttonStyle(PlainButtonStyle())
@@ -502,7 +538,11 @@ struct FocusView: View {
                     .padding(.vertical, 10)
                     .background(
                         RoundedRectangle(cornerRadius: 18)
-                            .fill(currentMode == .longBreak ? currentModeColor : themeColors.cardBackground.opacity(0.6))
+                            .fill(currentMode == .longBreak ? currentModeColor : controlSurfaceColor)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18)
+                                    .stroke(currentMode == .longBreak ? Color.clear : controlBorderColor, lineWidth: 1)
+                            )
                     )
             }
             .buttonStyle(PlainButtonStyle())
@@ -547,7 +587,8 @@ struct FocusView: View {
                     isPresented: $showNoiseSettings,
                     noiseGenerator: noiseGenerator,
                     accentColor: currentModeColor,
-                    isRunning: isRunning
+                    isRunning: isRunning,
+                    title: "Focus Sounds"
                 )
                 .transition(.scale.combined(with: .opacity))
             }
@@ -931,6 +972,7 @@ struct NoiseOptionsModal: View {
     @ObservedObject var noiseGenerator: NoiseGenerator
     let accentColor: Color
     let isRunning: Bool
+    let title: String
     @State private var showMixerSheet = false
     
     var body: some View {
@@ -950,7 +992,7 @@ struct NoiseOptionsModal: View {
         
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
-                Text("Focus Sounds")
+                Text(title)
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
                 Spacer()

@@ -45,7 +45,6 @@ struct SleepStats: Codable {
 
 struct SleepView: View {
     @EnvironmentObject var themeManager: AppThemeManager
-    @Environment(\.colorScheme) var systemColorScheme
     @State private var showProfile: Bool = false
     @State private var isRunning = false
     @State private var elapsedSeconds: Int = 0
@@ -91,11 +90,6 @@ struct SleepView: View {
             }
         }
     }
-    
-    // Theme colors that react to system color scheme changes
-    private var themeColors: ProfileTheme.Colors {
-        themeManager.themeColors(for: systemColorScheme)
-    }
 
     // HealthKit VM (optional enhancement)
     @StateObject private var vm = SleepViewModel()
@@ -120,8 +114,8 @@ struct SleepView: View {
             // Deep night gradient - use theme background for dark mode, otherwise keep night theme
             LinearGradient(
                 gradient: Gradient(colors: themeManager.currentTheme == .dark ? [
-                    themeColors.backgroundTop,
-                    themeColors.backgroundBottom
+                    themeManager.themeColors.backgroundTop,
+                    themeManager.themeColors.backgroundBottom
                 ] : [
                     Color(red: 0.15, green: 0.15, blue: 0.25),
                     Color(red: 0.1, green: 0.1, blue: 0.2),

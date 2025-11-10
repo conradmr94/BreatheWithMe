@@ -108,6 +108,81 @@ struct BreatheView: View {
     private var themeColors: ProfileTheme.Colors {
         themeManager.themeColors(for: systemColorScheme)
     }
+    
+    private var usesDarkAppearance: Bool {
+        themeManager.colorScheme(for: systemColorScheme) == .dark
+    }
+    
+    private var controlSurfaceColor: Color {
+        usesDarkAppearance ? themeColors.cardBackground.opacity(0.7) : themeColors.cardBackground.opacity(0.95)
+    }
+    
+    private var controlBorderColor: Color {
+        usesDarkAppearance ? Color.white.opacity(0.15) : themeColors.separator.opacity(0.85)
+    }
+    
+    private func functionalButtonBackground(
+        isActive: Bool,
+        usesAccentFillWhenInactive: Bool = false,
+        cornerRadius: CGFloat = 18
+    ) -> some View {
+        let wantsAccentFill = isActive || usesAccentFillWhenInactive
+        
+        let fillColors: [Color] = wantsAccentFill
+        ? [
+            themeColors.accent.opacity(isActive ? 0.55 : 0.35),
+            themeColors.accent.opacity(isActive ? 0.25 : 0.18)
+        ]
+        : [
+            controlSurfaceColor.opacity(usesDarkAppearance ? 1.0 : 0.95),
+            controlSurfaceColor.opacity(usesDarkAppearance ? 0.75 : 0.8)
+        ]
+        
+        let strokeColors: [Color] = wantsAccentFill
+        ? [
+            themeColors.accent.opacity(1.0),
+            themeColors.accent.opacity(isActive ? 0.5 : 0.35)
+        ]
+        : [
+            controlBorderColor.opacity(0.85),
+            controlBorderColor.opacity(0.3)
+        ]
+        
+        let shadowOpacity = usesDarkAppearance ? (isActive ? 0.55 : 0.4) : (isActive ? 0.22 : 0.15)
+        let accentGlowOpacity = isActive ? 0.35 : (usesAccentFillWhenInactive ? 0.15 : 0.0)
+        
+        return RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(
+                LinearGradient(
+                    gradient: Gradient(colors: fillColors),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            gradient: Gradient(colors: strokeColors),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: wantsAccentFill ? 1.5 : 1
+                    )
+            )
+            .shadow(
+                color: Color.black.opacity(shadowOpacity),
+                radius: isActive ? 14 : 8,
+                x: 0,
+                y: isActive ? 10 : 5
+            )
+            .shadow(
+                color: themeColors.accent.opacity(accentGlowOpacity),
+                radius: isActive ? 18 : 10,
+                x: 0,
+                y: isActive ? 10 : 4
+            )
+    }
 
     // Show/hide the duration picker window
     @State private var showDurationPicker: Bool = false
@@ -328,7 +403,11 @@ struct BreatheView: View {
                                     .padding(.vertical, 12)
                                     .background(
                                         RoundedRectangle(cornerRadius: 20)
-                                            .fill(themeColors.cardBackground.opacity(0.6))
+                                            .fill(controlSurfaceColor)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 20)
+                                                    .stroke(controlBorderColor, lineWidth: 1)
+                                            )
                                     )
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -348,17 +427,17 @@ struct BreatheView: View {
                                     Text("Transition Sounds")
                                         .font(.system(size: 15, weight: .medium, design: .default))
                                 }
-                                .foregroundColor(bellSoundEnabled ?
-                                                 themeColors.accent :
-                                                 themeColors.secondaryText)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 8)
+                                .foregroundColor(bellSoundEnabled ? .white : themeColors.primaryText)
+                                .padding(.horizontal, 22)
+                                .padding(.vertical, 10)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 20)
-                                        .fill(bellSoundEnabled ?
-                                              themeColors.accent.opacity(0.25) :
-                                              themeColors.cardBackground.opacity(0.6))
+                                    functionalButtonBackground(
+                                        isActive: bellSoundEnabled,
+                                        usesAccentFillWhenInactive: false,
+                                        cornerRadius: 24
+                                    )
                                 )
+                                .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                             }
                             .buttonStyle(PlainButtonStyle())
                             
@@ -381,19 +460,23 @@ struct BreatheView: View {
                                                     .padding(.horizontal, 6)
                                                     .padding(.vertical, 3)
                                                     .background(
-                                                        Capsule().fill(themeColors.accent.opacity(0.25))
+                                                        Capsule().fill(Color.white.opacity(0.2))
                                                     )
                                             }
                                         }
                                         .font(.system(size: 13, weight: .medium, design: .default))
-                                        .foregroundColor(themeColors.accent)
+                                        .foregroundColor(.white)
                                         .tracking(1.5)
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 8)
                                         .background(
-                                            RoundedRectangle(cornerRadius: 16)
-                                                .fill(themeColors.cardBackground.opacity(0.6))
+                                            functionalButtonBackground(
+                                                isActive: false,
+                                                usesAccentFillWhenInactive: true,
+                                                cornerRadius: 16
+                                            )
                                         )
+                                        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                                     } else {
                                         // Fallback on earlier versions
                                     }
@@ -408,18 +491,18 @@ struct BreatheView: View {
                                 }) {
                                     Text("4-7-8")
                                         .font(.system(size: 13, weight: .semibold))
-                                        .foregroundColor(use478 ? .white : themeColors.secondaryText)
+                                        .foregroundColor(use478 ? .white : themeColors.primaryText)
                                         .tracking(1.0)
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 8)
                                         .background(
-                                            RoundedRectangle(cornerRadius: 16)
-                                                .fill(use478 ? themeColors.accent : themeColors.cardBackground.opacity(0.95))
+                                            functionalButtonBackground(
+                                                isActive: use478,
+                                                usesAccentFillWhenInactive: false,
+                                                cornerRadius: 16
+                                            )
                                         )
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 16)
-                                                .stroke(themeColors.separator.opacity(0.5), lineWidth: 1)
-                                        )
+                                        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                                 }
                                 .buttonStyle(PlainButtonStyle())
                             }

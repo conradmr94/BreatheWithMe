@@ -12,6 +12,7 @@ struct WalkView: View {
     @EnvironmentObject private var themeManager: AppThemeManager
     @Environment(\.colorScheme) private var systemColorScheme
     @StateObject private var walkManager = WalkSessionManager.shared
+    @StateObject private var noiseGenerator = NoiseGenerator()
     
     @State private var mapRegion = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 37.3347, longitude: -122.0090),
@@ -20,17 +21,51 @@ struct WalkView: View {
     @State private var showStats = false
     @State private var showPermissionsAlert = false
     @State private var hasRequestedHealthKit = false
-    @State private var showDetails = false
+    @State private var activeInfoSheet: WalkSheet?
+    @State private var showNoiseSettings = false
     
     private var themeColors: ProfileTheme.Colors {
         themeManager.themeColors(for: systemColorScheme)
     }
     
+    private var usesDarkAppearance: Bool {
+        themeManager.colorScheme(for: systemColorScheme) == .dark
+    }
+    
+    private var controlSurfaceColor: Color {
+        usesDarkAppearance ? themeColors.cardBackground.opacity(0.7) : themeColors.cardBackground.opacity(0.96)
+    }
+    
+    private var controlBorderColor: Color {
+        usesDarkAppearance ? Color.white.opacity(0.15) : themeColors.separator.opacity(0.85)
+    }
+    
     private var palette: AnalyticsPalette {
         AnalyticsPalette(
             colors: themeColors,
-            usesDarkAppearance: themeManager.colorScheme(for: systemColorScheme) == .dark
+            usesDarkAppearance: usesDarkAppearance
         )
+    }
+
+    private enum WalkSheet: Identifiable {
+        case breathing, metrics, route, tips
+        var id: String {
+            switch self {
+            case .breathing: return "breathing"
+            case .metrics: return "metrics"
+            case .route: return "route"
+            case .tips: return "tips"
+            }
+        }
+
+        var title: String {
+            switch self {
+            case .breathing: return "Breathing Pattern"
+            case .metrics: return "Walk Metrics"
+            case .route: return "Route"
+            case .tips: return "Mindful Tips"
+            }
+        }
     }
     
     var body: some View {
@@ -47,7 +82,7 @@ struct WalkView: View {
     @available(iOS 16.0, *)
     private var navigationStackBody: some View {
         NavigationStack {
-            walkContent
+            walkExperienceView
         }
         .navigationTitle("Mindful Walk")
         .toolbar {
@@ -63,6 +98,9 @@ struct WalkView: View {
             WalkStatsView()
                 .environmentObject(themeManager)
         }
+        .sheet(item: $activeInfoSheet) { sheet in
+            infoSheetView(for: sheet)
+        }
         .alert("Permission Needed", isPresented: $showPermissionsAlert) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -71,6 +109,7 @@ struct WalkView: View {
         .onAppear {
             updateRegionIfNeeded()
             requestAuthorizationsIfNeeded()
+            updateNoiseState(isWalking: walkManager.isWalking)
         }
         .onChange(of: walkManager.currentLocation) { _ in
             updateRegionIfNeeded()
@@ -80,12 +119,30 @@ struct WalkView: View {
                 showPermissionsAlert = true
             }
         }
+        .onChange(of: walkManager.isWalking) { isWalking in
+            updateNoiseState(isWalking: isWalking)
+        }
+        .onChange(of: showNoiseSettings) { isPresented in
+            NotificationCenter.default.post(
+                name: .soundModalVisibilityDidChange,
+                object: nil,
+                userInfo: ["isPresented": isPresented]
+            )
+        }
+        .onDisappear {
+            NotificationCenter.default.post(
+                name: .soundModalVisibilityDidChange,
+                object: nil,
+                userInfo: ["isPresented": false]
+            )
+            showNoiseSettings = false
+        }
     }
     
     @ViewBuilder
     private var navigationViewBody: some View {
         NavigationView {
-            walkContent
+            walkExperienceView
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .navigationTitle("Mindful Walk")
@@ -102,6 +159,9 @@ struct WalkView: View {
             WalkStatsView()
                 .environmentObject(themeManager)
         }
+        .sheet(item: $activeInfoSheet) { sheet in
+            infoSheetView(for: sheet)
+        }
         .alert("Permission Needed", isPresented: $showPermissionsAlert) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -110,6 +170,7 @@ struct WalkView: View {
         .onAppear {
             updateRegionIfNeeded()
             requestAuthorizationsIfNeeded()
+            updateNoiseState(isWalking: walkManager.isWalking)
         }
         .onChange(of: walkManager.currentLocation) { _ in
             updateRegionIfNeeded()
@@ -119,6 +180,30 @@ struct WalkView: View {
                 showPermissionsAlert = true
             }
         }
+        .onChange(of: walkManager.isWalking) { isWalking in
+            updateNoiseState(isWalking: isWalking)
+        }
+        .onChange(of: showNoiseSettings) { isPresented in
+            NotificationCenter.default.post(
+                name: .soundModalVisibilityDidChange,
+                object: nil,
+                userInfo: ["isPresented": isPresented]
+            )
+        }
+        .onDisappear {
+            NotificationCenter.default.post(
+                name: .soundModalVisibilityDidChange,
+                object: nil,
+                userInfo: ["isPresented": false]
+            )
+            showNoiseSettings = false
+        }
+    }
+    
+    private var walkExperienceView: some View {
+        walkContent
+            .overlay(noiseInfoOverlay)
+            .overlay(noiseSettingsOverlay)
     }
     
     private var walkContent: some View {
@@ -133,39 +218,198 @@ struct WalkView: View {
             )
             .ignoresSafeArea()
             
-            ScrollView {
-                VStack(spacing: 24) {
-                    headerSection
-                    breathingPatternPicker
-                    if walkManager.motionUnavailable {
-                        motionAvailabilityNotice
-                    }
-                    breathingCircle
-                    controlButtons
-                    detailToggleButton
-                    if showDetails {
-                        detailMetricsStack
-                    }
-                    quickTips
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 24)
+            VStack(spacing: 0) {
+                headerSection
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .frame(height: 120)
+                    .padding(.top, 50)
+                Spacer()
+                breathingCircle
+                    .frame(maxWidth: .infinity)
+                Spacer()
+                bottomControlsSection
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 60)
+        }
+    }
+    
+    @ViewBuilder
+    private var noiseInfoOverlay: some View {
+        if noiseGenerator.showInfoMessage {
+            VStack {
+                Spacer()
+                Text(noiseGenerator.infoMessage)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(themeColors.primaryText)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(themeColors.cardBackground.opacity(0.9))
+                            .shadow(color: themeColors.cardShadow, radius: 10, x: 0, y: 6)
+                    )
+                    .padding(.horizontal, 40)
+                    .padding(.bottom, 80)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
     }
     
-    // MARK: Sections
-    private var headerSection: some View {
-        VStack(spacing: 8) {
-            Text("Ground your mind with a gentle walk.")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(themeColors.secondaryText)
-                .multilineTextAlignment(.center)
+    @ViewBuilder
+    private var noiseSettingsOverlay: some View {
+        if showNoiseSettings {
+            ZStack {
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showNoiseSettings = false
+                        }
+                    }
+                NoiseOptionsModal(
+                    isPresented: $showNoiseSettings,
+                    noiseGenerator: noiseGenerator,
+                    accentColor: themeColors.accent,
+                    isRunning: walkManager.isWalking,
+                    title: "Walk Sounds"
+                )
+                .transition(.scale.combined(with: .opacity))
+            }
+            .zIndex(2)
+        }
+    }
+    
+    private var bottomControlsSection: some View {
+        VStack(spacing: 16) {
+            infoButtonGrid
+            soundButton
+            if walkManager.isMetricsAvailable {
+                resetButton
+            }
+            if walkManager.motionUnavailable {
+                motionAvailabilityNotice
+            }
         }
         .frame(maxWidth: .infinity)
     }
     
-    private var breathingPatternPicker: some View {
+    private var infoButtonGrid: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                infoPill(icon: "wind", title: "Breathing") {
+                    activeInfoSheet = .breathing
+                }
+                infoPill(icon: "chart.bar", title: "Metrics") {
+                    activeInfoSheet = .metrics
+                }
+            }
+            HStack(spacing: 12) {
+                infoPill(icon: "map", title: "Route") {
+                    activeInfoSheet = .route
+                }
+                infoPill(icon: "lightbulb", title: "Tips") {
+                    activeInfoSheet = .tips
+                }
+            }
+        }
+    }
+    
+    private func infoPill(icon: String, title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .medium))
+                Text(title.uppercased())
+                    .font(.system(size: 13, weight: .medium))
+                    .tracking(1.2)
+            }
+            .foregroundColor(themeColors.accent)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(controlSurfaceColor)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18)
+                            .stroke(controlBorderColor, lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private var soundButton: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                showNoiseSettings = true
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: noiseGenerator.isEnabled ? "speaker.wave.2.fill" : "speaker.slash")
+                    .font(.system(size: 16, weight: .medium))
+                Text("Walk Sounds")
+                    .font(.system(size: 15, weight: .medium))
+            }
+            .foregroundColor(noiseGenerator.isEnabled ? themeColors.accent : themeColors.secondaryText)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(noiseGenerator.isEnabled ? themeColors.accent.opacity(0.22) : controlSurfaceColor)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(noiseGenerator.isEnabled ? Color.clear : controlBorderColor, lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private var resetButton: some View {
+        Button {
+            walkManager.resetSession()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.counterclockwise")
+                    .font(.system(size: 14, weight: .semibold))
+                Text("Reset Session")
+                    .font(.system(size: 15, weight: .medium))
+            }
+            .foregroundColor(themeColors.secondaryText)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(controlSurfaceColor)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(controlBorderColor, lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    // MARK: Sections
+    private var headerSection: some View {
+        VStack(spacing: 12) {
+            if !walkManager.isWalking {
+                Text("Walk")
+                    .font(.system(size: 34, weight: .light, design: .default))
+                    .foregroundColor(themeColors.primaryText)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                Text("Ground your mind with a gentle walk.")
+                    .font(.system(size: 16, weight: .regular, design: .default))
+                    .foregroundColor(themeColors.secondaryText)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+    
+    private var breathingPatternCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Breathing Pattern")
                 .font(.system(size: 15, weight: .semibold))
@@ -182,6 +426,13 @@ struct WalkView: View {
                 .font(.system(size: 13, weight: .medium))
                 .foregroundColor(themeColors.secondaryText)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 18)
+                .fill(themeColors.cardBackground)
+                .shadow(color: themeColors.cardShadow, radius: 10, x: 0, y: 5)
+        )
     }
     
     private var motionAvailabilityNotice: some View {
@@ -207,38 +458,42 @@ struct WalkView: View {
     }
     
     private var breathingCircle: some View {
-        TimelineView(.animation) { timeline in
-            let elapsed = timeline.date.timeIntervalSinceReferenceDate
-            let scale = walkManager.currentPattern.normalizedScale(at: elapsed)
-            
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                themeColors.accent.opacity(0.6),
-                                themeColors.accent.opacity(0.3)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 220, height: 220)
-                    .scaleEffect(scale)
-                    .animation(.easeInOut(duration: 0.6), value: scale)
+        Button(action: toggleWalkSession) {
+            TimelineView(.animation) { timeline in
+                let elapsed = timeline.date.timeIntervalSinceReferenceDate
+                let scale = walkManager.currentPattern.normalizedScale(at: elapsed)
                 
-                VStack(spacing: 6) {
-                    Image(systemName: "figure.walk.circle")
-                        .font(.system(size: 48, weight: .semibold))
-                        .foregroundColor(themeColors.primaryText)
-                    Text(walkManager.isWalking ? "Keep your pace steady" : "Tap start when ready")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(themeColors.secondaryText)
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    themeColors.accent.opacity(0.65),
+                                    themeColors.accent.opacity(0.35)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 240, height: 240)
+                        .shadow(color: themeColors.accent.opacity(0.35), radius: 25, x: 0, y: 12)
+                        .scaleEffect(scale)
+                        .animation(.easeInOut(duration: 0.6), value: scale)
+                    
+                    VStack(spacing: 10) {
+                        Image(systemName: walkManager.isWalking ? "figure.walk.circle.fill" : "figure.walk.circle")
+                            .font(.system(size: 48, weight: .semibold))
+                            .foregroundColor(themeColors.primaryText)
+                        Text(walkManager.isWalking ? walkManager.durationFormatted : walkManager.currentPattern.displayName)
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(themeColors.primaryText)
+                    }
                 }
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.top, 8)
         }
+        .buttonStyle(PlainButtonStyle())
+        .padding(.top, 8)
     }
     
     private var mapSection: some View {
@@ -262,88 +517,6 @@ struct WalkView: View {
         }
     }
     
-    private var controlButtons: some View {
-        VStack(spacing: 12) {
-            Button {
-                walkManager.isWalking ? walkManager.stopSession() : walkManager.startSession()
-            } label: {
-                Text(walkManager.isWalking ? "Finish Walk" : "Start Walk")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(
-                        LinearGradient(
-                            colors: [
-                                themeColors.accent,
-                                themeColors.accent.opacity(0.8)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 18))
-                    .shadow(color: themeColors.accent.opacity(0.35), radius: 12, x: 0, y: 6)
-            }
-            
-            if walkManager.isMetricsAvailable {
-                Button(role: .destructive) {
-                    walkManager.resetSession()
-                } label: {
-                    Text("Reset")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(themeColors.secondaryText)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(themeColors.cardBackground)
-                        )
-                }
-            }
-        }
-    }
-    
-    private var detailToggleButton: some View {
-        Button {
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
-                showDetails.toggle()
-            }
-        } label: {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(showDetails ? "Hide walk metrics" : "Show walk metrics")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(themeColors.primaryText)
-                    Text("Steps, distance, pace, calories, and route")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(themeColors.secondaryText)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(themeColors.secondaryText)
-                    .rotationEffect(.degrees(showDetails ? 90 : 0))
-                    .animation(.easeInOut(duration: 0.2), value: showDetails)
-            }
-            .padding(18)
-            .background(
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(themeColors.cardBackground)
-                    .shadow(color: themeColors.cardShadow, radius: 10, x: 0, y: 5)
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-    
-    private var detailMetricsStack: some View {
-        VStack(spacing: 24) {
-            metricsCards
-            mapSection
-        }
-        .transition(.opacity.combined(with: .move(edge: .top)))
-    }
-    
     private var quickTips: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Mindful Walking Tips")
@@ -362,9 +535,61 @@ struct WalkView: View {
                     .shadow(color: themeColors.cardShadow, radius: 12, x: 0, y: 6)
             )
         }
-        .padding(.bottom, 12)
     }
     
+    @ViewBuilder
+    private func infoSheetView(for sheet: WalkSheet) -> some View {
+        if #available(iOS 16.0, *) {
+            NavigationStack {
+                infoSheetContent(for: sheet)
+            }
+            .presentationDetents([.fraction(0.45), .large])
+            .presentationDragIndicator(.visible)
+        } else {
+            NavigationView {
+                infoSheetContent(for: sheet)
+            }
+            .navigationViewStyle(StackNavigationViewStyle())
+        }
+    }
+    
+    private func infoSheetContent(for sheet: WalkSheet) -> some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                switch sheet {
+                case .breathing:
+                    breathingPatternCard
+                case .metrics:
+                    metricsCards
+                case .route:
+                    mapSection
+                case .tips:
+                    quickTips
+                }
+            }
+            .padding(20)
+        }
+        .background(
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    themeColors.backgroundTop,
+                    themeColors.backgroundBottom
+                ]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        )
+        .navigationTitle(sheet.title)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Done") {
+                    activeInfoSheet = nil
+                }
+            }
+        }
+    }
+
     // MARK: Helpers
     private func metricCard(title: String, value: String, icon: String) -> some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -434,6 +659,24 @@ struct WalkView: View {
         
         walkManager.requestLocationAuthorization()
         walkManager.motionUnavailable = WalkSessionManager.motionUnavailableForUI
+    }
+
+    private func toggleWalkSession() {
+        if walkManager.isWalking {
+            walkManager.stopSession()
+        } else {
+            walkManager.startSession()
+        }
+    }
+
+    private func updateNoiseState(isWalking: Bool) {
+        if isWalking {
+            if noiseGenerator.isEnabled {
+                noiseGenerator.startNoise()
+            }
+        } else {
+            noiseGenerator.stopNoise()
+        }
     }
 
     private var metricsCards: some View {
