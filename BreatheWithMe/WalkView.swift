@@ -40,6 +40,70 @@ struct WalkView: View {
         usesDarkAppearance ? Color.white.opacity(0.15) : themeColors.separator.opacity(0.85)
     }
     
+    private func functionalButtonBackground(
+        isActive: Bool,
+        accentColor: Color,
+        usesAccentFillWhenInactive: Bool = false,
+        cornerRadius: CGFloat = 18
+    ) -> some View {
+        let wantsAccentFill = isActive || usesAccentFillWhenInactive
+        
+        let fillColors: [Color] = wantsAccentFill
+        ? [
+            accentColor.opacity(isActive ? 0.55 : 0.35),
+            accentColor.opacity(isActive ? 0.25 : 0.18)
+        ]
+        : [
+            controlSurfaceColor.opacity(usesDarkAppearance ? 1.0 : 0.95),
+            controlSurfaceColor.opacity(usesDarkAppearance ? 0.75 : 0.8)
+        ]
+        
+        let strokeColors: [Color] = wantsAccentFill
+        ? [
+            accentColor.opacity(1.0),
+            accentColor.opacity(isActive ? 0.5 : 0.35)
+        ]
+        : [
+            controlBorderColor.opacity(0.85),
+            controlBorderColor.opacity(0.3)
+        ]
+        
+        let shadowOpacity = usesDarkAppearance ? (isActive ? 0.55 : 0.4) : (isActive ? 0.22 : 0.15)
+        let accentGlowOpacity = isActive ? 0.35 : (usesAccentFillWhenInactive ? 0.15 : 0.0)
+        
+        return RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(
+                LinearGradient(
+                    gradient: Gradient(colors: fillColors),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            gradient: Gradient(colors: strokeColors),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: wantsAccentFill ? 1.5 : 1
+                    )
+            )
+            .shadow(
+                color: Color.black.opacity(shadowOpacity),
+                radius: isActive ? 14 : 8,
+                x: 0,
+                y: isActive ? 10 : 5
+            )
+            .shadow(
+                color: accentColor.opacity(accentGlowOpacity),
+                radius: isActive ? 18 : 10,
+                x: 0,
+                y: isActive ? 10 : 4
+            )
+    }
+    
     private var palette: AnalyticsPalette {
         AnalyticsPalette(
             colors: themeColors,
@@ -326,17 +390,18 @@ struct WalkView: View {
                     .font(.system(size: 13, weight: .medium))
                     .tracking(1.2)
             }
-            .foregroundColor(themeColors.accent)
+            .foregroundColor(.white)
             .padding(.horizontal, 20)
             .padding(.vertical, 10)
             .background(
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(controlSurfaceColor)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18)
-                            .stroke(controlBorderColor, lineWidth: 1)
-                    )
+                functionalButtonBackground(
+                    isActive: false,
+                    accentColor: themeColors.accent,
+                    usesAccentFillWhenInactive: true,
+                    cornerRadius: 18
+                )
             )
+            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -353,17 +418,18 @@ struct WalkView: View {
                 Text("Walk Sounds")
                     .font(.system(size: 15, weight: .medium))
             }
-            .foregroundColor(noiseGenerator.isEnabled ? themeColors.accent : themeColors.secondaryText)
+            .foregroundColor(noiseGenerator.isEnabled ? .white : themeColors.primaryText)
             .padding(.horizontal, 20)
             .padding(.vertical, 10)
             .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(noiseGenerator.isEnabled ? themeColors.accent.opacity(0.22) : controlSurfaceColor)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20)
-                            .stroke(noiseGenerator.isEnabled ? Color.clear : controlBorderColor, lineWidth: 1)
-                    )
+                functionalButtonBackground(
+                    isActive: noiseGenerator.isEnabled,
+                    accentColor: themeColors.accent,
+                    usesAccentFillWhenInactive: false,
+                    cornerRadius: 22
+                )
             )
+            .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -378,17 +444,18 @@ struct WalkView: View {
                 Text("Reset Session")
                     .font(.system(size: 15, weight: .medium))
             }
-            .foregroundColor(themeColors.secondaryText)
+            .foregroundColor(themeColors.primaryText)
             .padding(.horizontal, 24)
             .padding(.vertical, 10)
             .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(controlSurfaceColor)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20)
-                            .stroke(controlBorderColor, lineWidth: 1)
-                    )
+                functionalButtonBackground(
+                    isActive: false,
+                    accentColor: themeColors.accent,
+                    usesAccentFillWhenInactive: false,
+                    cornerRadius: 22
+                )
             )
+            .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         }
         .buttonStyle(PlainButtonStyle())
     }

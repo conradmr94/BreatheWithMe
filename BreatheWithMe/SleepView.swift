@@ -45,6 +45,7 @@ struct SleepStats: Codable {
 
 struct SleepView: View {
     @EnvironmentObject var themeManager: AppThemeManager
+    @Environment(\.colorScheme) private var systemColorScheme
     @State private var showProfile: Bool = false
     @State private var isRunning = false
     @State private var elapsedSeconds: Int = 0
@@ -90,7 +91,90 @@ struct SleepView: View {
             }
         }
     }
-
+    
+    private var themeColors: ProfileTheme.Colors {
+        themeManager.themeColors(for: systemColorScheme)
+    }
+    
+    private var usesDarkAppearance: Bool {
+        themeManager.colorScheme(for: systemColorScheme) == .dark
+    }
+    
+    private var controlSurfaceColor: Color {
+        Color.white.opacity(usesDarkAppearance ? 0.15 : 0.2)
+    }
+    
+    private var controlBorderColor: Color {
+        Color.white.opacity(usesDarkAppearance ? 0.35 : 0.25)
+    }
+    
+    private var sleepAccentColor: Color {
+        Color(red: 0.4, green: 0.5, blue: 0.8)
+    }
+    
+    private func functionalButtonBackground(
+        isActive: Bool,
+        accentColor: Color,
+        usesAccentFillWhenInactive: Bool = false,
+        cornerRadius: CGFloat = 18
+    ) -> some View {
+        let wantsAccentFill = isActive || usesAccentFillWhenInactive
+        
+        let fillColors: [Color] = wantsAccentFill
+        ? [
+            accentColor.opacity(isActive ? 0.55 : 0.35),
+            accentColor.opacity(isActive ? 0.25 : 0.18)
+        ]
+        : [
+            controlSurfaceColor.opacity(usesDarkAppearance ? 1.0 : 0.95),
+            controlSurfaceColor.opacity(usesDarkAppearance ? 0.75 : 0.8)
+        ]
+        
+        let strokeColors: [Color] = wantsAccentFill
+        ? [
+            accentColor.opacity(1.0),
+            accentColor.opacity(isActive ? 0.5 : 0.35)
+        ]
+        : [
+            controlBorderColor.opacity(0.85),
+            controlBorderColor.opacity(0.3)
+        ]
+        
+        let shadowOpacity = usesDarkAppearance ? (isActive ? 0.55 : 0.4) : (isActive ? 0.22 : 0.15)
+        let accentGlowOpacity = isActive ? 0.35 : (usesAccentFillWhenInactive ? 0.15 : 0.0)
+        
+        return RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(
+                LinearGradient(
+                    gradient: Gradient(colors: fillColors),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            gradient: Gradient(colors: strokeColors),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: wantsAccentFill ? 1.5 : 1
+                    )
+            )
+            .shadow(
+                color: Color.black.opacity(shadowOpacity),
+                radius: isActive ? 14 : 8,
+                x: 0,
+                y: isActive ? 10 : 5
+            )
+            .shadow(
+                color: accentColor.opacity(accentGlowOpacity),
+                radius: isActive ? 18 : 10,
+                x: 0,
+                y: isActive ? 10 : 4
+            )
+    }
     // HealthKit VM (optional enhancement)
     @StateObject private var vm = SleepViewModel()
     // Noise Generator for ambient sounds
@@ -242,7 +326,6 @@ struct SleepView: View {
                 VStack(spacing: 24) {
                     // Alarm settings (when not running)
                     if !isRunning {
-                        let accent = Color(red: 0.4, green: 0.5, blue: 0.8)
                         VStack(alignment: .center, spacing: 10) {
                             HStack {
                                 Spacer()
@@ -254,13 +337,18 @@ struct SleepView: View {
                                         Text("Alarm")
                                             .font(.system(size: 14, weight: .semibold))
                                     }
-                                    .foregroundColor(accent)
-                                    .padding(.horizontal, 16)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 18)
                                     .padding(.vertical, 10)
                                     .background(
-                                        RoundedRectangle(cornerRadius: 18)
-                                            .fill(accent.opacity(0.22))
+                                        functionalButtonBackground(
+                                            isActive: isAlarmEnabled,
+                                            accentColor: sleepAccentColor,
+                                            usesAccentFillWhenInactive: true,
+                                            cornerRadius: 20
+                                        )
                                     )
+                                    .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                                 }
                                 .buttonStyle(PlainButtonStyle())
                                 Spacer()
@@ -295,17 +383,20 @@ struct SleepView: View {
                                 Text("Sleep Sounds")
                                     .font(.system(size: 15, weight: .medium, design: .default))
                             }
-                            .foregroundColor(noiseGenerator.isEnabled ? 
-                                           Color(red: 0.4, green: 0.5, blue: 0.8) :
-                                           Color.white.opacity(0.6))
-                            .padding(.horizontal, 20)
+                            .foregroundColor(noiseGenerator.isEnabled ?
+                                             Color.white :
+                                             Color.white.opacity(0.8))
+                            .padding(.horizontal, 22)
                             .padding(.vertical, 10)
                             .background(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .fill(noiseGenerator.isEnabled ? 
-                                          Color(red: 0.4, green: 0.5, blue: 0.8).opacity(0.25) :
-                                          Color.white.opacity(0.1))
+                                functionalButtonBackground(
+                                    isActive: noiseGenerator.isEnabled,
+                                    accentColor: sleepAccentColor,
+                                    usesAccentFillWhenInactive: false,
+                                    cornerRadius: 22
+                                )
                             )
+                            .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                         }
                         .buttonStyle(PlainButtonStyle())
                     }

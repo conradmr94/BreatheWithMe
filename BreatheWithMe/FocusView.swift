@@ -189,6 +189,70 @@ struct FocusView: View {
         usesDarkAppearance ? Color.white.opacity(0.15) : themeColors.separator.opacity(0.85)
     }
     
+    private func functionalButtonBackground(
+        isActive: Bool,
+        accentColor: Color,
+        usesAccentFillWhenInactive: Bool = false,
+        cornerRadius: CGFloat = 18
+    ) -> some View {
+        let wantsAccentFill = isActive || usesAccentFillWhenInactive
+        
+        let fillColors: [Color] = wantsAccentFill
+        ? [
+            accentColor.opacity(isActive ? 0.55 : 0.35),
+            accentColor.opacity(isActive ? 0.25 : 0.18)
+        ]
+        : [
+            controlSurfaceColor.opacity(usesDarkAppearance ? 1.0 : 0.95),
+            controlSurfaceColor.opacity(usesDarkAppearance ? 0.75 : 0.8)
+        ]
+        
+        let strokeColors: [Color] = wantsAccentFill
+        ? [
+            accentColor.opacity(1.0),
+            accentColor.opacity(isActive ? 0.5 : 0.35)
+        ]
+        : [
+            controlBorderColor.opacity(0.85),
+            controlBorderColor.opacity(0.3)
+        ]
+        
+        let shadowOpacity = usesDarkAppearance ? (isActive ? 0.55 : 0.4) : (isActive ? 0.22 : 0.15)
+        let accentGlowOpacity = isActive ? 0.35 : (usesAccentFillWhenInactive ? 0.15 : 0.0)
+        
+        return RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(
+                LinearGradient(
+                    gradient: Gradient(colors: fillColors),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            gradient: Gradient(colors: strokeColors),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: wantsAccentFill ? 1.5 : 1
+                    )
+            )
+            .shadow(
+                color: Color.black.opacity(shadowOpacity),
+                radius: isActive ? 14 : 8,
+                x: 0,
+                y: isActive ? 10 : 5
+            )
+            .shadow(
+                color: accentColor.opacity(accentGlowOpacity),
+                radius: isActive ? 18 : 10,
+                x: 0,
+                y: isActive ? 10 : 4
+            )
+    }
+    
     enum PomodoroMode {
         case work, shortBreak, longBreak
         
@@ -357,17 +421,18 @@ struct FocusView: View {
                     Text("Durations")
                         .font(.system(size: 15, weight: .medium, design: .default))
                 }
-                .foregroundColor(themeColors.secondaryText)
+                .foregroundColor(.white)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 10)
                 .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(controlSurfaceColor)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(controlBorderColor, lineWidth: 1)
-                        )
+                    functionalButtonBackground(
+                        isActive: false,
+                        accentColor: currentModeColor,
+                        usesAccentFillWhenInactive: true,
+                        cornerRadius: 20
+                    )
                 )
+                .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             }
             .buttonStyle(PlainButtonStyle())
             
@@ -383,17 +448,18 @@ struct FocusView: View {
                     Text("Sounds")
                         .font(.system(size: 15, weight: .medium, design: .default))
                 }
-                .foregroundColor(noiseGenerator.isEnabled ? currentModeColor : themeColors.secondaryText)
-                .padding(.horizontal, 20)
+                .foregroundColor(noiseGenerator.isEnabled ? .white : themeColors.primaryText)
+                .padding(.horizontal, 22)
                 .padding(.vertical, 10)
                 .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(noiseGenerator.isEnabled ? currentModeColor.opacity(0.25) : controlSurfaceColor)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(noiseGenerator.isEnabled ? Color.clear : controlBorderColor, lineWidth: 1)
-                        )
+                    functionalButtonBackground(
+                        isActive: noiseGenerator.isEnabled,
+                        accentColor: currentModeColor,
+                        usesAccentFillWhenInactive: false,
+                        cornerRadius: 24
+                    )
                 )
+                .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             }
             .buttonStyle(PlainButtonStyle())
         }
@@ -472,17 +538,18 @@ struct FocusView: View {
                     Text("Auto-cycle mode")
                         .font(.system(size: 15, weight: .medium, design: .default))
                 }
-                .foregroundColor(isAutoCycleMode ? currentModeColor : themeColors.secondaryText)
+                .foregroundColor(isAutoCycleMode ? .white : themeColors.primaryText)
                 .padding(.horizontal, 24)
                 .padding(.vertical, 10)
                 .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(isAutoCycleMode ? currentModeColor.opacity(0.25) : controlSurfaceColor)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(isAutoCycleMode ? Color.clear : controlBorderColor, lineWidth: 1)
-                        )
+                    functionalButtonBackground(
+                        isActive: isAutoCycleMode,
+                        accentColor: currentModeColor,
+                        usesAccentFillWhenInactive: false,
+                        cornerRadius: 20
+                    )
                 )
+                .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             }
             .buttonStyle(PlainButtonStyle())
             
@@ -499,51 +566,54 @@ struct FocusView: View {
             Button(action: { selectMode(.work) }) {
                 Text("Focus")
                     .font(.system(size: 14, weight: .medium, design: .default))
-                    .foregroundColor(currentMode == .work ? Color.white : themeColors.secondaryText)
+                    .foregroundColor(currentMode == .work ? .white : themeColors.primaryText)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
                     .background(
-                        RoundedRectangle(cornerRadius: 18)
-                            .fill(currentMode == .work ? currentModeColor : controlSurfaceColor)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18)
-                                    .stroke(currentMode == .work ? Color.clear : controlBorderColor, lineWidth: 1)
-                            )
+                        functionalButtonBackground(
+                            isActive: currentMode == .work,
+                            accentColor: currentModeColor,
+                            usesAccentFillWhenInactive: false,
+                            cornerRadius: 18
+                        )
                     )
+                    .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
             .buttonStyle(PlainButtonStyle())
             
             Button(action: { selectMode(.shortBreak) }) {
                 Text("Rest")
                     .font(.system(size: 14, weight: .medium, design: .default))
-                    .foregroundColor(currentMode == .shortBreak ? Color.white : themeColors.secondaryText)
+                    .foregroundColor(currentMode == .shortBreak ? .white : themeColors.primaryText)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
                     .background(
-                        RoundedRectangle(cornerRadius: 18)
-                            .fill(currentMode == .shortBreak ? currentModeColor : controlSurfaceColor)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18)
-                                    .stroke(currentMode == .shortBreak ? Color.clear : controlBorderColor, lineWidth: 1)
-                            )
+                        functionalButtonBackground(
+                            isActive: currentMode == .shortBreak,
+                            accentColor: currentModeColor,
+                            usesAccentFillWhenInactive: false,
+                            cornerRadius: 18
+                        )
                     )
+                    .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
             .buttonStyle(PlainButtonStyle())
             
             Button(action: { selectMode(.longBreak) }) {
                 Text("Long Rest")
                     .font(.system(size: 14, weight: .medium, design: .default))
-                    .foregroundColor(currentMode == .longBreak ? Color.white : themeColors.secondaryText)
+                    .foregroundColor(currentMode == .longBreak ? .white : themeColors.primaryText)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
                     .background(
-                        RoundedRectangle(cornerRadius: 18)
-                            .fill(currentMode == .longBreak ? currentModeColor : controlSurfaceColor)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18)
-                                    .stroke(currentMode == .longBreak ? Color.clear : controlBorderColor, lineWidth: 1)
-                            )
+                        functionalButtonBackground(
+                            isActive: currentMode == .longBreak,
+                            accentColor: currentModeColor,
+                            usesAccentFillWhenInactive: false,
+                            cornerRadius: 18
+                        )
                     )
+                    .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
             .buttonStyle(PlainButtonStyle())
         }
