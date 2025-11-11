@@ -29,6 +29,11 @@ struct WalkView: View {
         themeManager.themeColors(for: systemColorScheme)
     }
     
+    // Soothing light green accent color for Walk view
+    private var walkAccentColor: Color {
+        Color(red: 0.5, green: 0.8, blue: 0.65)
+    }
+    
     private var usesDarkAppearance: Bool {
         themeManager.colorScheme(for: systemColorScheme) == .dark
     }
@@ -317,7 +322,7 @@ struct WalkView: View {
                 NoiseOptionsModal(
                     isPresented: $showNoiseSettings,
                     noiseGenerator: noiseGenerator,
-                    accentColor: themeColors.accent,
+                    accentColor: walkAccentColor,
                     isRunning: walkManager.isWalking,
                     title: "Walk Sounds"
                 )
@@ -440,7 +445,7 @@ struct WalkView: View {
             .background(
                 functionalButtonBackground(
                     isActive: noiseGenerator.isEnabled,
-                    accentColor: themeColors.accent,
+                    accentColor: walkAccentColor,
                     usesAccentFillWhenInactive: false,
                     cornerRadius: 24
                 )
@@ -470,7 +475,7 @@ struct WalkView: View {
             .background(
                 functionalButtonBackground(
                     isActive: showInsightsPanel,
-                    accentColor: themeColors.accent,
+                    accentColor: walkAccentColor,
                     usesAccentFillWhenInactive: false,
                     cornerRadius: 20
                 )
@@ -510,7 +515,7 @@ struct WalkView: View {
             .background(
                 functionalButtonBackground(
                     isActive: false,
-                    accentColor: themeColors.accent,
+                    accentColor: walkAccentColor,
                     usesAccentFillWhenInactive: true,
                     cornerRadius: 20
                 )
@@ -598,8 +603,8 @@ struct WalkView: View {
                         .fill(
                             RadialGradient(
                                 gradient: Gradient(colors: [
-                                    themeColors.accent.opacity(0.2 - Double(index) * 0.05),
-                                    themeColors.accent.opacity(0.08 - Double(index) * 0.025),
+                                    walkAccentColor.opacity(0.2 - Double(index) * 0.05),
+                                    walkAccentColor.opacity(0.08 - Double(index) * 0.025),
                                     Color.clear
                                 ]),
                                 center: .center,
@@ -626,8 +631,8 @@ struct WalkView: View {
                             .fill(
                                 LinearGradient(
                                     gradient: Gradient(colors: [
-                                        themeColors.accent,
-                                        themeColors.accent.opacity(0.8)
+                                        walkAccentColor,
+                                        walkAccentColor.opacity(0.8)
                                     ]),
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
@@ -635,7 +640,7 @@ struct WalkView: View {
                             )
                             .frame(width: 220, height: 220)
                             .scaleEffect(walkManager.isWalking ? breathingScale : 1.0)
-                            .shadow(color: themeColors.accent.opacity(0.35), radius: 30, x: 0, y: 12)
+                            .shadow(color: walkAccentColor.opacity(0.35), radius: 30, x: 0, y: 12)
                         
                         Circle()
                             .stroke(Color.white.opacity(0.25), lineWidth: 2)
@@ -686,7 +691,7 @@ struct WalkView: View {
             WalkRouteMap(
                 region: $mapRegion,
                 route: walkManager.route,
-                accentColor: UIColor(themeColors.accent)
+                accentColor: UIColor(walkAccentColor)
             )
             .frame(height: 220)
             .clipShape(RoundedRectangle(cornerRadius: 18))
@@ -724,7 +729,7 @@ struct WalkView: View {
             HStack {
                 Image(systemName: icon)
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(themeColors.accent)
+                    .foregroundColor(walkAccentColor)
                 
                 Text(title.uppercased())
                     .font(.system(size: 11, weight: .semibold))
@@ -748,7 +753,7 @@ struct WalkView: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 20, weight: .semibold))
-                .foregroundColor(themeColors.accent)
+                .foregroundColor(walkAccentColor)
                 .frame(width: 28, height: 28)
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
