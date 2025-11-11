@@ -24,6 +24,7 @@ struct WalkView: View {
     @State private var showNoiseSettings = false
     @State private var showSessionPanel = false
     @State private var showInsightsPanel = false
+    @State private var showProfile = false
     
     private var themeColors: ProfileTheme.Colors {
         themeManager.themeColors(for: systemColorScheme)
@@ -183,6 +184,23 @@ struct WalkView: View {
             )
             showNoiseSettings = false
         }
+        .swipeDownToOpenProfile {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+                showProfile = true
+            }
+        }
+        .topSlideCover(isPresented: $showProfile) {
+            ProfileView(
+                onDismiss: {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+                        showProfile = false
+                    }
+                },
+                isPresented: $showProfile
+            )
+            .environmentObject(themeManager)
+        }
+        .toolbar(showProfile ? .hidden : .visible, for: .tabBar)
     }
     
     @ViewBuilder
@@ -241,6 +259,22 @@ struct WalkView: View {
             )
             showNoiseSettings = false
         }
+        .swipeDownToOpenProfile {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+                showProfile = true
+            }
+        }
+        .topSlideCover(isPresented: $showProfile) {
+            ProfileView(
+                onDismiss: {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+                        showProfile = false
+                    }
+                },
+                isPresented: $showProfile
+            )
+            .environmentObject(themeManager)
+        }
     }
     
     private var walkExperienceView: some View {
@@ -249,6 +283,7 @@ struct WalkView: View {
             .overlay(noiseSettingsOverlay)
             .overlay(sessionPanelOverlay)
             .overlay(insightsPanelOverlay)
+            .ignoresSafeArea(.container, edges: .top)
     }
     
     private var walkContent: some View {
@@ -476,7 +511,7 @@ struct WalkView: View {
                 functionalButtonBackground(
                     isActive: showInsightsPanel,
                     accentColor: walkAccentColor,
-                    usesAccentFillWhenInactive: false,
+                    usesAccentFillWhenInactive: true,
                     cornerRadius: 20
                 )
             )

@@ -79,8 +79,8 @@ struct ContentView: View {
                 .tabItem { Label("Sleep", systemImage: "moon.stars.fill") }
                 .tag(3)
         }
-        .accentColor(themeColors.accent)
-        .tint(themeColors.accent)
+        .accentColor(accentColor(for: selectedTab))
+        .tint(accentColor(for: selectedTab))
         .onAppear { updateTabColors(for: selectedTab) }
         .onChange(of: selectedTab) { updateTabColors(for: $0) }
         .simultaneousGesture(globalSwipe)
@@ -116,6 +116,8 @@ struct ContentView: View {
                let window = windowScene.windows.first {
                 themeManager.updateSystemColorScheme(from: window.traitCollection)
             }
+            // Update tab colors when color scheme changes
+            updateTabColors(for: selectedTab)
         }
         .onReceive(focusLockTimer) { date in
             lockNow = date
@@ -227,9 +229,32 @@ struct ContentView: View {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 
-    /// Dynamically update unselected tab icon/text color
+    /// Get the accent color for a specific tab
+    private func accentColor(for tab: Int) -> Color {
+        switch tab {
+        case 0: // Breathe - soft blue
+            return Color(red: 0.60, green: 0.76, blue: 0.92)
+        case 1: // Walk - light green
+            return Color(red: 0.5, green: 0.8, blue: 0.65)
+        case 2: // Focus - soft orange
+            return Color(red: 0.9, green: 0.6, blue: 0.5)
+        case 3: // Sleep - soft purple/blue
+            return Color(red: 0.4, green: 0.5, blue: 0.8)
+        default:
+            let themeColors = themeManager.themeColors(for: systemColorScheme)
+            return themeColors.accent
+        }
+    }
+    
+    /// Dynamically update tab bar colors based on selected tab
     private func updateTabColors(for tab: Int) {
         let themeColors = themeManager.themeColors(for: systemColorScheme)
+        let selectedColor = accentColor(for: tab)
+        
+        // Set the selected tab color (tint)
+        UITabBar.appearance().tintColor = UIColor(selectedColor)
+        
+        // Set the unselected tab color
         UITabBar.appearance().unselectedItemTintColor = UIColor(themeColors.secondaryText.opacity(0.6))
     }
 
