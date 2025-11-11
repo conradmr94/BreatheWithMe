@@ -452,7 +452,7 @@ struct BreatheView: View {
                                 }) {
                                     if #available(iOS 16.0, *) {
                                         HStack(spacing: 6) {
-                                            Text("DURATION")
+                                            Text("Duration")
                                             if use478 {
                                                 // subtle badge indicating 4-7-8 is active (affects phases, not duration)
                                                 Text("4-7-8")
