@@ -585,86 +585,95 @@ struct WalkView: View {
     }
     
     private var breathingCircle: some View {
-        Button(action: toggleWalkSession) {
+        ZStack {
+            // Ambient halo rings (mirrors BreatheView aesthetic) - outside button
             TimelineView(.animation) { timeline in
                 let elapsed = timeline.date.timeIntervalSinceReferenceDate
                 let breathingScale: CGFloat = walkManager.isWalking
                 ? walkManager.currentPattern.normalizedScale(at: elapsed)
                 : 1.0
                 
-                ZStack {
-                    // Ambient halo rings (mirrors BreatheView aesthetic)
-                    ForEach(0..<3) { index in
-                        Circle()
-                            .fill(
-                                RadialGradient(
-                                    gradient: Gradient(colors: [
-                                        themeColors.accent.opacity(0.2 - Double(index) * 0.05),
-                                        themeColors.accent.opacity(0.08 - Double(index) * 0.025),
-                                        Color.clear
-                                    ]),
-                                    center: .center,
-                                    startRadius: 0,
-                                    endRadius: 150 + CGFloat(index) * 30
-                                )
-                            )
-                            .frame(width: 300 + CGFloat(index) * 60, height: 300 + CGFloat(index) * 60)
-                            .scaleEffect(walkManager.isWalking ? breathingScale * (1.0 + CGFloat(index) * 0.08) : 1.0)
-                            .opacity(walkManager.isWalking ? (0.7 - Double(index) * 0.15) : 0.35)
-                    }
-                    
-                    // Central circle
+                ForEach(0..<3) { index in
                     Circle()
                         .fill(
-                            LinearGradient(
+                            RadialGradient(
                                 gradient: Gradient(colors: [
-                                    themeColors.accent,
-                                    themeColors.accent.opacity(0.8)
+                                    themeColors.accent.opacity(0.2 - Double(index) * 0.05),
+                                    themeColors.accent.opacity(0.08 - Double(index) * 0.025),
+                                    Color.clear
                                 ]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: 150 + CGFloat(index) * 30
                             )
                         )
-                        .frame(width: 220, height: 220)
-                        .scaleEffect(walkManager.isWalking ? breathingScale : 1.0)
-                        .shadow(color: themeColors.accent.opacity(0.35), radius: 30, x: 0, y: 12)
+                        .frame(width: 300 + CGFloat(index) * 60, height: 300 + CGFloat(index) * 60)
+                        .scaleEffect(walkManager.isWalking ? breathingScale * (1.0 + CGFloat(index) * 0.08) : 1.0)
+                        .opacity(walkManager.isWalking ? (0.7 - Double(index) * 0.15) : 0.35)
+                }
+            }
+            
+            // Central breathing circle - only this is tappable
+            Button(action: toggleWalkSession) {
+                TimelineView(.animation) { timeline in
+                    let elapsed = timeline.date.timeIntervalSinceReferenceDate
+                    let breathingScale: CGFloat = walkManager.isWalking
+                    ? walkManager.currentPattern.normalizedScale(at: elapsed)
+                    : 1.0
                     
-                    Circle()
-                        .stroke(Color.white.opacity(0.25), lineWidth: 2)
-                        .frame(width: 180, height: 180)
-                        .scaleEffect(walkManager.isWalking ? breathingScale : 1.0)
-                    
-                    VStack(spacing: 10) {
-                        if walkManager.isWalking {
-                            Text("WALKING")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.white.opacity(0.9))
-                                .tracking(2)
-                            Text(walkManager.durationFormatted)
-                                .font(.system(size: 34, weight: .semibold))
-                                .foregroundColor(.white)
-                                .monospacedDigit()
-                        } else {
-                            VStack(spacing: 12) {
-                                Image(systemName: "figure.walk.circle")
-                                    .font(.system(size: 42, weight: .thin))
-                                    .foregroundColor(.white)
-                                Text("START")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.white)
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        themeColors.accent,
+                                        themeColors.accent.opacity(0.8)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 220, height: 220)
+                            .scaleEffect(walkManager.isWalking ? breathingScale : 1.0)
+                            .shadow(color: themeColors.accent.opacity(0.35), radius: 30, x: 0, y: 12)
+                        
+                        Circle()
+                            .stroke(Color.white.opacity(0.25), lineWidth: 2)
+                            .frame(width: 180, height: 180)
+                            .scaleEffect(walkManager.isWalking ? breathingScale : 1.0)
+                        
+                        VStack(spacing: 10) {
+                            if walkManager.isWalking {
+                                Text("WALKING")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.9))
                                     .tracking(2)
-                                Text(walkManager.currentPattern.displayName.uppercased())
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.white.opacity(0.8))
-                                    .tracking(1.5)
+                                Text(walkManager.durationFormatted)
+                                    .font(.system(size: 34, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .monospacedDigit()
+                            } else {
+                                VStack(spacing: 12) {
+                                    Image(systemName: "figure.walk.circle")
+                                        .font(.system(size: 42, weight: .thin))
+                                        .foregroundColor(.white)
+                                    Text("START")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.white)
+                                        .tracking(2)
+                                    Text(walkManager.currentPattern.displayName.uppercased())
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(.white.opacity(0.8))
+                                        .tracking(1.5)
+                                }
                             }
                         }
                     }
                 }
-                .frame(maxWidth: .infinity)
             }
+            .buttonStyle(PlainButtonStyle())
+            .contentShape(Circle())
         }
-        .buttonStyle(PlainButtonStyle())
         .frame(height: 450)
     }
     
