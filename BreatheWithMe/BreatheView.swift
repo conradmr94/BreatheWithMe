@@ -427,7 +427,7 @@ struct BreatheView: View {
                                     Text("Transition Sounds")
                                         .font(.system(size: 15, weight: .medium, design: .default))
                                 }
-                                .foregroundColor(bellSoundEnabled ? .white : themeColors.primaryText)
+                                .foregroundColor(themeColors.primaryText)
                                 .padding(.horizontal, 22)
                                 .padding(.vertical, 10)
                                 .background(
@@ -465,7 +465,7 @@ struct BreatheView: View {
                                             }
                                         }
                                         .font(.system(size: 13, weight: .medium, design: .default))
-                                        .foregroundColor(.white)
+                                        .foregroundColor(themeColors.primaryText)
                                         .tracking(1.5)
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 8)
@@ -491,7 +491,7 @@ struct BreatheView: View {
                                 }) {
                                     Text("4-7-8")
                                         .font(.system(size: 13, weight: .semibold))
-                                        .foregroundColor(use478 ? .white : themeColors.primaryText)
+                                        .foregroundColor(themeColors.primaryText)
                                         .tracking(1.0)
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 8)

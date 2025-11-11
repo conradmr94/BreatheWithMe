@@ -390,7 +390,7 @@ struct WalkView: View {
                     .font(.system(size: 13, weight: .medium))
                     .tracking(1.2)
             }
-            .foregroundColor(.white)
+            .foregroundColor(themeColors.primaryText)
             .padding(.horizontal, 20)
             .padding(.vertical, 10)
             .background(
@@ -418,7 +418,7 @@ struct WalkView: View {
                 Text("Walk Sounds")
                     .font(.system(size: 15, weight: .medium))
             }
-            .foregroundColor(noiseGenerator.isEnabled ? .white : themeColors.primaryText)
+            .foregroundColor(themeColors.primaryText)
             .padding(.horizontal, 20)
             .padding(.vertical, 10)
             .background(

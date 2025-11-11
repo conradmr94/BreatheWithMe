@@ -421,7 +421,7 @@ struct FocusView: View {
                     Text("Durations")
                         .font(.system(size: 15, weight: .medium, design: .default))
                 }
-                .foregroundColor(.white)
+                .foregroundColor(themeColors.primaryText)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 10)
                 .background(
@@ -448,7 +448,7 @@ struct FocusView: View {
                     Text("Sounds")
                         .font(.system(size: 15, weight: .medium, design: .default))
                 }
-                .foregroundColor(noiseGenerator.isEnabled ? .white : themeColors.primaryText)
+                .foregroundColor(themeColors.primaryText)
                 .padding(.horizontal, 22)
                 .padding(.vertical, 10)
                 .background(
@@ -538,7 +538,7 @@ struct FocusView: View {
                     Text("Auto-cycle mode")
                         .font(.system(size: 15, weight: .medium, design: .default))
                 }
-                .foregroundColor(isAutoCycleMode ? .white : themeColors.primaryText)
+                .foregroundColor(themeColors.primaryText)
                 .padding(.horizontal, 24)
                 .padding(.vertical, 10)
                 .background(
@@ -566,7 +566,7 @@ struct FocusView: View {
             Button(action: { selectMode(.work) }) {
                 Text("Focus")
                     .font(.system(size: 14, weight: .medium, design: .default))
-                    .foregroundColor(currentMode == .work ? .white : themeColors.primaryText)
+                    .foregroundColor(themeColors.primaryText)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
                     .background(
@@ -584,7 +584,7 @@ struct FocusView: View {
             Button(action: { selectMode(.shortBreak) }) {
                 Text("Rest")
                     .font(.system(size: 14, weight: .medium, design: .default))
-                    .foregroundColor(currentMode == .shortBreak ? .white : themeColors.primaryText)
+                    .foregroundColor(themeColors.primaryText)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
                     .background(
@@ -602,7 +602,7 @@ struct FocusView: View {
             Button(action: { selectMode(.longBreak) }) {
                 Text("Long Rest")
                     .font(.system(size: 14, weight: .medium, design: .default))
-                    .foregroundColor(currentMode == .longBreak ? .white : themeColors.primaryText)
+                    .foregroundColor(themeColors.primaryText)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
                     .background(
