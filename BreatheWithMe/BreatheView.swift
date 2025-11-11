@@ -452,11 +452,13 @@ struct BreatheView: View {
                                 }) {
                                     if #available(iOS 16.0, *) {
                                         HStack(spacing: 6) {
+                                            Image(systemName: "clock")
+                                                .font(.system(size: 16))
                                             Text("Duration")
                                             if use478 {
                                                 // subtle badge indicating 4-7-8 is active (affects phases, not duration)
                                                 Text("4-7-8")
-                                                    .font(.system(size: 11, weight: .bold))
+                                                    .font(.system(size: 15, weight: .bold))
                                                     .padding(.horizontal, 6)
                                                     .padding(.vertical, 3)
                                                     .background(
@@ -464,7 +466,7 @@ struct BreatheView: View {
                                                     )
                                             }
                                         }
-                                        .font(.system(size: 13, weight: .medium, design: .default))
+                                        .font(.system(size: 15, weight: .medium, design: .default))
                                         .foregroundColor(themeColors.primaryText)
                                         .tracking(1.5)
                                         .padding(.horizontal, 16)
@@ -490,7 +492,7 @@ struct BreatheView: View {
                                     }
                                 }) {
                                     Text("4-7-8")
-                                        .font(.system(size: 13, weight: .semibold))
+                                        .font(.system(size: 15, weight: .semibold))
                                         .foregroundColor(themeColors.primaryText)
                                         .tracking(1.0)
                                         .padding(.horizontal, 16)
@@ -927,6 +929,8 @@ private struct DurationPickerModal: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
+                Image(systemName: "clock")
+                    .font(.system(size: 16))
                 Text("Duration")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))

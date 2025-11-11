@@ -335,7 +335,7 @@ struct SleepView: View {
                                 }) {
                                     HStack(spacing: 8) {
                                         Text("Alarm")
-                                            .font(.system(size: 14, weight: .semibold))
+                                            .font(.system(size: 15, weight: .semibold))
                                     }
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 18)
@@ -380,7 +380,7 @@ struct SleepView: View {
                             HStack(spacing: 8) {
                                 Image(systemName: noiseGenerator.isEnabled ? "speaker.wave.2.fill" : "speaker.slash")
                                     .font(.system(size: 16))
-                                Text("Sleep Sounds")
+                                Text("Sounds")
                                     .font(.system(size: 15, weight: .medium, design: .default))
                             }
                             .foregroundColor(noiseGenerator.isEnabled ?

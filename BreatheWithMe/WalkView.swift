@@ -492,7 +492,7 @@ struct WalkView: View {
                 Image(systemName: "map.fill")
                     .font(.system(size: 16))
                 Text("Session")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 15, weight: .medium))
                     .tracking(1.5)
                 if walkManager.isWalking {
                     Text("ACTIVE")
