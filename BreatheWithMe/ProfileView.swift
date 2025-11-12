@@ -353,6 +353,7 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showSettings) {
                 ProfileSettingsView(selectedTheme: profileThemeBinding)
+                    .environmentObject(themeManager)
             }
             .background(
                 LinearGradient(
@@ -628,40 +629,68 @@ enum ProfileTheme: String, CaseIterable, Identifiable {
 struct ProfileSettingsView: View {
     @Binding var selectedTheme: ProfileTheme
     @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject var themeManager: AppThemeManager
+    @Environment(\.colorScheme) var systemColorScheme
+    
+    private var themeColors: ProfileTheme.Colors { themeManager.themeColors(for: systemColorScheme) }
     
     var body: some View {
         NavigationView {
-            List {
-                Section(header: Text("Theme")) {
-                    ForEach(ProfileTheme.allCases) { theme in
-                        Button(action: {
-                            selectedTheme = theme
-                        }) {
-                            HStack(spacing: 12) {
-                                Image(systemName: theme.symbolName)
-                                    .font(.system(size: 18, weight: .medium))
-                                    .foregroundColor(theme.colors.accent)
-                                Text(theme.displayName)
-                                Spacer()
-                                if selectedTheme == theme {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(theme.colors.accent)
+            ZStack {
+                // Background gradient
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        themeColors.backgroundTop,
+                        themeColors.backgroundBottom
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+                
+                List {
+                    Section(header: Text("Theme")
+                        .foregroundColor(themeColors.secondaryText)
+                        .textCase(nil)) {
+                        ForEach(ProfileTheme.allCases.filter { $0 != .default }) { theme in
+                            Button(action: {
+                                selectedTheme = theme
+                            }) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: theme.symbolName)
+                                        .font(.system(size: 18, weight: .medium))
+                                        .foregroundColor(themeColors.accent)
+                                    Text(theme.displayName)
+                                        .foregroundColor(themeColors.primaryText)
+                                    Spacer()
+                                    if selectedTheme == theme {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(themeColors.accent)
+                                    }
                                 }
+                                .padding(.vertical, 4)
                             }
-                            .padding(.vertical, 4)
+                            .buttonStyle(PlainButtonStyle())
+                            .listRowBackground(themeColors.cardBackground.opacity(0.6))
                         }
-                        .buttonStyle(PlainButtonStyle())
-                        .foregroundColor(.primary)
                     }
                 }
+                .listStyle(.insetGrouped)
+                .modifier(ScrollContentBackgroundModifier())
+                .background(Color.clear)
             }
-            .listStyle(.insetGrouped)
-            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Settings")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(themeColors.primaryText)
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         presentationMode.wrappedValue.dismiss()
                     }
+                    .foregroundColor(themeColors.accent)
                 }
             }
         }
@@ -812,6 +841,17 @@ struct ToolbarBackgroundModifier: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 16.0, *) {
             content.toolbarBackground(.hidden, for: .navigationBar)
+        } else {
+            content
+        }
+    }
+}
+
+// MARK: - Scroll Content Background Modifier
+struct ScrollContentBackgroundModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 16.0, *) {
+            content.scrollContentBackground(.hidden)
         } else {
             content
         }

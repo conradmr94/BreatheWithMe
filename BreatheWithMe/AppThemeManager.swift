@@ -9,7 +9,7 @@ import SwiftUI
 import UIKit
 
 class AppThemeManager: ObservableObject {
-    @AppStorage("profileThemeRawValue") var profileThemeRawValue: String = ProfileTheme.default.rawValue {
+    @AppStorage("profileThemeRawValue") var profileThemeRawValue: String = ProfileTheme.light.rawValue {
         didSet {
             objectWillChange.send()
         }
@@ -60,15 +60,22 @@ class AppThemeManager: ObservableObject {
     
     var currentTheme: ProfileTheme {
         // Migrate old "white" theme to "light" for backward compatibility
-        let themeValue = profileThemeRawValue == "white" ? "light" : profileThemeRawValue
+        // Migrate old "default" theme to "light" since System doesn't work
+        var themeValue = profileThemeRawValue
+        if themeValue == "white" {
+            themeValue = "light"
+        } else if themeValue == "default" {
+            themeValue = "light"
+        }
+        
         if let theme = ProfileTheme(rawValue: themeValue) {
             // If we migrated, update the stored value
-            if profileThemeRawValue == "white" {
+            if profileThemeRawValue == "white" || profileThemeRawValue == "default" {
                 profileThemeRawValue = "light"
             }
             return theme
         }
-        return .default
+        return .light
     }
     
     func themeColors(for environmentColorScheme: ColorScheme) -> ProfileTheme.Colors {
@@ -113,7 +120,7 @@ struct AnalyticsPalette {
 
 private struct AnalyticsPaletteKey: EnvironmentKey {
     static let defaultValue = AnalyticsPalette(
-        colors: ProfileTheme.default.colors(for: .light),
+        colors: ProfileTheme.light.colors(for: .light),
         usesDarkAppearance: false
     )
 }

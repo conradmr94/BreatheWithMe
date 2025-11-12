@@ -632,7 +632,7 @@ struct DayStatsDetailView: View {
     let date: Date
     @ObservedObject var statsManager: UserStatsManager
     @Environment(\.dismiss) var dismiss
-    @AppStorage("profileThemeRawValue") private var profileThemeRawValue: String = ProfileTheme.default.rawValue
+    @AppStorage("profileThemeRawValue") private var profileThemeRawValue: String = ProfileTheme.light.rawValue
     
     private let calendar = Calendar.current
     
@@ -1074,10 +1074,10 @@ private struct ShareSheet: UIViewControllerRepresentable {
 private struct AwardListSheet: View {
     let awards: [AwardBadge]
     var shareAction: () -> Void
-    @AppStorage("profileThemeRawValue") private var profileThemeRawValue: String = ProfileTheme.default.rawValue
+    @AppStorage("profileThemeRawValue") private var profileThemeRawValue: String = ProfileTheme.light.rawValue
     
     private var themeColors: ProfileTheme.Colors {
-        ProfileTheme(rawValue: profileThemeRawValue)?.colors ?? ProfileTheme.default.colors
+        ProfileTheme(rawValue: profileThemeRawValue)?.colors ?? ProfileTheme.light.colors
     }
 
     var body: some View {
@@ -1121,10 +1121,10 @@ private struct AwardListSheet: View {
 
     private struct AwardRow: View {
         let award: AwardBadge
-        @AppStorage("profileThemeRawValue") private var profileThemeRawValue: String = ProfileTheme.default.rawValue
+        @AppStorage("profileThemeRawValue") private var profileThemeRawValue: String = ProfileTheme.light.rawValue
         
         private var themeColors: ProfileTheme.Colors {
-            ProfileTheme(rawValue: profileThemeRawValue)?.colors ?? ProfileTheme.default.colors
+            ProfileTheme(rawValue: profileThemeRawValue)?.colors ?? ProfileTheme.light.colors
         }
 
         var body: some View {
