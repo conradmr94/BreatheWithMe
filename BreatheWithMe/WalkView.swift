@@ -184,7 +184,7 @@ struct WalkView: View {
             )
             showNoiseSettings = false
         }
-        .swipeDownToOpenProfile {
+        .swipeDownToOpenProfile(isDisabled: showNoiseSettings || showSessionPanel || showInsightsPanel) {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
                 showProfile = true
             }
@@ -201,6 +201,10 @@ struct WalkView: View {
             .environmentObject(themeManager)
         }
         .toolbar(showProfile ? .hidden : .visible, for: .tabBar)
+        .overlay(noiseInfoOverlay)
+        .overlay(noiseSettingsOverlay)
+        .overlay(sessionPanelOverlay)
+        .overlay(insightsPanelOverlay)
     }
     
     @ViewBuilder
@@ -259,7 +263,7 @@ struct WalkView: View {
             )
             showNoiseSettings = false
         }
-        .swipeDownToOpenProfile {
+        .swipeDownToOpenProfile(isDisabled: showNoiseSettings || showSessionPanel || showInsightsPanel) {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
                 showProfile = true
             }
@@ -275,14 +279,14 @@ struct WalkView: View {
             )
             .environmentObject(themeManager)
         }
+        .overlay(noiseInfoOverlay)
+        .overlay(noiseSettingsOverlay)
+        .overlay(sessionPanelOverlay)
+        .overlay(insightsPanelOverlay)
     }
     
     private var walkExperienceView: some View {
         walkContent
-            .overlay(noiseInfoOverlay)
-            .overlay(noiseSettingsOverlay)
-            .overlay(sessionPanelOverlay)
-            .overlay(insightsPanelOverlay)
             .ignoresSafeArea(.container, edges: .top)
     }
     
@@ -363,7 +367,6 @@ struct WalkView: View {
                 )
                 .transition(.scale.combined(with: .opacity))
             }
-            .zIndex(2)
         }
     }
     
@@ -440,7 +443,6 @@ struct WalkView: View {
                 )
                 .transition(.scale.combined(with: .opacity))
             }
-            .zIndex(3)
         }
     }
     

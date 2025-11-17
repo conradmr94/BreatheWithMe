@@ -924,10 +924,10 @@ struct SoundCategory {
     let sounds: [NoiseGenerator.NoiseType]
     
     static let allCategories: [SoundCategory] = [
-        SoundCategory(name: "Nature", icon: "leaf", sounds: [.rain, .ocean, .wind, .thunder, .forest, .birds, .night, .cafe, .city, .fire, .nature]),
+        SoundCategory(name: "Nature", icon: "leaf", sounds: [.rain, .ocean, .wind, .thunder, .forest, .birds, .night, .cafe, .city, .fire, .nature, .fan]),
         SoundCategory(name: "Noise", icon: "waveform", sounds: [.white, .pink, .brown, .blue, .green]),
-        SoundCategory(name: "Frequency", icon: "slider.horizontal.3", sounds: []),
-        SoundCategory(name: "Melody", icon: "music.note", sounds: [.uplift])
+        SoundCategory(name: "Frequency", icon: "slider.horizontal.3", sounds: [.hz44, .hz66, .hz10]),
+        SoundCategory(name: "Melody", icon: "music.note", sounds: [.uplift, .inspire, .misty, .backdrop, .relax, .yoga])
     ]
 }
 

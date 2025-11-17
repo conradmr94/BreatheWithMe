@@ -28,6 +28,14 @@
 		A100009B000000000000001 /* night.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A100009C000000000000001 /* night.mp3 */; };
 		A100010E000000000000001 /* nature.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A100010F000000000000001 /* nature.mp3 */; };
 		A1000110000000000000001 /* uplift.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1000111000000000000001 /* uplift.mp3 */; };
+		A1000114000000000000001 /* 44hz.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1000115000000000000001 /* 44hz.mp3 */; };
+		A1000116000000000000001 /* 66hz.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1000117000000000000001 /* 66hz.mp3 */; };
+		A1000118000000000000001 /* 10hz.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1000119000000000000001 /* 10hz.mp3 */; };
+		A100011A000000000000001 /* inspire.m4a in Resources */ = {isa = PBXBuildFile; fileRef = A100011B000000000000001 /* inspire.m4a */; };
+		A100011C000000000000001 /* misty.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A100011D000000000000001 /* misty.mp3 */; };
+		A100011E000000000000001 /* backdrop.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A100011F000000000000001 /* backdrop.mp3 */; };
+		A1000120000000000000001 /* relax.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1000121000000000000001 /* relax.mp3 */; };
+		A1000122000000000000001 /* yoga.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1000123000000000000001 /* yoga.mp3 */; };
 		A1000052000000000000001 /* BellPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000051000000000000001 /* BellPlayer.swift */; };
 		A1000053000000000000001 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000054000000000000001 /* ProfileView.swift */; };
 		A1000055000000000000001 /* SwipeDownToOpenProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000056000000000000001 /* SwipeDownToOpenProfile.swift */; };
@@ -80,6 +88,14 @@
 		A100009C000000000000001 /* night.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = night.mp3; sourceTree = "<group>"; };
 		A100010F000000000000001 /* nature.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = nature.mp3; sourceTree = "<group>"; };
 		A1000111000000000000001 /* uplift.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = uplift.mp3; sourceTree = "<group>"; };
+		A1000115000000000000001 /* 44hz.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = 44hz.mp3; sourceTree = "<group>"; };
+		A1000117000000000000001 /* 66hz.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = 66hz.mp3; sourceTree = "<group>"; };
+		A1000119000000000000001 /* 10hz.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = 10hz.mp3; sourceTree = "<group>"; };
+		A100011B000000000000001 /* inspire.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.m4a; path = inspire.m4a; sourceTree = "<group>"; };
+		A100011D000000000000001 /* misty.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = misty.mp3; sourceTree = "<group>"; };
+		A100011F000000000000001 /* backdrop.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = backdrop.mp3; sourceTree = "<group>"; };
+		A1000121000000000000001 /* relax.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = relax.mp3; sourceTree = "<group>"; };
+		A1000123000000000000001 /* yoga.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = yoga.mp3; sourceTree = "<group>"; };
 		A1000051000000000000001 /* BellPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BellPlayer.swift; sourceTree = "<group>"; };
 		A1000054000000000000001 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		A1000056000000000000001 /* SwipeDownToOpenProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeDownToOpenProfile.swift; sourceTree = "<group>"; };
@@ -200,6 +216,14 @@
 				A100009C000000000000001 /* night.mp3 */,
 				A100010F000000000000001 /* nature.mp3 */,
 				A1000111000000000000001 /* uplift.mp3 */,
+				A1000115000000000000001 /* 44hz.mp3 */,
+				A1000117000000000000001 /* 66hz.mp3 */,
+				A1000119000000000000001 /* 10hz.mp3 */,
+				A100011B000000000000001 /* inspire.m4a */,
+				A100011D000000000000001 /* misty.mp3 */,
+				A100011F000000000000001 /* backdrop.mp3 */,
+				A1000121000000000000001 /* relax.mp3 */,
+				A1000123000000000000001 /* yoga.mp3 */,
 			);
 			path = AudioFiles;
 			sourceTree = "<group>";
@@ -276,6 +300,14 @@
 				A100009B000000000000001 /* night.mp3 in Resources */,
 				A100010E000000000000001 /* nature.mp3 in Resources */,
 				A1000110000000000000001 /* uplift.mp3 in Resources */,
+				A1000114000000000000001 /* 44hz.mp3 in Resources */,
+				A1000116000000000000001 /* 66hz.mp3 in Resources */,
+				A1000118000000000000001 /* 10hz.mp3 in Resources */,
+				A100011A000000000000001 /* inspire.m4a in Resources */,
+				A100011C000000000000001 /* misty.mp3 in Resources */,
+				A100011E000000000000001 /* backdrop.mp3 in Resources */,
+				A1000120000000000000001 /* relax.mp3 in Resources */,
+				A1000122000000000000001 /* yoga.mp3 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

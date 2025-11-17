@@ -44,6 +44,15 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         case night = "Night"
         case nature = "Nature"
         case uplift = "Uplift"
+        case fan = "Fan"
+        case hz44 = "44hz"
+        case hz66 = "66hz"
+        case hz10 = "10hz"
+        case inspire = "Inspire"
+        case misty = "Misty"
+        case backdrop = "Backdrop"
+        case relax = "Relax"
+        case yoga = "Yoga"
         
         var description: String {
             switch self {
@@ -64,6 +73,15 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             case .night: return "Night"
             case .nature: return "Nature Escape"
             case .uplift: return "Morning Uplift"
+            case .fan: return "Fan"
+            case .hz44: return "44 Hz"
+            case .hz66: return "66 Hz"
+            case .hz10: return "10 Hz"
+            case .inspire: return "Inspire"
+            case .misty: return "Misty"
+            case .backdrop: return "Backdrop"
+            case .relax: return "Relax"
+            case .yoga: return "Yoga"
             }
         }
         
@@ -86,6 +104,15 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             case .night: return "moon.stars"
             case .nature: return "leaf.arrow.circlepath"
             case .uplift: return "sun.max"
+            case .fan: return "fan"
+            case .hz44: return "waveform.path"
+            case .hz66: return "waveform.path"
+            case .hz10: return "waveform.path"
+            case .inspire: return "sparkles"
+            case .misty: return "cloud.fog"
+            case .backdrop: return "music.note.list"
+            case .relax: return "leaf.fill"
+            case .yoga: return "figure.yoga"
             }
         }
     }
@@ -113,7 +140,19 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
     
     private func startAmbientIfNeeded(_ type: NoiseType) {
-        guard let audioPlayer = audioPlayers[type], isEnabled else { return }
+        guard isEnabled else { return }
+        
+        // Ensure audio player exists - create placeholder if missing
+        if audioPlayers[type] == nil {
+            print("⚠️ Audio player missing for \(type.rawValue), creating placeholder...")
+            createPlaceholderAudio(for: type)
+        }
+        
+        guard let audioPlayer = audioPlayers[type] else {
+            print("❌ Failed to create audio player for \(type.rawValue)")
+            return
+        }
+        
         if !audioPlayer.isPlaying {
             audioPlayer.currentTime = 0
             audioPlayer.numberOfLoops = -1
@@ -222,8 +261,18 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         // Get the filename for the audio type
         let filename = getAudioFilename(for: type)
         
+        // Split filename into name and extension
+        let components = filename.components(separatedBy: ".")
+        guard components.count >= 2 else {
+            print("❌ Invalid filename format: \(filename)")
+            createPlaceholderAudio(for: type)
+            return
+        }
+        let name = components.dropLast().joined(separator: ".")
+        let ext = components.last ?? ""
+        
         // Try to load the audio file from the app bundle
-        guard let url = Bundle.main.url(forResource: filename, withExtension: nil) else {
+        guard let url = Bundle.main.url(forResource: name, withExtension: ext) else {
             print("❌ Could not find audio file: \(filename)")
             // Fallback to placeholder if file not found
             createPlaceholderAudio(for: type)
@@ -255,11 +304,20 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         let duration: Double = 10.0
         let sampleCount = Int(duration * sampleRate)
         
-        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1) else { return }
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(sampleCount)) else { return }
+        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1) else {
+            print("❌ Failed to create audio format for placeholder: \(type.rawValue)")
+            return
+        }
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(sampleCount)) else {
+            print("❌ Failed to create audio buffer for placeholder: \(type.rawValue)")
+            return
+        }
         
         buffer.frameLength = AVAudioFrameCount(sampleCount)
-        guard let channelData = buffer.floatChannelData?[0] else { return }
+        guard let channelData = buffer.floatChannelData?[0] else {
+            print("❌ Failed to get channel data for placeholder: \(type.rawValue)")
+            return
+        }
         
         // Generate placeholder ambient sound
         generatePlaceholderAmbient(channelData: channelData, frameCount: sampleCount, type: type)
@@ -271,7 +329,7 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         do {
             let audioPlayer = try AVAudioPlayer(data: audioData)
             audioPlayer.numberOfLoops = -1 // Loop indefinitely
-            audioPlayer.volume = 0.2 // Lower volume for ambient sounds
+            audioPlayer.volume = 0.5 // Set reasonable volume for placeholder
             audioPlayer.prepareToPlay()
             audioPlayers[type] = audioPlayer
             print("✅ Created placeholder audio for \(type.rawValue)")
@@ -302,6 +360,24 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             generateBirdsPlaceholder(channelData: channelData, frameCount: frameCount)
         case .night:
             generateNightPlaceholder(channelData: channelData, frameCount: frameCount)
+        case .fan:
+            generateFanPlaceholder(channelData: channelData, frameCount: frameCount)
+        case .hz44:
+            generateHz44Placeholder(channelData: channelData, frameCount: frameCount)
+        case .hz66:
+            generateHz66Placeholder(channelData: channelData, frameCount: frameCount)
+        case .hz10:
+            generateHz10Placeholder(channelData: channelData, frameCount: frameCount)
+        case .inspire:
+            generateInspirePlaceholder(channelData: channelData, frameCount: frameCount)
+        case .misty:
+            generateMistyPlaceholder(channelData: channelData, frameCount: frameCount)
+        case .backdrop:
+            generateBackdropPlaceholder(channelData: channelData, frameCount: frameCount)
+        case .relax:
+            generateRelaxPlaceholder(channelData: channelData, frameCount: frameCount)
+        case .yoga:
+            generateYogaPlaceholder(channelData: channelData, frameCount: frameCount)
         default:
             break
         }
@@ -557,6 +633,24 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             generateBlueNoise(channelData: channelData, frameCount: frameCount)
         case .green:
             generateGreenNoise(channelData: channelData, frameCount: frameCount)
+        case .fan:
+            generateFanPlaceholder(channelData: channelData, frameCount: frameCount)
+        case .hz44:
+            generateHz44Placeholder(channelData: channelData, frameCount: frameCount)
+        case .hz66:
+            generateHz66Placeholder(channelData: channelData, frameCount: frameCount)
+        case .hz10:
+            generateHz10Placeholder(channelData: channelData, frameCount: frameCount)
+        case .inspire:
+            generateInspirePlaceholder(channelData: channelData, frameCount: frameCount)
+        case .misty:
+            generateMistyPlaceholder(channelData: channelData, frameCount: frameCount)
+        case .backdrop:
+            generateBackdropPlaceholder(channelData: channelData, frameCount: frameCount)
+        case .relax:
+            generateRelaxPlaceholder(channelData: channelData, frameCount: frameCount)
+        case .yoga:
+            generateYogaPlaceholder(channelData: channelData, frameCount: frameCount)
         }
     }
     
@@ -801,6 +895,95 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             let insect = sin(time * 6.0) * abs(sin(time * 0.35)) * 0.04
             let random = Float.random(in: -0.02...0.02)
             channelData[i] = (lowHum + distantWind + insect + random) * 0.25
+        }
+    }
+    
+    private func generateFanPlaceholder(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
+        // Placeholder fan sound - steady white noise with low frequency rumble
+        for i in 0..<frameCount {
+            let time = Float(i) / Float(sampleRate)
+            let steady = Float.random(in: -0.08...0.08)
+            let rumble = sin(time * 1.2) * 0.05
+            let whir = sin(time * 4.0) * 0.03
+            channelData[i] = (steady + rumble + whir) * 0.25
+        }
+    }
+    
+    private func generateHz44Placeholder(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
+        // Placeholder 44 Hz tone - pure sine wave at 44 Hz
+        for i in 0..<frameCount {
+            let time = Float(i) / Float(sampleRate)
+            channelData[i] = sin(time * 44.0 * 2.0 * .pi) * 0.2
+        }
+    }
+    
+    private func generateHz66Placeholder(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
+        // Placeholder 66 Hz tone - pure sine wave at 66 Hz
+        for i in 0..<frameCount {
+            let time = Float(i) / Float(sampleRate)
+            channelData[i] = sin(time * 66.0 * 2.0 * .pi) * 0.2
+        }
+    }
+    
+    private func generateHz10Placeholder(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
+        // Placeholder 10 Hz tone - pure sine wave at 10 Hz
+        for i in 0..<frameCount {
+            let time = Float(i) / Float(sampleRate)
+            channelData[i] = sin(time * 10.0 * 2.0 * .pi) * 0.2
+        }
+    }
+    
+    private func generateInspirePlaceholder(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
+        // Placeholder inspire sound - uplifting harmonic pads
+        for i in 0..<frameCount {
+            let time = Float(i) / Float(sampleRate)
+            let base = sin(time * 2.0) * 0.1
+            let harmony = sin(time * 3.0) * 0.08
+            let shimmer = sin(time * 8.0) * 0.04
+            channelData[i] = (base + harmony + shimmer) * 0.3
+        }
+    }
+    
+    private func generateMistyPlaceholder(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
+        // Placeholder misty sound - soft, ethereal ambient
+        for i in 0..<frameCount {
+            let time = Float(i) / Float(sampleRate)
+            let low = sin(time * 0.3) * 0.1
+            let mid = sin(time * 1.5) * 0.06
+            let high = sin(time * 5.0) * 0.03
+            channelData[i] = (low + mid + high) * 0.3
+        }
+    }
+    
+    private func generateBackdropPlaceholder(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
+        // Placeholder backdrop sound - subtle ambient texture
+        for i in 0..<frameCount {
+            let time = Float(i) / Float(sampleRate)
+            let texture = Float.random(in: -0.02...0.02)
+            let gentle = sin(time * 0.5) * 0.08
+            channelData[i] = (texture + gentle) * 0.25
+        }
+    }
+    
+    private func generateRelaxPlaceholder(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
+        // Placeholder relax sound - calming, peaceful tones
+        for i in 0..<frameCount {
+            let time = Float(i) / Float(sampleRate)
+            let calm = sin(time * 0.4) * 0.12
+            let peace = sin(time * 1.2) * 0.07
+            let gentle = sin(time * 3.0) * 0.04
+            channelData[i] = (calm + peace + gentle) * 0.3
+        }
+    }
+    
+    private func generateYogaPlaceholder(channelData: UnsafeMutablePointer<Float>, frameCount: Int) {
+        // Placeholder yoga sound - meditative, flowing tones
+        for i in 0..<frameCount {
+            let time = Float(i) / Float(sampleRate)
+            let flow = sin(time * 0.6) * 0.1
+            let meditate = sin(time * 2.0) * 0.07
+            let breath = sin(time * 4.5) * 0.04
+            channelData[i] = (flow + meditate + breath) * 0.3
         }
     }
     
@@ -1071,7 +1254,7 @@ private extension NoiseGenerator {
 extension NoiseGenerator.NoiseType {
     /// Nature/ambient sounds that have backing audio assets and are eligible for alarms.
     static var alarmEligibleCases: [NoiseGenerator.NoiseType] {
-        [.rain, .ocean, .wind, .thunder, .forest, .cafe, .city, .fire, .birds, .night, .nature, .uplift]
+        [.rain, .ocean, .wind, .thunder, .forest, .cafe, .city, .fire, .birds, .night, .nature, .uplift, .fan, .hz44, .hz66, .hz10, .inspire, .misty, .backdrop, .relax, .yoga]
     }
 
     /// Indicates whether this noise type maps to a bundled ambient sound asset.
@@ -1094,6 +1277,15 @@ extension NoiseGenerator.NoiseType {
         case .night: return "night.mp3"
         case .nature: return "nature.mp3"
         case .uplift: return "uplift.mp3"
+        case .fan: return "fan.mp3"
+        case .hz44: return "44hz.mp3"
+        case .hz66: return "66hz.mp3"
+        case .hz10: return "10hz.mp3"
+        case .inspire: return "inspire.m4a"
+        case .misty: return "misty.mp3"
+        case .backdrop: return "backdrop.mp3"
+        case .relax: return "relax.mp3"
+        case .yoga: return "yoga.mp3"
         default: return nil
         }
     }
