@@ -219,13 +219,23 @@ struct WalkView: View {
     }
 
     private var quickActionsSection: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                insightsButton
-                soundsButton
+        GeometryReader { proxy in
+            let buttonWidth = (proxy.size.width - 12) / 2
+            
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    insightsButton
+                    soundsButton
+                }
+                HStack {
+                    Spacer()
+                    sessionButton
+                        .frame(width: buttonWidth)
+                    Spacer()
+                }
             }
-            sessionButton
         }
+        .frame(height: 155)
         .padding(.horizontal, 20)
     }
     
@@ -271,7 +281,7 @@ struct WalkView: View {
         }
         .buttonStyle(PlainButtonStyle())
         .padding(.vertical, 12)
-        .frame(height: 330)
+        .frame(height: 450)
     }
     
     private var insightsButton: some View {
@@ -305,30 +315,15 @@ struct WalkView: View {
     
     private var sessionButton: some View {
         Button(action: { showSessionDetails = true }) {
-            HStack(spacing: 12) {
-                Map(coordinateRegion: $mapRegion)
-                    .allowsHitTesting(false)
-                    .frame(width: 110, height: 90)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Session")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(themeColors.primaryText)
-                    Text(sessionDurationText)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(themeColors.secondaryText)
-                    Text(isWalking ? "In progress" : "Tap for details")
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(themeColors.secondaryText.opacity(0.8))
-                }
+            HStack(spacing: 8) {
+                Image(systemName: "play.rectangle.on.rectangle.fill")
+                    .font(.system(size: 16, weight: .medium))
+                Text("Session")
+                    .font(.system(size: 15, weight: .medium))
                 Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .opacity(0.85)
-                    .foregroundColor(themeColors.primaryText)
             }
-            .padding(.horizontal, 16)
+            .foregroundColor(themeColors.primaryText)
+            .padding(.horizontal, 22)
             .padding(.vertical, 12)
             .frame(maxWidth: .infinity)
             .background(
@@ -497,17 +492,19 @@ struct WalkView: View {
         ZStack {
             backgroundGradient
 
-            VStack(spacing: 24) {
+            VStack(spacing: 0) {
                 topTitleSection
-
+                
+                Spacer()
+                
                 startButtonSection
-
+                
                 Spacer()
                 
                 VStack(spacing: 16) {
                     quickActionsSection
                 }
-                .frame(height: 170)
+                .frame(height: 155)
                 .padding(.bottom, 60)
             }
         }
