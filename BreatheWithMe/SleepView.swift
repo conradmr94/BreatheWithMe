@@ -756,6 +756,15 @@ struct SleepView: View {
             .onAppear {
                 vm.onAppear()
                 alarmManager.configure(alarmSound: selectedAlarmSound)
+                
+                // Debug: Log current sound state
+                print("🎵 SleepView appeared - Sound state: enabled=\(noiseGenerator.isEnabled), selected=\(noiseGenerator.selectedNoiseTypes), volume=\(noiseGenerator.volume)")
+                
+                // Ensure at least one sound is selected if sounds are enabled
+                if noiseGenerator.isEnabled && noiseGenerator.selectedNoiseTypes.isEmpty {
+                    print("⚠️ SleepView: Sounds enabled but none selected, defaulting to White noise")
+                    noiseGenerator.setNoiseType(.white)
+                }
             }
             .onChange(of: showNoiseSettings) { isPresented in
                 NotificationCenter.default.post(
@@ -789,6 +798,15 @@ struct SleepView: View {
         
         // Start noise if enabled
         if noiseGenerator.isEnabled {
+            // Debug: Check if sounds are actually selected
+            print("🎵 Sleep: Attempting to start noise. Enabled: \(noiseGenerator.isEnabled), Selected types: \(noiseGenerator.selectedNoiseTypes)")
+            
+            // Ensure at least one sound is selected
+            if noiseGenerator.selectedNoiseTypes.isEmpty {
+                print("⚠️ Sleep: No sounds selected, defaulting to White noise")
+                noiseGenerator.setNoiseType(.white)
+            }
+            
             noiseGenerator.startNoise()
         }
         
@@ -947,8 +965,17 @@ struct SleepNoiseOptionsModal: View {
             set: { newValue in
                 noiseGenerator.isEnabled = newValue
                 if newValue {
-                    if isRunning { noiseGenerator.startNoise() }
+                    // Ensure at least one sound is selected when enabling
+                    if noiseGenerator.selectedNoiseTypes.isEmpty {
+                        print("⚠️ Sleep Modal: No sounds selected, defaulting to White noise")
+                        noiseGenerator.setNoiseType(.white)
+                    }
+                    if isRunning {
+                        print("🎵 Sleep Modal: Starting noise (session is running)")
+                        noiseGenerator.startNoise()
+                    }
                 } else {
+                    print("🔇 Sleep Modal: Stopping noise")
                     noiseGenerator.stopNoise()
                 }
             }

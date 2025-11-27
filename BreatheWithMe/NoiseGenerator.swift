@@ -7,6 +7,7 @@
 
 import AVFoundation
 import Accelerate
+import UIKit
 
 class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private let engine = AVAudioEngine()
@@ -213,6 +214,7 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         setupAudioSession()
         setupAudioEngine()
         setupAudioFiles()
+        setupNotificationObservers()
     }
     
     private func isRealAudioType(_ type: NoiseType) -> Bool {
@@ -220,13 +222,226 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
     
     private func setupAudioSession() {
-        // Configure audio session
+        // Configure audio session for background playback
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers, .allowBluetooth, .allowAirPlay])
-            try AVAudioSession.sharedInstance().setActive(true)
-            print("✅ Audio session setup successfully.")
+            let audioSession = AVAudioSession.sharedInstance()
+            
+            // Set category to playback for background audio
+            // Remove .mixWithOthers to prevent iOS from pausing when screen locks
+            // Use .duckOthers instead to lower other audio when our audio plays
+            try audioSession.setCategory(.playback, mode: .default, options: [.duckOthers, .allowBluetooth, .allowAirPlay])
+            
+            // Activate the audio session
+            try audioSession.setActive(true, options: [])
+            
+            print("✅ Audio session setup successfully with background audio support.")
         } catch {
             print("❌ Failed to setup audio session: \(error)")
+        }
+    }
+    
+    private func setupNotificationObservers() {
+        // Handle audio session interruptions (calls, alarms, etc.)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAudioSessionInterruption),
+            name: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance()
+        )
+        
+        // Handle audio route changes (headphones plugged/unplugged)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAudioRouteChange),
+            name: AVAudioSession.routeChangeNotification,
+            object: AVAudioSession.sharedInstance()
+        )
+        
+        // Handle app becoming active
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAppDidBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+        
+        // Handle app entering background
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAppDidEnterBackground),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
+        
+        // Handle app will resign active (screen lock)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAppWillResignActive),
+            name: UIApplication.willResignActiveNotification,
+            object: nil
+        )
+        
+        // Handle media server reset (rare but important)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleMediaServerReset),
+            name: AVAudioSession.mediaServicesWereResetNotification,
+            object: AVAudioSession.sharedInstance()
+        )
+        
+        print("✅ Audio session notification observers setup.")
+    }
+    
+    @objc private func handleAudioSessionInterruption(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let interruptionType = AVAudioSession.InterruptionType(rawValue: typeValue) else {
+            return
+        }
+        
+        switch interruptionType {
+        case .began:
+            // Audio session was interrupted (e.g., phone call)
+            print("🔇 Audio session interrupted")
+            // Audio will automatically pause
+            
+        case .ended:
+            // Audio session interruption ended
+            print("🔊 Audio session interruption ended")
+            
+            // Check if we should resume
+            guard let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt else {
+                return
+            }
+            
+            let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+            if options.contains(.shouldResume) {
+                // Resume audio session
+                do {
+                    try AVAudioSession.sharedInstance().setActive(true, options: [])
+                    
+                    // Resume playback if it was playing before
+                    if isPlaying && isEnabled {
+                        synchronizePlayback()
+                    }
+                    print("✅ Audio session resumed after interruption")
+                } catch {
+                    print("❌ Failed to resume audio session: \(error)")
+                }
+            }
+            
+        @unknown default:
+            break
+        }
+    }
+    
+    @objc private func handleAudioRouteChange(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
+              let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
+            return
+        }
+        
+        switch reason {
+        case .oldDeviceUnavailable:
+            // Headphones were unplugged - optionally pause playback
+            print("🎧 Audio route changed: device unavailable")
+            // Continue playing through speakers
+            
+        case .newDeviceAvailable:
+            // Headphones were plugged in
+            print("🎧 Audio route changed: new device available")
+            // Continue playing
+            
+        default:
+            print("🎧 Audio route changed: \(reason.rawValue)")
+        }
+    }
+    
+    @objc private func handleAppDidBecomeActive() {
+        print("📱 App became active")
+        
+        // Ensure audio session is active
+        if isPlaying && isEnabled {
+            do {
+                try AVAudioSession.sharedInstance().setActive(true, options: [])
+                synchronizePlayback()
+                print("✅ Audio session reactivated when app became active")
+            } catch {
+                print("❌ Failed to reactivate audio session: \(error)")
+            }
+        }
+    }
+    
+    @objc private func handleAppWillResignActive() {
+        print("📱 App will resign active (screen locking)")
+        
+        // Ensure audio continues when screen locks
+        if isPlaying && isEnabled {
+            do {
+                // Keep audio session active
+                try AVAudioSession.sharedInstance().setActive(true, options: [])
+                print("✅ Audio session maintained for screen lock")
+            } catch {
+                print("❌ Failed to maintain audio session: \(error)")
+            }
+        }
+    }
+    
+    @objc private func handleAppDidEnterBackground() {
+        print("📱 App entered background")
+        
+        // Keep audio session active for background playback
+        if isPlaying && isEnabled {
+            // Explicitly ensure audio session stays active
+            do {
+                try AVAudioSession.sharedInstance().setActive(true, options: [])
+                print("✅ Audio session kept active for background playback")
+                
+                // Ensure all players are still playing
+                for (type, player) in audioPlayers where selectedNoiseTypes.contains(type) {
+                    if !player.isPlaying {
+                        player.play()
+                        print("🔄 Restarted audio player for \(type.rawValue) in background")
+                    }
+                }
+                
+                // Ensure audio engine is running for color noise
+                if !engine.isRunning {
+                    do {
+                        try engine.start()
+                        print("🔄 Restarted audio engine in background")
+                    } catch {
+                        print("❌ Failed to restart audio engine: \(error)")
+                    }
+                }
+                
+            } catch {
+                print("❌ Failed to keep audio session active: \(error)")
+            }
+        }
+    }
+    
+    @objc private func handleMediaServerReset() {
+        print("🔄 Media server was reset")
+        
+        // Media server reset means we need to recreate everything
+        if isPlaying && isEnabled {
+            // Reconfigure audio session
+            setupAudioSession()
+            
+            // Restart audio engine
+            do {
+                if !engine.isRunning {
+                    try engine.start()
+                }
+            } catch {
+                print("❌ Failed to restart engine after media server reset: \(error)")
+            }
+            
+            // Restart all playing audio
+            synchronizePlayback()
+            print("✅ Audio restarted after media server reset")
         }
     }
     
@@ -285,6 +500,7 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             audioPlayer.numberOfLoops = -1 // Loop indefinitely
             audioPlayer.volume = 0.5 // Lower volume for ambient sounds
             audioPlayer.delegate = self // Set delegate to handle interruptions
+            audioPlayer.enableRate = false // Disable rate adjustment for better performance
             audioPlayer.prepareToPlay()
             audioPlayers[type] = audioPlayer
             print("✅ Loaded real audio file: \(filename)")
@@ -405,6 +621,15 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         guard !selectedNoiseTypes.isEmpty else { return }
         
         print("🎵 Starting ambient sound mix...")
+        
+        // Ensure audio session is active before starting playback
+        do {
+            try AVAudioSession.sharedInstance().setActive(true, options: [])
+            print("✅ Audio session activated for playback")
+        } catch {
+            print("❌ Failed to activate audio session: \(error)")
+        }
+        
         isPlaying = true
         synchronizePlayback()
         fadeIn(duration: 1.0)
@@ -988,7 +1213,18 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
     
     deinit {
+        // Remove notification observers
+        NotificationCenter.default.removeObserver(self)
+        
+        // Stop all audio playback
         stopNoise()
+        
+        // Deactivate audio session
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        } catch {
+            print("❌ Failed to deactivate audio session: \(error)")
+        }
     }
     
     // MARK: - AVAudioPlayerDelegate
