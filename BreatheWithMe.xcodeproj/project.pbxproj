@@ -64,6 +64,7 @@
 		E1C0B101000000000000001 /* WalkSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C0A001000000000000001 /* WalkSessionManager.swift */; };
 		E1C0B102000000000000001 /* WalkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C0A002000000000000001 /* WalkView.swift */; };
 		E1C0B103000000000000001 /* WalkStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C0A003000000000000001 /* WalkStatsView.swift */; };
+		E1C0B104000000000000001 /* WalkLocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C0A004000000000000001 /* WalkLocationManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -126,6 +127,7 @@
 		E1C0A001000000000000001 /* WalkSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkSessionManager.swift; sourceTree = "<group>"; };
 		E1C0A002000000000000001 /* WalkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkView.swift; sourceTree = "<group>"; };
 		E1C0A003000000000000001 /* WalkStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkStatsView.swift; sourceTree = "<group>"; };
+		E1C0A004000000000000001 /* WalkLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkLocationManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -182,6 +184,7 @@
 				A1000062000000000000001 /* FocusStatsView.swift */,
 				A1000064000000000000001 /* SleepStatsView.swift */,
 				E1C0A003000000000000001 /* WalkStatsView.swift */,
+				E1C0A004000000000000001 /* WalkLocationManager.swift */,
 				A1000068000000000000001 /* ActivityCalendarView.swift */,
 				A1000067000000000000001 /* UserStatsManager.swift */,
 				A1000056000000000000001 /* SwipeDownToOpenProfile.swift */,
@@ -353,6 +356,7 @@
 				E1C0B101000000000000001 /* WalkSessionManager.swift in Sources */,
 				E1C0B102000000000000001 /* WalkView.swift in Sources */,
 				E1C0B103000000000000001 /* WalkStatsView.swift in Sources */,
+				E1C0B104000000000000001 /* WalkLocationManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

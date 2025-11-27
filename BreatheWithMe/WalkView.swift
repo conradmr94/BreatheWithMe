@@ -9,6 +9,7 @@
 import SwiftUI
 import UIKit
 import MapKit
+import HealthKit
 
 struct WalkView: View {
     @EnvironmentObject var themeManager: AppThemeManager
@@ -18,22 +19,31 @@ struct WalkView: View {
     @State private var showNoiseSettings = false
     @StateObject private var noiseGenerator = NoiseGenerator()
     @StateObject private var walkSessionManager = WalkSessionManager.shared
+    @StateObject private var locationManager = WalkLocationManager()
     @State private var isWalking = false
     @State private var mapRegion = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 37.3349, longitude: -122.0090),
-        span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+        center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+        span: MKCoordinateSpan(latitudeDelta: 180, longitudeDelta: 180)
     )
     @State private var showSessionDetails = false
     @State private var selectedBreathingPattern = "Box"
     @State private var showInsightsModal = false
     @State private var elapsedSeconds: Int = 0
     @State private var walkTimer: Timer?
+    @State private var currentSteps: Int = 0
+    @State private var currentCalories: Double = 0
+    @State private var sessionStartSteps: Int = 0
 
     private enum WalkAction {
         case insights, sounds, session
     }
 
     private let accentColor = Color(red: 0.32, green: 0.72, blue: 0.55)
+    
+    private var locationId: String {
+        guard let location = locationManager.userLocation else { return "" }
+        return "\(location.latitude),\(location.longitude)"
+    }
 
     private var themeColors: ProfileTheme.Colors {
         themeManager.themeColors(for: systemColorScheme)
@@ -348,28 +358,81 @@ struct WalkView: View {
     }
     
     private func startWalkSession() {
+        // Start location tracking
+        locationManager.startTracking()
+        
+        // Get initial step count
+        Task {
+            sessionStartSteps = await fetchCurrentSteps()
+            currentSteps = 0
+        }
+        
+        // Start session tracking
         walkSessionManager.startWalk()
         elapsedSeconds = 0
+        
+        // Start timer for duration and periodic updates
         walkTimer?.invalidate()
         walkTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             elapsedSeconds += 1
+            
+            // Update steps and calories every 5 seconds
+            if elapsedSeconds % 5 == 0 {
+                Task {
+                    await updateWalkMetrics()
+                }
+            }
         }
+        
         if noiseGenerator.isEnabled {
             noiseGenerator.startNoise()
         }
+        
         withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
             isWalking = true
         }
     }
     
     private func completeWalkSession() {
+        // Stop location tracking
+        locationManager.stopTracking()
+        
+        // Stop sound
         if noiseGenerator.isEnabled {
             noiseGenerator.fadeOut()
         }
-        walkSessionManager.completeWalk()
+        
+        // Final metrics update
+        Task {
+            await updateWalkMetrics()
+            
+            // Save session with all metrics
+            let finalSteps = currentSteps > 0 ? currentSteps : nil
+            let finalDistance = locationManager.totalDistanceMeters > 0 ? locationManager.totalDistanceMeters : nil
+            let finalCalories = currentCalories > 0 ? currentCalories : nil
+            let routeData = locationManager.route.isEmpty ? nil : locationManager.route.map { 
+                EnhancedSession.Coordinate(latitude: $0.latitude, longitude: $0.longitude) 
+            }
+            
+            walkSessionManager.completeWalk(
+                steps: finalSteps,
+                distanceMeters: finalDistance,
+                caloriesBurned: finalCalories,
+                stressReliefScore: nil,
+                contentId: noiseGenerator.isEnabled ? noiseGenerator.selectedNoiseType.rawValue : nil,
+                contentDuration: elapsedSeconds,
+                route: routeData
+            )
+        }
+        
+        // Reset UI state
         walkTimer?.invalidate()
         walkTimer = nil
         elapsedSeconds = 0
+        currentSteps = 0
+        currentCalories = 0
+        sessionStartSteps = 0
+        
         withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
             isWalking = false
         }
@@ -382,16 +445,19 @@ struct WalkView: View {
         return String(format: "%02d:%02d", minutes, remaining)
     }
     
-    private var stepsText: String { "—" }
+    private var stepsText: String {
+        currentSteps > 0 ? "\(currentSteps)" : "—"
+    }
     
     private var distanceText: String {
-        String(format: "%.2f km", currentDistanceMeters / 1000.0)
+        let distance = locationManager.totalDistanceKilometers
+        return distance > 0 ? String(format: "%.2f km", distance) : "— km"
     }
     
     private var paceText: String {
-        let distanceKm = currentDistanceMeters / 1000.0
-        guard distanceKm > 0 else { return "—" }
-        let secondsPerKm = Double(max(1, elapsedSeconds)) / distanceKm
+        let distanceKm = locationManager.totalDistanceKilometers
+        guard distanceKm > 0, elapsedSeconds > 0 else { return "—" }
+        let secondsPerKm = Double(elapsedSeconds) / distanceKm
         let minutes = Int(secondsPerKm) / 60
         let seconds = Int(secondsPerKm) % 60
         return String(format: "%d:%02d /km", minutes, seconds)
@@ -404,13 +470,61 @@ struct WalkView: View {
     private var stressText: String { "—" }
     
     private var currentDistanceMeters: Double {
-        // Placeholder until live distance is wired in
-        0
+        locationManager.totalDistanceMeters
     }
     
-    private var currentCalories: Double {
-        // Placeholder until calorie estimation is wired in
-        0
+    // MARK: - HealthKit Integration
+    
+    private func fetchCurrentSteps() async -> Int {
+        let healthStore = HKHealthStore()
+        guard let stepType = HKObjectType.quantityType(forIdentifier: .stepCount) else {
+            return 0
+        }
+        
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfDay = calendar.startOfDay(for: now)
+        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
+        
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsQuery(
+                quantityType: stepType,
+                quantitySamplePredicate: predicate,
+                options: .cumulativeSum
+            ) { _, result, error in
+                guard let result = result,
+                      let sum = result.sumQuantity() else {
+                    continuation.resume(returning: 0)
+                    return
+                }
+                let steps = Int(sum.doubleValue(for: HKUnit.count()))
+                continuation.resume(returning: steps)
+            }
+            healthStore.execute(query)
+        }
+    }
+    
+    private func updateWalkMetrics() async {
+        // Get current total steps and calculate difference
+        let totalStepsNow = await fetchCurrentSteps()
+        currentSteps = max(0, totalStepsNow - sessionStartSteps)
+        
+        // Estimate calories (rough calculation: 0.04 calories per step for average person)
+        // Plus additional calories from distance if we have GPS data
+        let stepCalories = Double(currentSteps) * 0.04
+        
+        // If we have distance data, use a more accurate MET-based calculation
+        let distanceKm = locationManager.totalDistanceKilometers
+        if distanceKm > 0 && elapsedSeconds > 0 {
+            // Average walking MET value = 3.5
+            // Calories = MET × weight(kg) × time(hours)
+            // Assuming average weight of 70kg
+            let hours = Double(elapsedSeconds) / 3600.0
+            let metCalories = 3.5 * 70.0 * hours
+            currentCalories = metCalories
+        } else {
+            currentCalories = stepCalories
+        }
     }
 
     @ViewBuilder
@@ -539,6 +653,8 @@ struct WalkView: View {
             SessionDetailsModal(
                 isPresented: $showSessionDetails,
                 mapRegion: $mapRegion,
+                route: locationManager.route,
+                userLocation: locationManager.userLocation,
                 isWalking: isWalking,
                 durationText: sessionDurationText,
                 distanceMeters: currentDistanceMeters,
@@ -554,6 +670,33 @@ struct WalkView: View {
                 userInfo: ["isPresented": isPresented]
             )
         }
+        .onChange(of: locationId) { _ in
+            if let location = locationManager.userLocation {
+                // Update map region to follow user
+                mapRegion = MKCoordinateRegion(
+                    center: location,
+                    span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                )
+            }
+        }
+        .onAppear {
+            // Request location authorization when view appears
+            if locationManager.authorizationStatus == .notDetermined {
+                locationManager.requestAuthorization()
+            } else if locationManager.authorizationStatus == .authorizedWhenInUse ||
+                      locationManager.authorizationStatus == .authorizedAlways {
+                // If already authorized, start monitoring location to get current position
+                locationManager.startMonitoringLocation()
+            }
+            
+            // Update map to user's current location if available
+            if let location = locationManager.userLocation {
+                mapRegion = MKCoordinateRegion(
+                    center: location,
+                    span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                )
+            }
+        }
         .onDisappear {
             NotificationCenter.default.post(
                 name: .soundModalVisibilityDidChange,
@@ -562,6 +705,11 @@ struct WalkView: View {
             )
             walkTimer?.invalidate()
             walkTimer = nil
+            
+            // Stop location monitoring if not actively tracking a walk
+            if !isWalking {
+                locationManager.stopMonitoringLocation()
+            }
         }
     }
 }
@@ -575,6 +723,8 @@ struct WalkView: View {
 private struct SessionDetailsModal: View {
     @Binding var isPresented: Bool
     @Binding var mapRegion: MKCoordinateRegion
+    let route: [CLLocationCoordinate2D]
+    let userLocation: CLLocationCoordinate2D?
     let isWalking: Bool
     let durationText: String
     let distanceMeters: Double
@@ -583,7 +733,7 @@ private struct SessionDetailsModal: View {
     @Binding var selectedPattern: String
     
     private var distanceText: String {
-        String(format: "%.2f km", distanceMeters / 1000.0)
+        distanceMeters > 0 ? String(format: "%.2f km", distanceMeters / 1000.0) : "— km"
     }
     
     private var caloriesText: String {
@@ -593,10 +743,15 @@ private struct SessionDetailsModal: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                Map(coordinateRegion: $mapRegion)
-                    .frame(height: 240)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 8)
+                WalkMapView(
+                    region: $mapRegion,
+                    route: route,
+                    userLocation: userLocation,
+                    accentColor: accentColor
+                )
+                .frame(height: 240)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 8)
                 
                 VStack(spacing: 14) {
                     infoRow(title: "Status", value: isWalking ? "In progress" : "Not running")
@@ -689,6 +844,58 @@ private struct BreathingPatternPicker: View {
                 }
                 .buttonStyle(PlainButtonStyle())
             }
+        }
+    }
+}
+
+// MARK: - Walk Map View
+private struct WalkMapView: UIViewRepresentable {
+    @Binding var region: MKCoordinateRegion
+    let route: [CLLocationCoordinate2D]
+    let userLocation: CLLocationCoordinate2D?
+    let accentColor: Color
+    
+    func makeUIView(context: Context) -> MKMapView {
+        let mapView = MKMapView()
+        mapView.delegate = context.coordinator
+        mapView.showsUserLocation = true
+        mapView.userTrackingMode = .follow
+        return mapView
+    }
+    
+    func updateUIView(_ mapView: MKMapView, context: Context) {
+        mapView.setRegion(region, animated: true)
+        
+        // Remove existing overlays
+        mapView.removeOverlays(mapView.overlays)
+        
+        // Add route polyline if we have points
+        if route.count > 1 {
+            let polyline = MKPolyline(coordinates: route, count: route.count)
+            mapView.addOverlay(polyline)
+        }
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(accentColor: accentColor)
+    }
+    
+    class Coordinator: NSObject, MKMapViewDelegate {
+        let accentColor: Color
+        
+        init(accentColor: Color) {
+            self.accentColor = accentColor
+        }
+        
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let polyline = overlay as? MKPolyline {
+                let renderer = MKPolylineRenderer(polyline: polyline)
+                renderer.strokeColor = UIColor(accentColor)
+                renderer.lineWidth = 4
+                renderer.lineCap = .round
+                return renderer
+            }
+            return MKOverlayRenderer(overlay: overlay)
         }
     }
 }

@@ -42,13 +42,15 @@ final class WalkSessionManager: ObservableObject {
     ///   - stressReliefScore: Optional stress relief score (0-100)
     ///   - contentId: Optional content/sound identifier used
     ///   - contentDuration: Optional content playback time in seconds
+    ///   - route: Optional array of coordinates representing the walk route
     func completeWalk(
         steps: Int? = nil,
         distanceMeters: Double? = nil,
         caloriesBurned: Double? = nil,
         stressReliefScore: Double? = nil,
         contentId: String? = nil,
-        contentDuration: Int? = nil
+        contentDuration: Int? = nil,
+        route: [EnhancedSession.Coordinate]? = nil
     ) {
         guard let start = sessionStart else { return }
         let end = Date()
@@ -75,6 +77,11 @@ final class WalkSessionManager: ObservableObject {
         meta.stressReliefScore = stressReliefScore
         meta.contentId = contentId
         meta.contentDuration = contentDuration ?? duration
+        
+        // Store route data if available
+        if let route = route, !route.isEmpty {
+            meta.route = route
+        }
         
         let session = EnhancedSession(
             type: .walk,

@@ -24,6 +24,11 @@ struct EnhancedSession: Codable, Identifiable {
         case sleep, focus, breathing, walk
     }
     
+    struct Coordinate: Codable {
+        let latitude: Double
+        let longitude: Double
+    }
+    
     struct SessionMetadata: Codable {
         // Sleep-specific
         var sleepScore: Int? // 0-100
@@ -48,6 +53,7 @@ struct EnhancedSession: Codable, Identifiable {
         var distanceMeters: Double?
         var caloriesBurned: Double?
         var stressReliefScore: Double?
+        var route: [Coordinate]? // GPS route coordinates
         
         // Cross-feature
         var contentId: String? // Which sound/content was used
@@ -70,6 +76,7 @@ struct EnhancedSession: Codable, Identifiable {
             self.distanceMeters = nil
             self.caloriesBurned = nil
             self.stressReliefScore = nil
+            self.route = nil
             self.contentId = nil
             self.contentDuration = nil
         }
