@@ -67,6 +67,9 @@ struct NoiseOptionsModal: View {
                             selectedNoiseTypes: noiseGenerator.selectedNoiseTypes,
                             accentColor: accentColor,
                             onSoundSelected: { noiseType in
+                                // Check if sound is currently selected (before toggle)
+                                let wasSelected = noiseGenerator.selectedNoiseTypes.contains(noiseType)
+                                
                                 withAnimation(.easeInOut(duration: 0.15)) {
                                     noiseGenerator.toggleNoiseType(noiseType)
                                     // Auto-enable sounds when a sound is selected
@@ -77,7 +80,10 @@ struct NoiseOptionsModal: View {
                                         }
                                     }
                                 }
-                                if [.white, .pink, .brown, .blue, .green].contains(noiseType) {
+                                
+                                // Only show info message when selecting (not deselecting)
+                                let isNowSelected = noiseGenerator.selectedNoiseTypes.contains(noiseType)
+                                if !wasSelected && isNowSelected && [.white, .pink, .brown, .blue, .green, .hz44, .hz66, .hz10].contains(noiseType) {
                                     noiseGenerator.showInfoForNoiseType(noiseType)
                                 }
                             }
@@ -134,6 +140,29 @@ struct NoiseOptionsModal: View {
             RoundedRectangle(cornerRadius: 24)
                 .fill(Color.white)
                 .shadow(color: Color.black.opacity(0.1), radius: 24, x: 0, y: 12)
+        )
+        .overlay(
+            // Info message overlay for noise type descriptions
+            Group {
+                if noiseGenerator.showInfoMessage {
+                    VStack {
+                        Spacer()
+                        Text(noiseGenerator.infoMessage)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.black.opacity(0.8))
+                            )
+                            .padding(.horizontal, 40)
+                            .padding(.bottom, 80)
+                            .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    }
+                }
+            }
         )
         .sheet(isPresented: $showMixerSheet) {
             SoundMixerSheetView(

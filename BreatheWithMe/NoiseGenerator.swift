@@ -758,15 +758,21 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     func showInfoForNoiseType(_ type: NoiseType) {
         switch type {
         case .white:
-            infoMessage = "White Noise - Masks distracting sounds like this"
+            infoMessage = "White Noise - Equal energy across all frequencies, ideal for masking distractions and enhancing focus"
         case .pink:
-            infoMessage = "Pink Noise - Promotes deep and uninterrupted focus"
+            infoMessage = "Pink Noise - Deeper than white noise with balanced low frequencies, promotes relaxation and better sleep"
         case .brown:
-            infoMessage = "Brown Noise - Produces deep, calming, and soothing sounds that aid relaxation and concentration"
+            infoMessage = "Brown Noise - Rich, deep rumbling sound excellent for deep focus, blocking distractions, and calming the mind"
         case .blue:
-            infoMessage = "Blue Noise - Boosts alertness, creativity, and productivity"
+            infoMessage = "Blue Noise - Higher frequency energy that's energizing and sharp, best for short, intense focus sessions"
         case .green:
-            infoMessage = "Green Noise - Provides a calm, natural sound that helps with focus and anxiety"
+            infoMessage = "Green Noise - Nature-centered ambient sound that's calming, restorative, and reduces stress"
+        case .hz10:
+            infoMessage = "10 Hz (Alpha) - Promotes calm focus, creativity, and relaxed awareness bridging conscious and subconscious"
+        case .hz44:
+            infoMessage = "44 Hz (Low Gamma) - Enhances concentration, information processing, and sustained cognitive performance"
+        case .hz66:
+            infoMessage = "66 Hz (Gamma) - Associated with peak mental performance, problem-solving, and heightened awareness"
         default:
             return
         }
