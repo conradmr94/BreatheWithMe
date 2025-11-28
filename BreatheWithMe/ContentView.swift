@@ -119,6 +119,10 @@ struct ContentView: View {
             // Update tab colors when color scheme changes
             updateTabColors(for: selectedTab)
         }
+        .onChange(of: themeManager.profileThemeRawValue) { _ in
+            // Update tab colors when user manually changes theme in Profile settings
+            updateTabColors(for: selectedTab)
+        }
         .onReceive(focusLockTimer) { date in
             lockNow = date
             if focusLockUntilTimestamp > 0 && focusLockUntilTimestamp <= date.timeIntervalSince1970 {
