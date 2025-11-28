@@ -731,6 +731,7 @@ private struct SessionDetailsModal: View {
     let calories: Double
     let accentColor: Color
     @Binding var selectedPattern: String
+    @State private var showBreathingPatterns = false
     
     private var distanceText: String {
         distanceMeters > 0 ? String(format: "%.2f km", distanceMeters / 1000.0) : "— km"
@@ -771,11 +772,57 @@ private struct SessionDetailsModal: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(Color.primary)
 
-                    BreathingPatternPicker(
-                        patterns: ["Box", "4-7-8", "Equal Breath", "Resonant 5.5"],
-                        selectedPattern: $selectedPattern,
-                        accentColor: accentColor
-                    )
+                    if !showBreathingPatterns {
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text("Enhance your walk with guided breathing patterns. They can help you stay present, reduce stress, and maximize the mindfulness benefits of your walk.")
+                                .font(.system(size: 14, weight: .regular))
+                                .foregroundColor(Color.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            
+                            Text("Would you like to use this feature?")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(Color.primary)
+                            
+                            HStack(spacing: 12) {
+                                Button(action: {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showBreathingPatterns = true
+                                    }
+                                }) {
+                                    Text("Yes")
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 10)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .fill(accentColor)
+                                        )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                
+                                Button(action: {
+                                    isPresented = false
+                                }) {
+                                    Text("Maybe Later")
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundColor(Color.primary)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 10)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .fill(Color(.secondarySystemBackground))
+                                        )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+                    } else {
+                        BreathingPatternPickerWithDescriptions(
+                            selectedPattern: $selectedPattern,
+                            accentColor: accentColor
+                        )
+                    }
                 }
                 .padding()
                 .background(
@@ -812,34 +859,52 @@ private struct SessionDetailsModal: View {
     }
 }
 
-// MARK: - Breathing Pattern Picker
-private struct BreathingPatternPicker: View {
-    let patterns: [String]
+// MARK: - Breathing Pattern Picker with Descriptions
+private struct BreathingPatternPickerWithDescriptions: View {
     @Binding var selectedPattern: String
     let accentColor: Color
+    
+    private let patterns: [(name: String, description: String)] = [
+        ("Box", "Equal 4-second intervals for focus and calm. Great for stress relief."),
+        ("4-7-8", "Inhale 4s, hold 7s, exhale 8s. Promotes deep relaxation and sleep."),
+        ("Equal Breath", "Simple equal inhale/exhale rhythm for balance and presence."),
+        ("Resonant 5.5", "5.5-second breaths for optimal heart rate variability.")
+    ]
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-            ForEach(patterns, id: \.self) { pattern in
+        VStack(spacing: 10) {
+            ForEach(patterns, id: \.name) { pattern in
                 Button(action: {
-                    selectedPattern = pattern
+                    selectedPattern = pattern.name
                 }) {
-                    HStack {
-                        Text(pattern)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(selectedPattern == pattern ? .white : Color.primary)
-                        Spacer()
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(pattern.name)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(selectedPattern == pattern.name ? .white : Color.primary)
+                            Spacer()
+                            if selectedPattern == pattern.name {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.white)
+                            }
+                        }
+                        
+                        Text(pattern.description)
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundColor(selectedPattern == pattern.name ? .white.opacity(0.9) : Color.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .background(
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(selectedPattern == pattern ? accentColor : Color(.secondarySystemBackground))
+                            .fill(selectedPattern == pattern.name ? accentColor : Color(.secondarySystemBackground))
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(selectedPattern == pattern ? accentColor : Color.gray.opacity(0.2), lineWidth: 1)
+                            .stroke(selectedPattern == pattern.name ? accentColor : Color.gray.opacity(0.2), lineWidth: 1)
                     )
                 }
                 .buttonStyle(PlainButtonStyle())
