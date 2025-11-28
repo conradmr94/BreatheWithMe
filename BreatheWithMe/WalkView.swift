@@ -875,148 +875,148 @@ private struct SessionDetailsModal: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                WalkMapView(
-                    region: $mapRegion,
-                    route: route,
-                    userLocation: userLocation,
-                    accentColor: accentColor
-                )
-                .frame(height: 240)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 8)
-                
-                VStack(spacing: 14) {
-                    infoRow(title: "Status", value: isWalking ? "In progress" : "Not running")
-                    infoRow(title: "Duration", value: durationText)
-                    infoRow(title: "Distance", value: distanceText)
-                    infoRow(title: "Calories", value: caloriesText)
-                }
-                .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(.systemBackground))
-                        .shadow(color: Color.black.opacity(0.08), radius: 16, x: 0, y: 8)
-                )
+            ScrollView {
+                VStack(spacing: 20) {
+                    WalkMapView(
+                        region: $mapRegion,
+                        route: route,
+                        userLocation: userLocation,
+                        accentColor: accentColor
+                    )
+                    .frame(height: 240)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 8)
+                    
+                    VStack(spacing: 14) {
+                        infoRow(title: "Status", value: isWalking ? "In progress" : "Not running")
+                        infoRow(title: "Duration", value: durationText)
+                        infoRow(title: "Distance", value: distanceText)
+                        infoRow(title: "Calories", value: caloriesText)
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.systemBackground))
+                            .shadow(color: Color.black.opacity(0.08), radius: 16, x: 0, y: 8)
+                    )
 
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Breathing Patterns")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(Color.primary)
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Breathing Patterns")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(Color.primary)
 
-                    if !showBreathingPatterns {
-                        VStack(alignment: .leading, spacing: 14) {
-                            Text("Enhance your walk with guided breathing patterns. They can help you stay present, reduce stress, and maximize the mindfulness benefits of your walk.")
-                                .font(.system(size: 14, weight: .regular))
-                                .foregroundColor(Color.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                            
-                            Text("Would you like to use this feature?")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(Color.primary)
-                            
-                            HStack(spacing: 12) {
+                        if !showBreathingPatterns {
+                            VStack(alignment: .leading, spacing: 14) {
+                                Text("Enhance your walk with guided breathing patterns. They can help you stay present, reduce stress, and maximize the mindfulness benefits of your walk.")
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundColor(Color.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                
+                                Text("Would you like to use this feature?")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(Color.primary)
+                                
+                                HStack(spacing: 12) {
+                                    Button(action: {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            showBreathingPatterns = true
+                                            breathingEnabled = true
+                                            if isWalking {
+                                                onBreathingToggled()
+                                            }
+                                        }
+                                    }) {
+                                        Text("Yes")
+                                            .font(.system(size: 15, weight: .semibold))
+                                            .foregroundColor(.white)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 10)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 10)
+                                                    .fill(accentColor)
+                                            )
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                    
+                                    Button(action: {
+                                        breathingEnabled = false
+                                        isPresented = false
+                                    }) {
+                                        Text("Maybe Later")
+                                            .font(.system(size: 15, weight: .semibold))
+                                            .foregroundColor(Color.primary)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 10)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 10)
+                                                    .fill(Color(.secondarySystemBackground))
+                                            )
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
+                            }
+                        } else {
+                            VStack(spacing: 14) {
+                                BreathingPatternPickerWithDescriptions(
+                                    selectedPattern: $selectedPattern,
+                                    accentColor: accentColor,
+                                    onPatternChanged: {
+                                        if isWalking {
+                                            onBreathingToggled()
+                                        }
+                                    }
+                                )
+                                
+                                // Bell sound toggle
+                                HStack {
+                                    Toggle(isOn: $bellSoundEnabled) {
+                                        HStack(spacing: 8) {
+                                            Image(systemName: bellSoundEnabled ? "bell.fill" : "bell.slash")
+                                                .font(.system(size: 14))
+                                                .foregroundColor(accentColor)
+                                            Text("Transition Sounds")
+                                                .font(.system(size: 14, weight: .medium))
+                                                .foregroundColor(Color.primary)
+                                        }
+                                    }
+                                    .toggleStyle(SwitchToggleStyle(tint: accentColor))
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color(.secondarySystemBackground))
+                                )
+                                
+                                // Disable breathing button
                                 Button(action: {
                                     withAnimation(.easeInOut(duration: 0.3)) {
-                                        showBreathingPatterns = true
-                                        breathingEnabled = true
+                                        breathingEnabled = false
+                                        showBreathingPatterns = false
                                         if isWalking {
                                             onBreathingToggled()
                                         }
                                     }
                                 }) {
-                                    Text("Yes")
-                                        .font(.system(size: 15, weight: .semibold))
-                                        .foregroundColor(.white)
+                                    Text("Disable Breathing Guidance")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(Color.secondary)
                                         .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 10)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 10)
-                                                .fill(accentColor)
-                                        )
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                
-                                Button(action: {
-                                    breathingEnabled = false
-                                    isPresented = false
-                                }) {
-                                    Text("Maybe Later")
-                                        .font(.system(size: 15, weight: .semibold))
-                                        .foregroundColor(Color.primary)
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 10)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 10)
-                                                .fill(Color(.secondarySystemBackground))
-                                        )
+                                        .padding(.vertical, 8)
                                 }
                                 .buttonStyle(PlainButtonStyle())
                             }
-                        }
-                    } else {
-                        VStack(spacing: 14) {
-                            BreathingPatternPickerWithDescriptions(
-                                selectedPattern: $selectedPattern,
-                                accentColor: accentColor,
-                                onPatternChanged: {
-                                    if isWalking {
-                                        onBreathingToggled()
-                                    }
-                                }
-                            )
-                            
-                            // Bell sound toggle
-                            HStack {
-                                Toggle(isOn: $bellSoundEnabled) {
-                                    HStack(spacing: 8) {
-                                        Image(systemName: bellSoundEnabled ? "bell.fill" : "bell.slash")
-                                            .font(.system(size: 14))
-                                            .foregroundColor(accentColor)
-                                        Text("Transition Sounds")
-                                            .font(.system(size: 14, weight: .medium))
-                                            .foregroundColor(Color.primary)
-                                    }
-                                }
-                                .toggleStyle(SwitchToggleStyle(tint: accentColor))
-                            }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color(.secondarySystemBackground))
-                            )
-                            
-                            // Disable breathing button
-                            Button(action: {
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    breathingEnabled = false
-                                    showBreathingPatterns = false
-                                    if isWalking {
-                                        onBreathingToggled()
-                                    }
-                                }
-                            }) {
-                                Text("Disable Breathing Guidance")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(Color.secondary)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 8)
-                            }
-                            .buttonStyle(PlainButtonStyle())
                         }
                     }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.systemBackground))
+                            .shadow(color: Color.black.opacity(0.08), radius: 16, x: 0, y: 8)
+                    )
                 }
                 .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(.systemBackground))
-                        .shadow(color: Color.black.opacity(0.08), radius: 16, x: 0, y: 8)
-                )
-                
-                Spacer()
             }
-            .padding()
             .navigationTitle("Session")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
