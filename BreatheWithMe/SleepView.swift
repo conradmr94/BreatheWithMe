@@ -8,6 +8,7 @@
 import SwiftUI
 import HealthKit
 import UserNotifications
+import AVFoundation
 
 // MARK: - Data Model
 struct SleepStats: Codable {
@@ -602,7 +603,7 @@ struct SleepView: View {
             return
         }
         alarmManager.configure(alarmSound: selectedAlarmSound)
-        alarmManager.playAlarmSound()
+        alarmManager.playPreview()
         isPreviewingAlarm = true
         let workItem = DispatchWorkItem {
             stopAlarmPreview()
@@ -615,7 +616,7 @@ struct SleepView: View {
         alarmPreviewWorkItem?.cancel()
         alarmPreviewWorkItem = nil
         if isPreviewingAlarm {
-            alarmManager.stopAlarm()
+            alarmManager.stopPreview()
             isPreviewingAlarm = false
         }
     }
@@ -1242,6 +1243,7 @@ private struct AlarmSettingsSheet: View {
                     )
                     .datePickerStyle(.wheel)
                     .labelsHidden()
+                    .colorScheme(.light)
                     .disabled(!isAlarmEnabled)
                     .opacity(isAlarmEnabled ? 1.0 : 0.5)
                     .frame(height: 140)
@@ -1269,6 +1271,40 @@ private struct AlarmSettingsSheet: View {
                     }
                     .pickerStyle(.menu)
                     .disabled(!isAlarmEnabled)
+                    .opacity(isAlarmEnabled ? 1.0 : 0.5)
+                    .padding(.top, 4)
+                    
+                    // Volume slider
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "speaker.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                            Slider(value: Binding(
+                                get: { AlarmManager.shared.alarmVolume },
+                                set: { AlarmManager.shared.setAlarmVolume($0) }
+                            ), in: 0...1)
+                            .tint(Color(red: 0.4, green: 0.5, blue: 0.8))
+                            .disabled(!isAlarmEnabled)
+                            Image(systemName: "speaker.wave.3.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.6))
+                        }
+                        
+                        // System volume warning
+                        if AVAudioSession.sharedInstance().outputVolume < 0.5 {
+                            HStack(spacing: 6) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.orange)
+                                Text("Use physical volume buttons to increase alarm loudness")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(.top, 2)
+                        }
+                    }
                     .opacity(isAlarmEnabled ? 1.0 : 0.5)
                     .padding(.top, 4)
                     

@@ -20,6 +20,7 @@ class AlarmManager: ObservableObject {
     
     @Published var isAlarmActive = false
     @Published var snoozeTime: Date?
+    @Published var alarmVolume: Float = 0.8 // Default to 80%
     
     private let bellPlayer = BellPlayer()
     private var bellPlayTimer: Timer?
@@ -27,9 +28,22 @@ class AlarmManager: ObservableObject {
     private let snoozeDuration: TimeInterval = 5 * 60 // 5 minutes
     private var currentAlarmSound: NoiseGenerator.NoiseType = .birds
     
+    // UserDefaults key for persisting volume
+    private let alarmVolumeKey = "alarmVolume"
+    
     private init() {
+        // Load saved volume
+        if let savedVolume = UserDefaults.standard.object(forKey: alarmVolumeKey) as? Float {
+            alarmVolume = savedVolume
+        }
         registerNotificationCategories()
         requestNotificationPermission()
+    }
+    
+    func setAlarmVolume(_ volume: Float) {
+        alarmVolume = max(0.0, min(1.0, volume)) // Clamp between 0 and 1
+        UserDefaults.standard.set(alarmVolume, forKey: alarmVolumeKey)
+        alarmPlayer?.volume = alarmVolume // Update current player if active
     }
     
     func configure(alarmSound: NoiseGenerator.NoiseType) {
@@ -88,7 +102,18 @@ class AlarmManager: ObservableObject {
         let content = UNMutableNotificationContent()
         content.title = alarm.label ?? "Alarm"
         content.body = "Time to wake up"
-        content.sound = .default
+        
+        // Use custom alarm sound in notification
+        let selectedSound = NoiseGenerator.NoiseType(rawValue: alarm.sound) ?? .birds
+        if let fileName = selectedSound.bundleFileName {
+            // UNNotificationSound requires the file to be in the app bundle
+            content.sound = UNNotificationSound(named: UNNotificationSoundName(rawValue: fileName))
+            print("📢 AlarmManager: Notification will use custom sound: \(fileName)")
+        } else {
+            content.sound = .default
+            print("⚠️ AlarmManager: Falling back to default notification sound")
+        }
+        
         content.categoryIdentifier = Constants.categoryID
         content.userInfo = ["alarmId": alarm.id.uuidString]
         let triggerDate = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
@@ -101,7 +126,6 @@ class AlarmManager: ObservableObject {
                 print("✅ AlarmManager: Alarm scheduled for \(fireDate)")
             }
         }
-        let selectedSound = NoiseGenerator.NoiseType(rawValue: alarm.sound) ?? .birds
         configure(alarmSound: selectedSound)
     }
     
@@ -127,15 +151,26 @@ class AlarmManager: ObservableObject {
         
         // Configure audio session for alarm playback (override any existing session)
         do {
-            // Use .playback category which plays audio even in silent mode
-            // The .playback category automatically plays through speakers and overrides silent mode
+            // Use .playback category to override silent mode
+            // Volume is controlled by alarmVolume property (adjustable in settings)
             let audioSession = AVAudioSession.sharedInstance()
+            
+            // Check system volume and warn if too low
+            let systemVolume = audioSession.outputVolume
+            if systemVolume < 0.3 {
+                print("⚠️ AlarmManager: System media volume is low (\(Int(systemVolume * 100))%). User should increase device volume for louder alarm.")
+            }
+            
+            // Use .playback with no options to ensure maximum loudness
             try audioSession.setCategory(.playback, mode: .default, options: [])
             try audioSession.setActive(true, options: [.notifyOthersOnDeactivation])
-            print("✅ AlarmManager: Audio session configured successfully (will play in silent mode)")
+            
+            print("✅ AlarmManager: Audio session configured successfully (overrides silent mode)")
             print("   - Category: \(audioSession.category.rawValue)")
             print("   - Mode: \(audioSession.mode.rawValue)")
-            print("   - Is active: \(audioSession.isOtherAudioPlaying)")
+            print("   - System Volume: \(Int(systemVolume * 100))%")
+            print("   - App Alarm Volume: \(Int(alarmVolume * 100))%")
+            print("   - Effective Volume: ~\(Int(systemVolume * alarmVolume * 100))%")
         } catch {
             print("❌ AlarmManager: Failed to setup audio session: \(error)")
         }
@@ -182,6 +217,46 @@ class AlarmManager: ObservableObject {
         startAlarm()
     }
     
+    // Play alarm sound preview without triggering alarm UI
+    func playPreview() {
+        print("🎵 AlarmManager: Starting preview playback...")
+        
+        // Configure audio session for preview
+        do {
+            let audioSession = AVAudioSession.sharedInstance()
+            try audioSession.setCategory(.playback, mode: .default, options: [])
+            try audioSession.setActive(true, options: [.notifyOthersOnDeactivation])
+            print("✅ AlarmManager: Audio session configured for preview")
+        } catch {
+            print("❌ AlarmManager: Failed to setup audio session for preview: \(error)")
+        }
+        
+        // Stop any existing preview playback
+        stopPreview()
+        
+        // Play the preview
+        if playAlarm(using: currentAlarmSound) {
+            print("✅ AlarmManager: Preview started with \(currentAlarmSound.description) at \(Int(alarmVolume * 100))%")
+        } else {
+            print("⚠️ AlarmManager: Could not play preview")
+        }
+    }
+    
+    // Stop preview playback without affecting alarm state
+    func stopPreview() {
+        guard !isAlarmActive else {
+            // Don't stop if actual alarm is active
+            return
+        }
+        alarmPlayer?.stop()
+        alarmPlayer = nil
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+        } catch {
+            print("⚠️ AlarmManager: Unable to deactivate audio session after preview: \(error)")
+        }
+    }
+    
     // Check if alarm time has been reached
     func checkAlarm(identifier: String = "sleepAlarm", completion: @escaping (Bool) -> Void) {
         UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
@@ -204,11 +279,11 @@ private extension AlarmManager {
         do {
             let player = try AVAudioPlayer(contentsOf: url)
             player.numberOfLoops = -1
-            player.volume = 1.0
+            player.volume = alarmVolume
             player.prepareToPlay()
             player.play()
             alarmPlayer = player
-            print("🎶 AlarmManager: Playing \(sound.description) alarm sound")
+            print("🎶 AlarmManager: Playing \(sound.description) alarm sound at volume \(Int(alarmVolume * 100))%")
             return true
         } catch {
             print("❌ AlarmManager: Failed to play alarm sound \(sound.rawValue): \(error)")

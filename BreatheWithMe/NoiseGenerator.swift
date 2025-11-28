@@ -227,9 +227,9 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             let audioSession = AVAudioSession.sharedInstance()
             
             // Set category to playback for background audio
-            // Remove .mixWithOthers to prevent iOS from pausing when screen locks
-            // Use .duckOthers instead to lower other audio when our audio plays
-            try audioSession.setCategory(.playback, mode: .default, options: [.duckOthers, .allowBluetooth, .allowAirPlay])
+            // Use .playback category WITHOUT .duckOthers or .mixWithOthers to ensure continuous playback when screen locks
+            // Only include bluetooth and airplay support
+            try audioSession.setCategory(.playback, mode: .default, options: [.allowBluetooth, .allowAirPlay])
             
             // Activate the audio session
             try audioSession.setActive(true, options: [])

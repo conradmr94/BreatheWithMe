@@ -20,10 +20,11 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
                                willPresent notification: UNNotification, 
                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         if notification.request.content.categoryIdentifier == AlarmManager.Constants.categoryID {
-            // Trigger alarm sound even when app is in foreground
+            print("🔔 NotificationDelegate: Alarm notification received (app in foreground)")
+            // Trigger continuous alarm playback when app is in foreground
             AlarmManager.shared.startAlarm()
-            // Show notification banner and play sound
-            completionHandler([.banner, .sound, .badge])
+            // Show notification banner (sound will be handled by startAlarm's looping)
+            completionHandler([.banner, .badge])
         } else {
             // For other notifications, use default presentation
             completionHandler([.banner, .sound, .badge])
@@ -37,17 +38,13 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         let identifier = response.notification.request.identifier
         let category = response.notification.request.content.categoryIdentifier
         if category == AlarmManager.Constants.categoryID {
+            print("🔔 NotificationDelegate: User interacted with alarm notification (action: \(response.actionIdentifier))")
             switch response.actionIdentifier {
             case AlarmManager.Constants.snoozeActionID:
-                if var alarm = SleepAlarmStore.shared.load(), alarm.id.uuidString == identifier {
-                    let newDate = Date().addingTimeInterval(TimeInterval(alarm.snoozeMinutes * 60))
-                    alarm.date = newDate
-                    alarm.isEnabled = true
-                    SleepAlarmStore.shared.save(alarm)
-                    AlarmManager.shared.schedule(alarm: alarm)
-                }
-                AlarmManager.shared.stopAlarm()
+                print("💤 NotificationDelegate: Snooze action tapped")
+                AlarmManager.shared.snoozeAlarm()
             case AlarmManager.Constants.stopActionID:
+                print("🛑 NotificationDelegate: Stop action tapped")
                 if var alarm = SleepAlarmStore.shared.load(), alarm.id.uuidString == identifier {
                     alarm.isEnabled = false
                     SleepAlarmStore.shared.save(alarm)
@@ -55,6 +52,8 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
                 }
                 AlarmManager.shared.stopAlarm()
             default:
+                // User tapped the notification itself (not an action button)
+                print("👆 NotificationDelegate: Notification body tapped - starting continuous alarm")
                 AlarmManager.shared.startAlarm()
             }
         }
