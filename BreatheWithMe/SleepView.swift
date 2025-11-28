@@ -654,10 +654,12 @@ struct SleepView: View {
                             showNoiseSettings = false
                         }
                     }
-                SleepNoiseOptionsModal(
+                NoiseOptionsModal(
                     isPresented: $showNoiseSettings,
                     noiseGenerator: noiseGenerator,
-                    isRunning: isRunning
+                    accentColor: Color(red: 0.4, green: 0.5, blue: 0.8),
+                    isRunning: isRunning,
+                    title: "Sleep Sounds"
                 )
                 .transition(.scale.combined(with: .opacity))
             }
@@ -759,12 +761,6 @@ struct SleepView: View {
                 
                 // Debug: Log current sound state
                 print("🎵 SleepView appeared - Sound state: enabled=\(noiseGenerator.isEnabled), selected=\(noiseGenerator.selectedNoiseTypes), volume=\(noiseGenerator.volume)")
-                
-                // Ensure at least one sound is selected if sounds are enabled
-                if noiseGenerator.isEnabled && noiseGenerator.selectedNoiseTypes.isEmpty {
-                    print("⚠️ SleepView: Sounds enabled but none selected, defaulting to White noise")
-                    noiseGenerator.setNoiseType(.white)
-                }
             }
             .onChange(of: showNoiseSettings) { isPresented in
                 NotificationCenter.default.post(
@@ -800,12 +796,6 @@ struct SleepView: View {
         if noiseGenerator.isEnabled {
             // Debug: Check if sounds are actually selected
             print("🎵 Sleep: Attempting to start noise. Enabled: \(noiseGenerator.isEnabled), Selected types: \(noiseGenerator.selectedNoiseTypes)")
-            
-            // Ensure at least one sound is selected
-            if noiseGenerator.selectedNoiseTypes.isEmpty {
-                print("⚠️ Sleep: No sounds selected, defaulting to White noise")
-                noiseGenerator.setNoiseType(.white)
-            }
             
             noiseGenerator.startNoise()
         }
@@ -933,187 +923,6 @@ struct SleepView: View {
         return formatter.string(from: date)
     }
 }
-
-
-// MARK: - Sound Category Model
-struct SoundCategory {
-    let name: String
-    let icon: String
-    let sounds: [NoiseGenerator.NoiseType]
-    
-    static let allCategories: [SoundCategory] = [
-        SoundCategory(name: "Nature", icon: "leaf", sounds: [.rain, .ocean, .wind, .thunder, .forest, .birds, .night, .cafe, .city, .fire, .nature, .fan]),
-        SoundCategory(name: "Noise", icon: "waveform", sounds: [.white, .pink, .brown, .blue, .green]),
-        SoundCategory(name: "Frequency", icon: "slider.horizontal.3", sounds: [.hz44, .hz66, .hz10]),
-        SoundCategory(name: "Melody", icon: "music.note", sounds: [.uplift, .inspire, .misty, .backdrop, .relax, .yoga])
-    ]
-}
-
-// MARK: - Modal for Sleep Sounds
-struct SleepNoiseOptionsModal: View {
-    @Binding var isPresented: Bool
-    @ObservedObject var noiseGenerator: NoiseGenerator
-    let isRunning: Bool
-    @State private var showMixerSheet = false
-    
-    var body: some View {
-        let modalWidth: CGFloat = 400
-        let modalHeight: CGFloat = 680
-        let accentColor = Color(red: 0.4, green: 0.5, blue: 0.8)
-        let toggleBinding = Binding(
-            get: { noiseGenerator.isEnabled },
-            set: { newValue in
-                noiseGenerator.isEnabled = newValue
-                if newValue {
-                    // Ensure at least one sound is selected when enabling
-                    if noiseGenerator.selectedNoiseTypes.isEmpty {
-                        print("⚠️ Sleep Modal: No sounds selected, defaulting to White noise")
-                        noiseGenerator.setNoiseType(.white)
-                    }
-                    if isRunning {
-                        print("🎵 Sleep Modal: Starting noise (session is running)")
-                        noiseGenerator.startNoise()
-                    }
-                } else {
-                    print("🔇 Sleep Modal: Stopping noise")
-                    noiseGenerator.stopNoise()
-                }
-            }
-        )
-        
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                Text("Sleep Sounds")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
-                Spacer()
-                Toggle(isOn: toggleBinding) {
-                    EmptyView()
-                }
-                .labelsHidden()
-                .toggleStyle(SwitchToggleStyle(tint: accentColor))
-                .accessibilityLabel("Sleep sounds toggle")
-            }
-            
-            ScrollView {
-                VStack(spacing: 12) {
-                        ForEach(SoundCategory.allCategories, id: \.name) { category in
-                            CategorySection(
-                                category: category,
-                                selectedNoiseTypes: noiseGenerator.selectedNoiseTypes,
-                                onSoundSelected: { noiseType in
-                                    withAnimation(.easeInOut(duration: 0.15)) {
-                                        noiseGenerator.toggleNoiseType(noiseType)
-                                    }
-                                    if [.white, .pink, .brown, .blue, .green].contains(noiseType) {
-                                        noiseGenerator.showInfoForNoiseType(noiseType)
-                                    }
-                            }
-                        )
-                    }
-                }
-                .padding(.top, 4)
-            }
-            
-            Spacer()
-            
-            Button(action: {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    showMixerSheet = true
-                }
-            }) {
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(accentColor, lineWidth: 1.2)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(Color.white)
-                    )
-                    .overlay(
-                        Text("Mix")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(accentColor)
-                    )
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-            }
-            .buttonStyle(PlainButtonStyle())
-            .contentShape(Rectangle())
-            
-            Button(action: {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isPresented = false
-                }
-            }) {
-                Text("Done")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(accentColor)
-                    )
-            }
-            .buttonStyle(PlainButtonStyle())
-        }
-        .padding(24)
-        .frame(width: modalWidth, height: modalHeight)
-        .background(
-            RoundedRectangle(cornerRadius: 24)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.1), radius: 24, x: 0, y: 12)
-        )
-        .sheet(isPresented: $showMixerSheet) {
-            SoundMixerSheetView(
-                noiseGenerator: noiseGenerator,
-                accentColor: accentColor
-            )
-        }
-    }
-}
-
-// MARK: - Category Section Component
-struct CategorySection: View {
-    let category: SoundCategory
-    let selectedNoiseTypes: Set<NoiseGenerator.NoiseType>
-    let onSoundSelected: (NoiseGenerator.NoiseType) -> Void
-    
-    private let tileAccentColor = Color(red: 0.4, green: 0.5, blue: 0.8)
-    
-    var body: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Image(systemName: category.icon)
-                    .font(.system(size: 16))
-                    .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.8))
-                Text(category.name)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
-                Spacer()
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 12) {
-                    ForEach(category.sounds, id: \.self) { noiseType in
-                        SoundTileView(
-                            noiseType: noiseType,
-                            isSelected: selectedNoiseTypes.contains(noiseType),
-                            accentColor: tileAccentColor,
-                            onTap: {
-                                onSoundSelected(noiseType)
-                            }
-                        )
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 4)
-            }
-        }
-    }
-}
-
 // MARK: - Alarm Time Picker Modal
 struct AlarmTimePickerModal: View {
     @Binding var isPresented: Bool

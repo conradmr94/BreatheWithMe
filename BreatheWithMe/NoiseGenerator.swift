@@ -21,7 +21,7 @@ class NoiseGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     
     @Published var isEnabled = false
     @Published var selectedNoiseType: NoiseType = .white
-    @Published var selectedNoiseTypes: Set<NoiseType> = [.white]
+    @Published var selectedNoiseTypes: Set<NoiseType> = []
     @Published var volume: Float = 0.3 // Much lower default volume
     @Published var showInfoMessage = false
     @Published var infoMessage = ""

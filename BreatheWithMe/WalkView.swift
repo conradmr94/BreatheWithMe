@@ -313,7 +313,6 @@ struct WalkView: View {
             }
         }
         .buttonStyle(PlainButtonStyle())
-        .padding(.vertical, 12)
         .frame(height: 450)
     }
     
