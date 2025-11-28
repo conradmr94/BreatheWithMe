@@ -33,9 +33,25 @@ struct WalkView: View {
     @State private var currentSteps: Int = 0
     @State private var currentCalories: Double = 0
     @State private var sessionStartSteps: Int = 0
+    @State private var breathingEnabled = false
+    @State private var bellSoundEnabled = true
+    @State private var currentBreathingPhase: BreathingPhase = .inhale
+    private let bellPlayer = BellPlayer()
 
     private enum WalkAction {
         case insights, sounds, session
+    }
+    
+    private enum BreathingPhase {
+        case inhale, hold, exhale, holdAfterExhale
+        
+        var text: String {
+            switch self {
+            case .inhale: return "Breathe In"
+            case .hold, .holdAfterExhale: return "Hold"
+            case .exhale: return "Breathe Out"
+            }
+        }
     }
 
     private let accentColor = Color(red: 0.32, green: 0.72, blue: 0.55)
@@ -268,6 +284,13 @@ struct WalkView: View {
                 
                 VStack(spacing: 12) {
                     if isWalking {
+                        if breathingEnabled {
+                            Text(currentBreathingPhase.text.uppercased())
+                                .font(.system(size: 20, weight: .medium, design: .default))
+                                .foregroundColor(.white.opacity(0.9))
+                                .tracking(2)
+                        }
+                        
                         Text(sessionDurationText)
                             .font(.system(size: 52, weight: .thin, design: .default))
                             .foregroundColor(.white)
@@ -376,6 +399,11 @@ struct WalkView: View {
         walkTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             elapsedSeconds += 1
             
+            // Update breathing phase if enabled (synchronized with walk timer)
+            if breathingEnabled {
+                updateBreathingPhase()
+            }
+            
             // Update steps and calories every 5 seconds
             if elapsedSeconds % 5 == 0 {
                 Task {
@@ -386,6 +414,11 @@ struct WalkView: View {
         
         if noiseGenerator.isEnabled {
             noiseGenerator.startNoise()
+        }
+        
+        // Start breathing guidance if enabled
+        if breathingEnabled {
+            startBreathingGuidance()
         }
         
         withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
@@ -401,6 +434,9 @@ struct WalkView: View {
         if noiseGenerator.isEnabled {
             noiseGenerator.fadeOut()
         }
+        
+        // Stop breathing guidance
+        stopBreathingGuidance()
         
         // Final metrics update
         Task {
@@ -471,6 +507,87 @@ struct WalkView: View {
     
     private var currentDistanceMeters: Double {
         locationManager.totalDistanceMeters
+    }
+    
+    // MARK: - Breathing Pattern Support
+    
+    private func getPatternTimings(_ pattern: String) -> [Double] {
+        switch pattern {
+        case "Box":
+            // 4s inhale, 4s hold, 4s exhale, 4s hold
+            return [4.0, 4.0, 4.0, 4.0]
+        case "4-7-8":
+            // 4s inhale, 7s hold, 8s exhale
+            return [4.0, 7.0, 8.0]
+        case "Equal Breath":
+            // 4s inhale, 4s exhale (no holds)
+            return [4.0, 0.0, 4.0]
+        case "Resonant 5.5":
+            // 5.5s inhale, 5.5s exhale (no holds)
+            return [5.5, 0.0, 5.5]
+        default:
+            return [4.0, 0.0, 4.0]
+        }
+    }
+    
+    private func getCycleDuration(_ pattern: String) -> Double {
+        let timings = getPatternTimings(pattern)
+        return timings.reduce(0, +)
+    }
+    
+    private func startBreathingGuidance() {
+        guard breathingEnabled else { return }
+        
+        currentBreathingPhase = .inhale
+        
+        // Play initial bell
+        if bellSoundEnabled {
+            bellPlayer.playBell()
+        }
+    }
+    
+    private func stopBreathingGuidance() {
+        currentBreathingPhase = .inhale
+    }
+    
+    private func updateBreathingPhase() {
+        guard breathingEnabled else { return }
+        
+        let timings = getPatternTimings(selectedBreathingPattern)
+        let cycleDuration = getCycleDuration(selectedBreathingPattern)
+        let t = Double(elapsedSeconds).truncatingRemainder(dividingBy: cycleDuration)
+        
+        let newPhase: BreathingPhase
+        
+        if timings.count == 4 {
+            // Box breathing: inhale, hold, exhale, hold
+            if t < timings[0] {
+                newPhase = .inhale
+            } else if t < timings[0] + timings[1] {
+                newPhase = .hold
+            } else if t < timings[0] + timings[1] + timings[2] {
+                newPhase = .exhale
+            } else {
+                newPhase = .holdAfterExhale
+            }
+        } else {
+            // 3-phase patterns: inhale, hold (if any), exhale
+            if t < timings[0] {
+                newPhase = .inhale
+            } else if timings[1] > 0 && t < timings[0] + timings[1] {
+                newPhase = .hold
+            } else {
+                newPhase = .exhale
+            }
+        }
+        
+        // Play bell on phase change
+        if newPhase != currentBreathingPhase {
+            currentBreathingPhase = newPhase
+            if bellSoundEnabled {
+                bellPlayer.playBell()
+            }
+        }
     }
     
     // MARK: - HealthKit Integration
@@ -660,7 +777,19 @@ struct WalkView: View {
                 distanceMeters: currentDistanceMeters,
                 calories: currentCalories,
                 accentColor: accentColor,
-                selectedPattern: $selectedBreathingPattern
+                selectedPattern: $selectedBreathingPattern,
+                breathingEnabled: $breathingEnabled,
+                bellSoundEnabled: $bellSoundEnabled,
+                onBreathingToggled: {
+                    // Restart breathing guidance with new settings if walking
+                    if isWalking && breathingEnabled {
+                        // Reset to inhale phase and play bell
+                        currentBreathingPhase = .inhale
+                        if bellSoundEnabled {
+                            bellPlayer.playBell()
+                        }
+                    }
+                }
             )
         }
         .onChange(of: showNoiseSettings) { isPresented in
@@ -732,6 +861,9 @@ private struct SessionDetailsModal: View {
     let accentColor: Color
     @Binding var selectedPattern: String
     @State private var showBreathingPatterns = false
+    @Binding var breathingEnabled: Bool
+    @Binding var bellSoundEnabled: Bool
+    var onBreathingToggled: () -> Void
     
     private var distanceText: String {
         distanceMeters > 0 ? String(format: "%.2f km", distanceMeters / 1000.0) : "— km"
@@ -787,6 +919,10 @@ private struct SessionDetailsModal: View {
                                 Button(action: {
                                     withAnimation(.easeInOut(duration: 0.3)) {
                                         showBreathingPatterns = true
+                                        breathingEnabled = true
+                                        if isWalking {
+                                            onBreathingToggled()
+                                        }
                                     }
                                 }) {
                                     Text("Yes")
@@ -802,6 +938,7 @@ private struct SessionDetailsModal: View {
                                 .buttonStyle(PlainButtonStyle())
                                 
                                 Button(action: {
+                                    breathingEnabled = false
                                     isPresented = false
                                 }) {
                                     Text("Maybe Later")
@@ -818,10 +955,56 @@ private struct SessionDetailsModal: View {
                             }
                         }
                     } else {
-                        BreathingPatternPickerWithDescriptions(
-                            selectedPattern: $selectedPattern,
-                            accentColor: accentColor
-                        )
+                        VStack(spacing: 14) {
+                            BreathingPatternPickerWithDescriptions(
+                                selectedPattern: $selectedPattern,
+                                accentColor: accentColor,
+                                onPatternChanged: {
+                                    if isWalking {
+                                        onBreathingToggled()
+                                    }
+                                }
+                            )
+                            
+                            // Bell sound toggle
+                            HStack {
+                                Toggle(isOn: $bellSoundEnabled) {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: bellSoundEnabled ? "bell.fill" : "bell.slash")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(accentColor)
+                                        Text("Transition Sounds")
+                                            .font(.system(size: 14, weight: .medium))
+                                            .foregroundColor(Color.primary)
+                                    }
+                                }
+                                .toggleStyle(SwitchToggleStyle(tint: accentColor))
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color(.secondarySystemBackground))
+                            )
+                            
+                            // Disable breathing button
+                            Button(action: {
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    breathingEnabled = false
+                                    showBreathingPatterns = false
+                                    if isWalking {
+                                        onBreathingToggled()
+                                    }
+                                }
+                            }) {
+                                Text("Disable Breathing Guidance")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(Color.secondary)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 8)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
                     }
                 }
                 .padding()
@@ -863,6 +1046,7 @@ private struct SessionDetailsModal: View {
 private struct BreathingPatternPickerWithDescriptions: View {
     @Binding var selectedPattern: String
     let accentColor: Color
+    var onPatternChanged: (() -> Void)? = nil
     
     private let patterns: [(name: String, description: String)] = [
         ("Box", "Equal 4-second intervals for focus and calm. Great for stress relief."),
@@ -876,6 +1060,7 @@ private struct BreathingPatternPickerWithDescriptions: View {
             ForEach(patterns, id: \.name) { pattern in
                 Button(action: {
                     selectedPattern = pattern.name
+                    onPatternChanged?()
                 }) {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
