@@ -59,6 +59,7 @@ struct SleepView: View {
     @State private var alarm: SleepAlarm?
     @State private var alarmTimePickerValue: Date = Date()
     @State private var selectedAlarmSound: NoiseGenerator.NoiseType = .birds
+    @State private var snoozeDuration: Int = 10 // Default 10 minutes
     @State private var showAlarmSettings = false
     @StateObject private var alarmManager = AlarmManager.shared
     @AppStorage("focusLockUntilTimestamp") private var focusLockUntilTimestamp: Double = 0
@@ -72,6 +73,7 @@ struct SleepView: View {
         _alarmTimePickerValue = State(initialValue: storedAlarm?.date ?? defaultDate)
         let sound = storedAlarm.flatMap { NoiseGenerator.NoiseType(rawValue: $0.sound) } ?? .birds
         _selectedAlarmSound = State(initialValue: sound)
+        _snoozeDuration = State(initialValue: storedAlarm?.snoozeMinutes ?? 10)
         AlarmManager.shared.configure(alarmSound: sound)
     }
     
@@ -357,12 +359,21 @@ struct SleepView: View {
 
                             if isAlarmEnabled {
                                 VStack(alignment: .center, spacing: 4) {
-                                    Text("Next alarm: \(alarmDisplayTime)")
-                                        .font(.system(size: 13, weight: .medium))
-                                        .foregroundColor(.white.opacity(0.85))
-                                    Text("Sound: \(selectedAlarmSound.description)")
-                                        .font(.system(size: 12, weight: .regular))
-                                        .foregroundColor(.white.opacity(0.6))
+                                    if let snoozeTime = alarmManager.snoozeTime {
+                                        Text("Snoozed until: \(formatAlarmTime(snoozeTime))")
+                                            .font(.system(size: 13, weight: .medium))
+                                            .foregroundColor(.white.opacity(0.85))
+                                        Text("Snooze: \(snoozeDuration) min")
+                                            .font(.system(size: 12, weight: .regular))
+                                            .foregroundColor(.white.opacity(0.6))
+                                    } else {
+                                        Text("Next alarm: \(alarmDisplayTime)")
+                                            .font(.system(size: 13, weight: .medium))
+                                            .foregroundColor(.white.opacity(0.85))
+                                        Text("Sound: \(selectedAlarmSound.description)")
+                                            .font(.system(size: 12, weight: .regular))
+                                            .foregroundColor(.white.opacity(0.6))
+                                    }
                                 }
                                 .frame(maxWidth: .infinity)
                                 .transition(.opacity)
@@ -458,6 +469,17 @@ struct SleepView: View {
             }
         )
     }
+    private var snoozeDurationBinding: Binding<Int> {
+        Binding(
+            get: { snoozeDuration },
+            set: { newValue in
+                if snoozeDuration != newValue {
+                    snoozeDuration = newValue
+                    persistSnoozeDuration(newValue)
+                }
+            }
+        )
+    }
     private var focusLockActive: Bool {
         focusLockUntilTimestamp > Date().timeIntervalSince1970
     }
@@ -501,6 +523,7 @@ struct SleepView: View {
         if var existing = alarm {
             existing.isEnabled.toggle()
             existing.sound = selectedAlarmSound.rawValue
+            existing.snoozeMinutes = snoozeDuration
             if existing.isEnabled {
                 AlarmManager.shared.requestNotificationPermission()
                 existing.date = normalizedFireDate(from: alarmTimePickerValue)
@@ -521,7 +544,7 @@ struct SleepView: View {
             }
         } else {
             AlarmManager.shared.requestNotificationPermission()
-            let newAlarm = SleepAlarm(date: normalizedFireDate(from: alarmTimePickerValue), isEnabled: true, label: "Wake Up", snoozeMinutes: 10, sound: selectedAlarmSound.rawValue)
+            let newAlarm = SleepAlarm(date: normalizedFireDate(from: alarmTimePickerValue), isEnabled: true, label: "Wake Up", snoozeMinutes: snoozeDuration, sound: selectedAlarmSound.rawValue)
             alarmTimePickerValue = newAlarm.date
             SleepAlarmStore.shared.save(newAlarm)
             alarm = newAlarm
@@ -534,6 +557,7 @@ struct SleepView: View {
         let adjusted = normalizedFireDate(from: newValue)
         if var existing = alarm {
             existing.date = adjusted
+            existing.snoozeMinutes = snoozeDuration
             alarmTimePickerValue = adjusted
             SleepAlarmStore.shared.save(existing)
             alarm = existing
@@ -545,7 +569,7 @@ struct SleepView: View {
                 }
             }
         } else {
-            let newAlarm = SleepAlarm(date: adjusted, isEnabled: false, label: "Wake Up", snoozeMinutes: 10, sound: selectedAlarmSound.rawValue)
+            let newAlarm = SleepAlarm(date: adjusted, isEnabled: false, label: "Wake Up", snoozeMinutes: snoozeDuration, sound: selectedAlarmSound.rawValue)
             SleepAlarmStore.shared.save(newAlarm)
             alarm = newAlarm
         }
@@ -555,6 +579,7 @@ struct SleepView: View {
         stopAlarmPreview()
         if var existing = alarm {
             existing.sound = newSound.rawValue
+            existing.snoozeMinutes = snoozeDuration
             SleepAlarmStore.shared.save(existing)
             alarm = existing
             if existing.isEnabled {
@@ -562,11 +587,27 @@ struct SleepView: View {
                 AlarmManager.shared.schedule(alarm: existing)
             }
         } else {
-            let newAlarm = SleepAlarm(date: normalizedFireDate(from: alarmTimePickerValue), isEnabled: false, label: "Wake Up", snoozeMinutes: 10, sound: newSound.rawValue)
+            let newAlarm = SleepAlarm(date: normalizedFireDate(from: alarmTimePickerValue), isEnabled: false, label: "Wake Up", snoozeMinutes: snoozeDuration, sound: newSound.rawValue)
             SleepAlarmStore.shared.save(newAlarm)
             alarm = newAlarm
         }
         alarmManager.configure(alarmSound: newSound)
+    }
+    
+    private func persistSnoozeDuration(_ newDuration: Int) {
+        if var existing = alarm {
+            existing.snoozeMinutes = newDuration
+            SleepAlarmStore.shared.save(existing)
+            alarm = existing
+            if existing.isEnabled {
+                AlarmManager.shared.requestNotificationPermission()
+                AlarmManager.shared.schedule(alarm: existing)
+            }
+        } else {
+            let newAlarm = SleepAlarm(date: normalizedFireDate(from: alarmTimePickerValue), isEnabled: false, label: "Wake Up", snoozeMinutes: newDuration, sound: selectedAlarmSound.rawValue)
+            SleepAlarmStore.shared.save(newAlarm)
+            alarm = newAlarm
+        }
     }
 
     private func normalizedFireDate(from date: Date) -> Date {
@@ -618,6 +659,16 @@ struct SleepView: View {
         if isPreviewingAlarm {
             alarmManager.stopPreview()
             isPreviewingAlarm = false
+        }
+    }
+    
+    private func reloadAlarmFromStore() {
+        if let storedAlarm = SleepAlarmStore.shared.load() {
+            alarm = storedAlarm
+            alarmTimePickerValue = storedAlarm.date
+            selectedAlarmSound = NoiseGenerator.NoiseType(rawValue: storedAlarm.sound) ?? .birds
+            snoozeDuration = storedAlarm.snoozeMinutes
+            print("✅ SleepView: Alarm reloaded from store - next alarm: \(formatAlarmTime(storedAlarm.date))")
         }
     }
     
@@ -683,6 +734,7 @@ struct SleepView: View {
                     isAlarmEnabled: alarmEnabledBinding,
                     alarmDate: alarmTimeBinding,
                     selectedSound: alarmSoundBinding,
+                    snoozeDuration: snoozeDurationBinding,
                     soundOptions: NoiseGenerator.NoiseType.alarmEligibleCases,
                     focusLockBinding: focusLockToggleBinding,
                     focusLockDescription: focusLockStatusText,
@@ -715,9 +767,13 @@ struct SleepView: View {
                         if isRunning {
                             stopTimer()
                         }
+                        // Reload alarm state after dismissing
+                        reloadAlarmFromStore()
                     },
                     onSnooze: {
                         alarmManager.snoozeAlarm()
+                        // Reload alarm state to reflect the new snooze time
+                        reloadAlarmFromStore()
                     }
                 )
             .zIndex(4)
@@ -1183,6 +1239,7 @@ private struct AlarmSettingsSheet: View {
     @Binding var isAlarmEnabled: Bool
     @Binding var alarmDate: Date
     @Binding var selectedSound: NoiseGenerator.NoiseType
+    @Binding var snoozeDuration: Int
     let soundOptions: [NoiseGenerator.NoiseType]
     let focusLockBinding: Binding<Bool>
     let focusLockDescription: String
@@ -1208,7 +1265,8 @@ private struct AlarmSettingsSheet: View {
                 .buttonStyle(PlainButtonStyle())
             }
             
-            VStack(alignment: .leading, spacing: 24) {
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: 24) {
                 // Alarm Toggle
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
@@ -1326,6 +1384,31 @@ private struct AlarmSettingsSheet: View {
                     .disabled(!isAlarmEnabled)
                 }
                 
+                // Snooze Duration
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 16))
+                            .foregroundColor(Color(red: 0.4, green: 0.5, blue: 0.8))
+                        Text("Snooze Duration")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                    }
+                    
+                    Picker("Duration", selection: $snoozeDuration) {
+                        ForEach(1...60, id: \.self) { minute in
+                            Text("\(minute) min").tag(minute)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                    .labelsHidden()
+                    .colorScheme(.light)
+                    .frame(height: 120)
+                    .disabled(!isAlarmEnabled)
+                    .opacity(isAlarmEnabled ? 1.0 : 0.5)
+                    .padding(.top, 4)
+                }
+                
                 // Focus Lock
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
@@ -1352,8 +1435,10 @@ private struct AlarmSettingsSheet: View {
                     .disabled(!isAlarmEnabled)
                     .opacity(isAlarmEnabled ? 1.0 : 0.5)
                 }
+                }
+                .padding(.top, 4)
             }
-            .padding(.top, 4)
+            .frame(maxHeight: 500)
             
             // Done button
             Button(action: {
