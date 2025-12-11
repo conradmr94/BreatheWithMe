@@ -33,6 +33,10 @@ class AlarmManager: ObservableObject {
     private var alarmCheckTimer: Timer?
     private var scheduledAlarmDate: Date?
     
+    // Alarm interaction tracking
+    var currentAlarmStartTime: Date?
+    var currentAlarmSnoozeCount: Int = 0
+    
     // UserDefaults key for persisting volume
     private let alarmVolumeKey = "alarmVolume"
     
@@ -42,12 +46,24 @@ class AlarmManager: ObservableObject {
             alarmVolume = savedVolume
         }
         registerNotificationCategories()
-        requestNotificationPermission()
         setupBackgroundKeepalive()
+        
+        // Request permissions on init so we can check status
+        // But don't show the prompt yet - that happens when user sets an alarm
+        checkNotificationStatus()
         
         // Restore alarm check timer if there's a scheduled alarm
         if let alarm = SleepAlarmStore.shared.load(), alarm.isEnabled {
             startAlarmMonitoring(for: alarm.date)
+        }
+    }
+    
+    private func checkNotificationStatus() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            print("📱 Notification authorization status: \(settings.authorizationStatus.rawValue)")
+            if settings.authorizationStatus == .denied {
+                print("⚠️ Notifications are DENIED - user needs to enable in Settings")
+            }
         }
     }
     
@@ -67,11 +83,53 @@ class AlarmManager: ObservableObject {
 
     // Request notification permission
     func requestNotificationPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
-            if let error = error {
-                print("❌ AlarmManager: Failed to request notification permission: \(error)")
-            } else if granted {
-                print("✅ AlarmManager: Notification permission granted")
+        // First check current authorization status
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            print("📱 Current notification authorization: \(settings.authorizationStatus.rawValue)")
+            
+            switch settings.authorizationStatus {
+            case .notDetermined:
+                // Request permissions if not yet determined
+                print("🔔 Requesting notification permissions...")
+                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+                    if let error = error {
+                        print("❌ AlarmManager: Failed to request notification permission: \(error)")
+                    } else if granted {
+                        print("✅ AlarmManager: Notification permission granted")
+                        self.logNotificationSettings()
+                    } else {
+                        print("⚠️ AlarmManager: Notification permission denied by user")
+                        print("   User needs to enable notifications in Settings app")
+                    }
+                }
+                
+            case .denied:
+                print("❌ AlarmManager: Notifications are DENIED")
+                print("   📱 User must go to: Settings > BreatheWithMe > Notifications")
+                print("   📱 Then enable 'Allow Notifications'")
+                
+            case .authorized, .provisional, .ephemeral:
+                print("✅ AlarmManager: Notifications already authorized")
+                self.logNotificationSettings()
+                
+            @unknown default:
+                print("⚠️ AlarmManager: Unknown authorization status")
+            }
+        }
+    }
+    
+    private func logNotificationSettings() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            print("📋 Notification Settings Details:")
+            print("   - Lock Screen: \(settings.lockScreenSetting.rawValue) (0=notSupported, 1=disabled, 2=enabled)")
+            print("   - Alert Style: \(settings.alertSetting.rawValue) (0=notSupported, 1=disabled, 2=enabled)")
+            print("   - Sound: \(settings.soundSetting.rawValue)")
+            if settings.lockScreenSetting == .disabled {
+                print("   ⚠️ LOCK SCREEN NOTIFICATIONS ARE DISABLED!")
+                print("   📱 Go to: Settings > BreatheWithMe > Notifications > Lock Screen")
+            }
+            if settings.alertSetting == .disabled {
+                print("   ⚠️ ALERT NOTIFICATIONS ARE DISABLED!")
             }
         }
     }
@@ -79,21 +137,22 @@ class AlarmManager: ObservableObject {
     func registerNotificationCategories() {
         let snooze = UNNotificationAction(
             identifier: Constants.snoozeActionID,
-            title: "Snooze 10 min",
-            options: []
+            title: "Snooze",
+            options: [.foreground]
         )
         let stop = UNNotificationAction(
             identifier: Constants.stopActionID,
             title: "Stop",
-            options: [.destructive]
+            options: [.destructive, .foreground]
         )
         let category = UNNotificationCategory(
             identifier: Constants.categoryID,
             actions: [snooze, stop],
             intentIdentifiers: [],
-            options: []
+            options: [.customDismissAction]
         )
         UNUserNotificationCenter.current().setNotificationCategories([category])
+        print("✅ AlarmManager: Notification categories registered with foreground actions")
     }
     
     // Schedule alarm notification
@@ -114,19 +173,25 @@ class AlarmManager: ObservableObject {
         content.title = alarm.label ?? "Alarm"
         content.body = "Time to wake up"
         
-        // Use custom alarm sound in notification
+        // Get the selected alarm sound for configuration
         let selectedSound = NoiseGenerator.NoiseType(rawValue: alarm.sound) ?? .birds
-        if let fileName = selectedSound.bundleFileName {
-            // UNNotificationSound requires the file to be in the app bundle
-            content.sound = UNNotificationSound(named: UNNotificationSoundName(rawValue: fileName))
-            print("📢 AlarmManager: Notification will use custom sound: \(fileName)")
-        } else {
-            content.sound = .default
-            print("⚠️ AlarmManager: Falling back to default notification sound")
+        
+        // Use default notification sound since iOS doesn't support .mp3 files for notifications
+        // The actual alarm sound will play through background audio session (see startAlarmMonitoring)
+        // iOS only supports .caf, .aiff, .wav, or .m4a for notification sounds, not .mp3
+        content.sound = .default
+        print("📢 AlarmManager: Using default notification sound (alarm sound will play via background audio)")
+        
+        // Configure for lock screen display
+        content.categoryIdentifier = Constants.categoryID
+        content.userInfo = ["alarmId": alarm.id.uuidString, "isAlarm": true]
+        
+        // Make notification time-sensitive so it breaks through Focus modes and shows prominently
+        if #available(iOS 15.0, *) {
+            content.interruptionLevel = .timeSensitive
+            content.relevanceScore = 1.0 // Highest relevance
         }
         
-        content.categoryIdentifier = Constants.categoryID
-        content.userInfo = ["alarmId": alarm.id.uuidString]
         let triggerDate = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
         let trigger = UNCalendarNotificationTrigger(dateMatching: triggerDate, repeats: false)
         let request = UNNotificationRequest(identifier: alarm.id.uuidString, content: content, trigger: trigger)
@@ -135,6 +200,34 @@ class AlarmManager: ObservableObject {
                 print("❌ AlarmManager: Failed to schedule alarm: \(error)")
             } else {
                 print("✅ AlarmManager: Alarm scheduled for \(fireDate)")
+                
+                // Verify notification was added
+                UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
+                    let alarmNotifications = requests.filter { $0.identifier == alarm.id.uuidString }
+                    print("📋 AlarmManager: Found \(alarmNotifications.count) pending alarm notification(s)")
+                    if let notification = alarmNotifications.first {
+                        print("   - ID: \(notification.identifier)")
+                        print("   - Title: \(notification.content.title)")
+                        print("   - Body: \(notification.content.body)")
+                        if let trigger = notification.trigger as? UNCalendarNotificationTrigger {
+                            print("   - Trigger: \(trigger.nextTriggerDate() ?? Date())")
+                        }
+                    }
+                }
+                
+                // Check notification settings
+                UNUserNotificationCenter.current().getNotificationSettings { settings in
+                    print("📱 Notification Settings:")
+                    print("   - Authorization: \(settings.authorizationStatus.rawValue)")
+                    print("   - Alert: \(settings.alertSetting.rawValue)")
+                    print("   - Sound: \(settings.soundSetting.rawValue)")
+                    print("   - Badge: \(settings.badgeSetting.rawValue)")
+                    print("   - Lock Screen: \(settings.lockScreenSetting.rawValue)")
+                    print("   - Notification Center: \(settings.notificationCenterSetting.rawValue)")
+                    if #available(iOS 15.0, *) {
+                        print("   - Time Sensitive: \(settings.timeSensitiveSetting.rawValue)")
+                    }
+                }
             }
         }
         configure(alarmSound: selectedSound)
@@ -163,6 +256,8 @@ class AlarmManager: ObservableObject {
         print("🔔 AlarmManager: Starting alarm...")
         isAlarmActive = true
         snoozeTime = nil
+        currentAlarmStartTime = Date() // Track when alarm started
+        currentAlarmSnoozeCount = 0 // Reset snooze count
         
         // Stop keepalive audio if it's running
         keepalivePlayer?.stop()
@@ -221,6 +316,7 @@ class AlarmManager: ObservableObject {
             stopAlarm()
             return
         }
+        currentAlarmSnoozeCount += 1 // Track snooze count
         let newAlarmTime = Date().addingTimeInterval(TimeInterval(alarm.snoozeMinutes * 60))
         alarm.date = newAlarmTime
         alarm.isEnabled = true
@@ -228,7 +324,26 @@ class AlarmManager: ObservableObject {
         snoozeTime = newAlarmTime
         stopAlarm()
         schedule(alarm: alarm) // This will restart monitoring with the new time
-        print("✅ AlarmManager: Alarm snoozed until \(newAlarmTime)")
+        print("✅ AlarmManager: Alarm snoozed until \(newAlarmTime) (snooze count: \(currentAlarmSnoozeCount))")
+    }
+    
+    func recordAlarmDismissed() -> (snoozes: Int, responseTime: Int) {
+        let snoozes = currentAlarmSnoozeCount
+        var responseTime = 0
+        
+        if let startTime = currentAlarmStartTime {
+            responseTime = Int(Date().timeIntervalSince(startTime))
+        }
+        
+        // Reset tracking for next alarm
+        resetAlarmTracking()
+        
+        return (snoozes: snoozes, responseTime: responseTime)
+    }
+    
+    func resetAlarmTracking() {
+        currentAlarmStartTime = nil
+        currentAlarmSnoozeCount = 0
     }
     
     // Play alarm sound (for when app is in foreground - legacy support)
@@ -285,6 +400,36 @@ class AlarmManager: ObservableObject {
         }
     }
     
+    // Test function to verify notifications work on lock screen
+    func sendTestNotification() {
+        print("🧪 Sending test notification...")
+        
+        let content = UNMutableNotificationContent()
+        content.title = "Test Alarm"
+        content.body = "This is a test notification to verify lock screen display"
+        content.sound = .default
+        content.categoryIdentifier = Constants.categoryID
+        
+        // Make it time-sensitive
+        if #available(iOS 15.0, *) {
+            content.interruptionLevel = .timeSensitive
+            content.relevanceScore = 1.0
+        }
+        
+        // Trigger in 5 seconds
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
+        let request = UNNotificationRequest(identifier: "test-alarm", content: content, trigger: trigger)
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ Test notification failed: \(error)")
+            } else {
+                print("✅ Test notification scheduled - will appear in 5 seconds")
+                print("   Lock your phone now to test lock screen display!")
+            }
+        }
+    }
+    
     // MARK: - Background Keepalive for Locked Screen Alarms
     
     /// Sets up background audio session for alarm keepalive
@@ -312,23 +457,28 @@ class AlarmManager: ObservableObject {
     private func startAlarmMonitoring(for date: Date) {
         scheduledAlarmDate = date
         
-        // Configure audio session for background
+        // Configure audio session for background playback
+        // This is critical for alarm to work when screen is locked
         do {
             let audioSession = AVAudioSession.sharedInstance()
+            // Use .playback category to ensure audio plays even when locked
+            // .mixWithOthers is NOT used to ensure we can override silent mode
             try audioSession.setCategory(.playback, mode: .default, options: [.allowBluetooth, .allowAirPlay])
             try audioSession.setActive(true, options: [])
             print("✅ AlarmManager: Background audio session activated for alarm monitoring")
+            print("   - Category: \(audioSession.category.rawValue)")
+            print("   - Mode: \(audioSession.mode.rawValue)")
         } catch {
             print("❌ AlarmManager: Failed to activate background audio session: \(error)")
         }
         
-        // Start silent keepalive audio
+        // Start silent keepalive audio to maintain background audio session
         keepalivePlayer?.play()
         print("🔇 AlarmManager: Silent keepalive audio started")
         
-        // Start timer to check for alarm time (checks every 5 seconds)
+        // Start timer to check for alarm time (checks every 1 second for more precise timing)
         alarmCheckTimer?.invalidate()
-        alarmCheckTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+        alarmCheckTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             self?.checkForAlarmTime()
         }
         RunLoop.main.add(alarmCheckTimer!, forMode: .common)
@@ -354,12 +504,14 @@ class AlarmManager: ObservableObject {
         let now = Date()
         let timeUntilAlarm = alarmDate.timeIntervalSince(now)
         
-        // Trigger alarm if we're within 5 seconds of the alarm time or past it
-        if timeUntilAlarm <= 5.0 && timeUntilAlarm >= -60.0 {
+        // Trigger alarm if we're within 1 second of the alarm time or past it
+        // More precise timing ensures alarm triggers exactly when notification fires
+        if timeUntilAlarm <= 1.0 && timeUntilAlarm >= -60.0 {
             print("⏰ AlarmManager: Alarm time reached! Triggering alarm...")
             stopAlarmMonitoring() // Stop keepalive before starting real alarm
             
-            // Trigger the alarm
+            // Trigger the alarm immediately
+            // Use main queue to ensure UI updates work, but don't delay audio playback
             DispatchQueue.main.async { [weak self] in
                 self?.startAlarm()
             }

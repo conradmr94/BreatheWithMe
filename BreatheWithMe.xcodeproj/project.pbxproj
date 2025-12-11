@@ -66,6 +66,8 @@
 		E1C0B102000000000000001 /* WalkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C0A002000000000000001 /* WalkView.swift */; };
 		E1C0B103000000000000001 /* WalkStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C0A003000000000000001 /* WalkStatsView.swift */; };
 		E1C0B104000000000000001 /* WalkLocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C0A004000000000000001 /* WalkLocationManager.swift */; };
+		E1C0B105000000000000001 /* PhoneActivityMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C0A005000000000000001 /* PhoneActivityMonitor.swift */; };
+		E1C0B106000000000000001 /* SleepTimingAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C0A006000000000000001 /* SleepTimingAnalyzer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -131,6 +133,8 @@
 		E1C0A002000000000000001 /* WalkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkView.swift; sourceTree = "<group>"; };
 		E1C0A003000000000000001 /* WalkStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkStatsView.swift; sourceTree = "<group>"; };
 		E1C0A004000000000000001 /* WalkLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkLocationManager.swift; sourceTree = "<group>"; };
+		E1C0A005000000000000001 /* PhoneActivityMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneActivityMonitor.swift; sourceTree = "<group>"; };
+		E1C0A006000000000000001 /* SleepTimingAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepTimingAnalyzer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -190,6 +194,8 @@
 				A1000064000000000000001 /* SleepStatsView.swift */,
 				E1C0A003000000000000001 /* WalkStatsView.swift */,
 				E1C0A004000000000000001 /* WalkLocationManager.swift */,
+				E1C0A005000000000000001 /* PhoneActivityMonitor.swift */,
+				E1C0A006000000000000001 /* SleepTimingAnalyzer.swift */,
 				A1000068000000000000001 /* ActivityCalendarView.swift */,
 				A1000067000000000000001 /* UserStatsManager.swift */,
 				A1000056000000000000001 /* SwipeDownToOpenProfile.swift */,
@@ -363,6 +369,8 @@
 				E1C0B102000000000000001 /* WalkView.swift in Sources */,
 				E1C0B103000000000000001 /* WalkStatsView.swift in Sources */,
 				E1C0B104000000000000001 /* WalkLocationManager.swift in Sources */,
+				E1C0B105000000000000001 /* PhoneActivityMonitor.swift in Sources */,
+				E1C0B106000000000000001 /* SleepTimingAnalyzer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -503,8 +511,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = BreatheWithMe/Info.plist;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "This app uses HealthKit to track your sleep patterns and provide personalized breathing exercises based on your health data.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "This app writes mindful minutes and sleep sessions to HealthKit so your progress stays in sync.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "This app uses HealthKit to provide personalized breathing exercises based on your health data.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "This app writes mindful minutes to HealthKit so your progress stays in sync.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to map mindful walks and calculate distance.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "Motion & Fitness access lets us read step counts during your mindful walks.";
 				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "This app needs notifications to alert you when your sleep alarm goes off.";
@@ -540,8 +548,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = BreatheWithMe/Info.plist;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "This app uses HealthKit to track your sleep patterns and provide personalized breathing exercises based on your health data.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "This app writes mindful minutes and sleep sessions to HealthKit so your progress stays in sync.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "This app uses HealthKit to provide personalized breathing exercises based on your health data.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "This app writes mindful minutes to HealthKit so your progress stays in sync.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to map mindful walks and calculate distance.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "Motion & Fitness access lets us read step counts during your mindful walks.";
 				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "This app needs notifications to alert you when your sleep alarm goes off.";

@@ -6,6 +6,8 @@
 	<array>
 		<string>audio</string>
 	</array>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>BreatheWithMe uses the microphone to detect sleep disturbances like snoring when you enable audio monitoring. This helps improve your sleep quality insights. All data stays on your device.</string>
 </dict>
 </plist>
 

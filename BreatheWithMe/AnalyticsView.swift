@@ -21,20 +21,24 @@ struct AnalyticsView: View {
         themeManager.themeColors(for: systemColorScheme)
     }
     
-    private var resolvedColorScheme: ColorScheme {
-        themeManager.colorScheme(for: systemColorScheme)
+    private var resolvedColorScheme: ColorScheme? {
+        // When theme is "System", return nil to let the system control the color scheme
+        if themeManager.currentTheme == .default {
+            return nil
+        }
+        return themeManager.colorScheme(for: systemColorScheme)
     }
     
     private var usesDarkAppearance: Bool {
-        resolvedColorScheme == .dark
+        (resolvedColorScheme ?? systemColorScheme) == .dark
     }
     
-    enum AnalyticsTab: String, CaseIterable {
-        case breathing = "Breathe"
-        case focus = "Focus"
-        case sleep = "Sleep"
-        case walk = "Walk"
-        case insights = "Insights"
+    enum AnalyticsTab: CaseIterable {
+        case breathing
+        case walk
+        case focus
+        case sleep
+        case insights
         
         var icon: String {
             switch self {
@@ -61,22 +65,16 @@ struct AnalyticsView: View {
                         }
                     }) {
                         let isSelected = selectedTab == tab
-                        VStack(spacing: 5) {
-                            Image(systemName: tab.icon)
-                                .font(.system(size: 18, weight: .medium))
-                            Text(tab.rawValue)
-                                .font(.system(size: 12, weight: .semibold))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                        }
-                        .foregroundColor(isSelected ? colors.primaryText : colors.secondaryText)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(isSelected ? colors.accent.opacity(usesDarkAppearance ? 0.7 : 1.0) : colors.cardBackground.opacity(usesDarkAppearance ? 0.45 : 0.85))
-                                .shadow(color: isSelected ? colors.accent.opacity(0.35) : colors.cardShadow, radius: isSelected ? 8 : 4, x: 0, y: isSelected ? 4 : 2)
-                        )
+                        Image(systemName: tab.icon)
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(isSelected ? colors.primaryText : colors.secondaryText)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(isSelected ? colors.accent.opacity(usesDarkAppearance ? 0.7 : 1.0) : colors.cardBackground.opacity(usesDarkAppearance ? 0.45 : 0.85))
+                                    .shadow(color: isSelected ? colors.accent.opacity(0.35) : colors.cardShadow, radius: isSelected ? 8 : 4, x: 0, y: isSelected ? 4 : 2)
+                            )
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
@@ -825,7 +823,6 @@ struct SleepAnalyticsContent: View {
     
     @StateObject private var sessionManager = SessionManager.shared
     @State private var selectedTimeframe: Timeframe = .week
-    @StateObject private var vm = SleepViewModel()
     @AppStorage("sleepStats") private var sleepStatsData: Data = Data()
     
     enum Timeframe: String, CaseIterable {
@@ -852,10 +849,6 @@ struct SleepAnalyticsContent: View {
     private var sleepSessions: [EnhancedSession] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -selectedTimeframe.days, to: Date()) ?? Date()
         return sessionManager.sleepSessions(from: cutoff, to: Date())
-    }
-    
-    private var averageScore: Double? {
-        sessionManager.averageSleepScore(days: selectedTimeframe.days)
     }
     
     private var bedtimeRegularity: (mean: Date, stdDev: TimeInterval)? {
@@ -924,156 +917,6 @@ struct SleepAnalyticsContent: View {
                 )
                 .padding(.horizontal, 20)
                 
-                // HealthKit Sleep Data
-                if vm.isAuthorized {
-                    if let lastNight = vm.lastNight {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("HealthKit Sleep Data")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(palette.secondaryText)
-                            
-                            HStack {
-                                Text("Last Night Sleep")
-                                Spacer()
-                                Text(vm.formatHours(lastNight.totalHours))
-                                    .font(.system(size: 17, weight: .semibold))
-                                    .foregroundColor(palette.primaryText)
-                            }
-                            HStack {
-                                Text("14-Day Average")
-                                Spacer()
-                                Text(vm.formatHours(vm.rollingAvgHours14))
-                                    .font(.system(size: 17, weight: .semibold))
-                                    .foregroundColor(palette.primaryText)
-                            }
-                            
-                            Divider().padding(.vertical, 4)
-                            
-                            HStack {
-                                Text("REM Sleep")
-                                Spacer()
-                                Text(String(format: "%.1fh", lastNight.stageHours(.rem)))
-                                    .font(.system(size: 15, weight: .medium))
-                                    .foregroundColor(palette.primaryText)
-                            }
-                            HStack {
-                                Text("Deep Sleep")
-                                Spacer()
-                                Text(String(format: "%.1fh", lastNight.stageHours(.deep)))
-                                    .font(.system(size: 15, weight: .medium))
-                                    .foregroundColor(palette.primaryText)
-                            }
-                            HStack {
-                                Text("Core Sleep")
-                                Spacer()
-                                Text(String(format: "%.1fh", lastNight.stageHours(.core)))
-                                    .font(.system(size: 15, weight: .medium))
-                                    .foregroundColor(palette.primaryText)
-                            }
-                        }
-                        .font(.system(size: 17, weight: .regular))
-                        .foregroundColor(palette.secondaryText)
-                        .frame(maxWidth: 360)
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(palette.cardBackground)
-                                .shadow(color: palette.cardShadow, radius: 20, x: 0, y: 10)
-                        )
-                        .padding(.horizontal, 20)
-                    } else {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("HealthKit Sleep Data")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(palette.secondaryText)
-                            
-                            VStack(spacing: 8) {
-                                Image(systemName: "bed.double.fill")
-                                    .font(.system(size: 36))
-                                    .foregroundColor(palette.secondaryText.opacity(0.5))
-                                
-                                Text("No Sleep Data Available")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(palette.primaryText)
-                                
-                                Text("Track your sleep with Apple Watch or iPhone to see detailed sleep analysis here.")
-                                    .font(.system(size: 14, weight: .regular))
-                                    .foregroundColor(palette.secondaryText)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal, 8)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-                        }
-                        .font(.system(size: 17, weight: .regular))
-                        .foregroundColor(palette.secondaryText)
-                        .frame(maxWidth: 360)
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(palette.cardBackground)
-                                .shadow(color: palette.cardShadow, radius: 20, x: 0, y: 10)
-                        )
-                        .padding(.horizontal, 20)
-                    }
-                } else {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("HealthKit Sleep Data")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(palette.secondaryText)
-                        
-                        VStack(spacing: 12) {
-                            Image(systemName: "heart.text.square.fill")
-                                .font(.system(size: 36))
-                                .foregroundColor(palette.highlight.opacity(0.7))
-                            
-                            Text("HealthKit Not Authorized")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(palette.primaryText)
-                            
-                            Text("Enable HealthKit to see detailed sleep analysis from your Apple Watch or iPhone.")
-                                .font(.system(size: 14, weight: .regular))
-                                .foregroundColor(palette.secondaryText)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 8)
-                            
-                            Button(action: {
-                                if let url = URL(string: UIApplication.openSettingsURLString) {
-                                    UIApplication.shared.open(url)
-                                }
-                            }) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "gear")
-                                        .font(.system(size: 14))
-                                    Text("Open Settings")
-                                        .font(.system(size: 15, weight: .medium))
-                                }
-                                .foregroundColor(palette.cardBackground)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 10)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(palette.accent)
-                                )
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .padding(.top, 4)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                    }
-                    .font(.system(size: 17, weight: .regular))
-                    .foregroundColor(palette.secondaryText)
-                    .frame(maxWidth: 360)
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(palette.cardBackground)
-                            .shadow(color: palette.cardShadow, radius: 20, x: 0, y: 10)
-                    )
-                    .padding(.horizontal, 20)
-                }
-                
                 // MARK: - Analytics Section
                 if !sleepSessions.isEmpty {
                     Divider()
@@ -1085,10 +928,6 @@ struct SleepAnalyticsContent: View {
                         .foregroundColor(palette.primaryText)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 20)
-                    
-                    if let avgScore = averageScore {
-                        SleepScoreCard(score: avgScore, sessions: sleepSessions)
-                    }
                     
                     SleepDurationChart(sessions: sleepSessions)
                     
@@ -1104,8 +943,289 @@ struct SleepAnalyticsContent: View {
             .padding()
             .padding(.bottom, 8)
         }
-        .onAppear {
-            vm.onAppear()
+    }
+}
+
+// MARK: - Self-Reported Quality Card
+private struct SelfReportedQualityCard: View {
+    let sessions: [EnhancedSession]
+    let palette: AnalyticsPalette
+    
+    private var averageQuality: Double? {
+        let qualities = sessions.compactMap { $0.meta.postSleepQuality }
+        guard !qualities.isEmpty else { return nil }
+        return Double(qualities.reduce(0, +)) / Double(qualities.count)
+    }
+    
+    private var averageRest: Double? {
+        let restLevels = sessions.compactMap { $0.meta.postSleepRestLevel }
+        guard !restLevels.isEmpty else { return nil }
+        return Double(restLevels.reduce(0, +)) / Double(restLevels.count)
+    }
+    
+    private var averageMood: Double? {
+        let moods = sessions.compactMap { $0.meta.postSleepMood }
+        guard !moods.isEmpty else { return nil }
+        return Double(moods.reduce(0, +)) / Double(moods.count)
+    }
+    
+    var body: some View {
+        if averageQuality != nil || averageRest != nil || averageMood != nil {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Image(systemName: "heart.text.square.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(palette.accent)
+                    
+                    Text("Self-Reported Sleep Quality")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(palette.primaryText)
+                }
+                
+                VStack(spacing: 8) {
+                    if let quality = averageQuality {
+                        HStack {
+                            Text("Sleep Quality")
+                                .font(.system(size: 15))
+                                .foregroundColor(palette.secondaryText)
+                            Spacer()
+                            Text(String(format: "%.1f/5", quality))
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(palette.primaryText)
+                            ForEach(1...5, id: \.self) { star in
+                                Image(systemName: star <= Int(quality.rounded()) ? "star.fill" : "star")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(palette.accent)
+                            }
+                        }
+                    }
+                    
+                    if let rest = averageRest {
+                        HStack {
+                            Text("Rest Level")
+                                .font(.system(size: 15))
+                                .foregroundColor(palette.secondaryText)
+                            Spacer()
+                            Text(String(format: "%.1f/5", rest))
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(palette.primaryText)
+                            ForEach(1...5, id: \.self) { star in
+                                Image(systemName: star <= Int(rest.rounded()) ? "star.fill" : "star")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(palette.accent)
+                            }
+                        }
+                    }
+                    
+                    if let mood = averageMood {
+                        HStack {
+                            Text("Morning Mood")
+                                .font(.system(size: 15))
+                                .foregroundColor(palette.secondaryText)
+                            Spacer()
+                            Text(String(format: "%.1f/5", mood))
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(palette.primaryText)
+                            ForEach(1...5, id: \.self) { star in
+                                Image(systemName: star <= Int(mood.rounded()) ? "star.fill" : "star")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(palette.accent)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(palette.cardBackground)
+                    .shadow(color: palette.cardShadow, radius: 20, x: 0, y: 10)
+            )
+            .padding(.horizontal, 20)
+        }
+    }
+}
+
+// MARK: - Timing Consistency Card
+private struct TimingConsistencyCard: View {
+    let sessions: [EnhancedSession]
+    let palette: AnalyticsPalette
+    
+    private var bedtimeConsistency: TimeInterval {
+        SleepTimingAnalyzer.bedtimeConsistency(sessions: sessions)
+    }
+    
+    private var durationConsistency: TimeInterval {
+        SleepTimingAnalyzer.durationConsistency(sessions: sessions)
+    }
+    
+    private var insights: [String] {
+        SleepTimingAnalyzer.generateTimingInsights(sessions: sessions)
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "clock.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(palette.accent)
+                
+                Text("Sleep Timing Consistency")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(palette.primaryText)
+            }
+            
+            VStack(spacing: 8) {
+                HStack {
+                    Text("Bedtime Variation")
+                        .font(.system(size: 15))
+                        .foregroundColor(palette.secondaryText)
+                    Spacer()
+                    Text("±\(Int(bedtimeConsistency / 60)) min")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(palette.primaryText)
+                }
+                
+                HStack {
+                    Text("Duration Variation")
+                        .font(.system(size: 15))
+                        .foregroundColor(palette.secondaryText)
+                    Spacer()
+                    Text("±\(Int(durationConsistency / 60)) min")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(palette.primaryText)
+                }
+            }
+            
+            if !insights.isEmpty {
+                Divider()
+                    .padding(.vertical, 4)
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(insights, id: \.self) { insight in
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "lightbulb.fill")
+                                .font(.system(size: 12))
+                                .foregroundColor(palette.highlight)
+                                .padding(.top, 2)
+                            Text(insight)
+                                .font(.system(size: 14))
+                                .foregroundColor(palette.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(palette.cardBackground)
+                .shadow(color: palette.cardShadow, radius: 20, x: 0, y: 10)
+        )
+        .padding(.horizontal, 20)
+    }
+}
+
+// MARK: - Alarm Interaction Card
+private struct AlarmInteractionCard: View {
+    let sessions: [EnhancedSession]
+    let palette: AnalyticsPalette
+    
+    private var averageSnoozeCount: Double {
+        let snoozeCounts = sessions.compactMap { $0.meta.snoozeCount }
+        guard !snoozeCounts.isEmpty else { return 0 }
+        return Double(snoozeCounts.reduce(0, +)) / Double(snoozeCounts.count)
+    }
+    
+    private var averageResponseTime: Int? {
+        let responseTimes = sessions.compactMap { $0.meta.alarmResponseSeconds }
+        guard !responseTimes.isEmpty else { return nil }
+        return responseTimes.reduce(0, +) / responseTimes.count
+    }
+    
+    private var averagePhoneInteractions: Double {
+        let interactions = sessions.compactMap { $0.meta.phoneInteractionsDuringSleep }
+        guard !interactions.isEmpty else { return 0 }
+        return Double(interactions.reduce(0, +)) / Double(interactions.count)
+    }
+    
+    var body: some View {
+        if averageResponseTime != nil || averageSnoozeCount > 0 || averagePhoneInteractions > 0 {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Image(systemName: "bell.badge.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(palette.accent)
+                    
+                    Text("Sleep Behavior")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(palette.primaryText)
+                }
+                
+                VStack(spacing: 8) {
+                    HStack {
+                        Text("Avg. Snooze Count")
+                            .font(.system(size: 15))
+                            .foregroundColor(palette.secondaryText)
+                        Spacer()
+                        Text(String(format: "%.1f", averageSnoozeCount))
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(averageSnoozeCount <= 1 ? palette.accent : palette.highlight)
+                    }
+                    
+                    if let responseTime = averageResponseTime {
+                        HStack {
+                            Text("Avg. Wake-Up Time")
+                                .font(.system(size: 15))
+                                .foregroundColor(palette.secondaryText)
+                            Spacer()
+                            Text("\(responseTime / 60) min \(responseTime % 60) sec")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(palette.primaryText)
+                        }
+                    }
+                    
+                    if averagePhoneInteractions > 0 {
+                        HStack {
+                            Text("Avg. Night Disruptions")
+                                .font(.system(size: 15))
+                                .foregroundColor(palette.secondaryText)
+                            Spacer()
+                            Text(String(format: "%.1f", averagePhoneInteractions))
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(averagePhoneInteractions <= 2 ? palette.accent : palette.highlight)
+                        }
+                    }
+                }
+                
+                // Insights
+                if averageSnoozeCount > 2 || averagePhoneInteractions > 3 {
+                    Divider()
+                        .padding(.vertical, 4)
+                    
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "lightbulb.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(palette.highlight)
+                            .padding(.top, 2)
+                        if averageSnoozeCount > 2 {
+                            Text("High snooze count suggests you may need to adjust your sleep schedule or bedtime.")
+                        } else {
+                            Text("High phone usage during sleep can disrupt your sleep quality. Try keeping your phone away from your bed.")
+                        }
+                    }
+                    .font(.system(size: 14))
+                    .foregroundColor(palette.secondaryText)
+                }
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(palette.cardBackground)
+                    .shadow(color: palette.cardShadow, radius: 20, x: 0, y: 10)
+            )
+            .padding(.horizontal, 20)
         }
     }
 }

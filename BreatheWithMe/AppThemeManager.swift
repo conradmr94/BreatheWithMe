@@ -60,17 +60,14 @@ class AppThemeManager: ObservableObject {
     
     var currentTheme: ProfileTheme {
         // Migrate old "white" theme to "light" for backward compatibility
-        // Migrate old "default" theme to "light" since System doesn't work
         var themeValue = profileThemeRawValue
         if themeValue == "white" {
-            themeValue = "light"
-        } else if themeValue == "default" {
             themeValue = "light"
         }
         
         if let theme = ProfileTheme(rawValue: themeValue) {
             // If we migrated, update the stored value
-            if profileThemeRawValue == "white" || profileThemeRawValue == "default" {
+            if profileThemeRawValue == "white" {
                 profileThemeRawValue = "light"
             }
             return theme

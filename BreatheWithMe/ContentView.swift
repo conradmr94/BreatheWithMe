@@ -72,7 +72,7 @@ struct ContentView: View {
                 .tag(1)
 
             FocusView()
-                .tabItem { Label("Focus", systemImage: "timer") }
+                .tabItem { Label("Focus", systemImage: "brain.head.profile") }
                 .tag(2)
 
             SleepView()
@@ -262,8 +262,12 @@ struct ContentView: View {
         UITabBar.appearance().unselectedItemTintColor = UIColor(themeColors.secondaryText.opacity(0.6))
     }
 
-    private var appColorScheme: ColorScheme {
-        themeManager.colorScheme(for: systemColorScheme)
+    private var appColorScheme: ColorScheme? {
+        // When theme is "System", return nil to let the system control the color scheme
+        if themeManager.currentTheme == .default {
+            return nil
+        }
+        return themeManager.colorScheme(for: systemColorScheme)
     }
 }
 

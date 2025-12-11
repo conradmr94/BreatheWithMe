@@ -34,16 +34,16 @@ struct SleepAnalyticsView: View {
         return sessionManager.sleepSessions(from: cutoff, to: Date())
     }
     
-    private var averageScore: Double? {
-        sessionManager.averageSleepScore(days: selectedTimeframe.days)
-    }
-    
     private var bedtimeRegularity: (mean: Date, stdDev: TimeInterval)? {
         sessionManager.bedtimeRegularity(days: selectedTimeframe.days)
     }
     
-    private var resolvedColorScheme: ColorScheme {
-        themeManager.colorScheme(for: systemColorScheme)
+    private var resolvedColorScheme: ColorScheme? {
+        // When theme is "System", return nil to let the system control the color scheme
+        if themeManager.currentTheme == .default {
+            return nil
+        }
+        return themeManager.colorScheme(for: systemColorScheme)
     }
     
     private var themeColors: ProfileTheme.Colors {
@@ -51,7 +51,7 @@ struct SleepAnalyticsView: View {
     }
     
     private var palette: AnalyticsPalette {
-        AnalyticsPalette(colors: themeColors, usesDarkAppearance: resolvedColorScheme == .dark)
+        AnalyticsPalette(colors: themeColors, usesDarkAppearance: (resolvedColorScheme ?? systemColorScheme) == .dark)
     }
     
     var body: some View {
@@ -74,11 +74,6 @@ struct SleepAnalyticsView: View {
                     .padding(.horizontal)
                 }
                 .padding(.top)
-                
-                // Sleep Score Card
-                if let avgScore = averageScore {
-                    SleepScoreCard(score: avgScore, sessions: sleepSessions)
-                }
                 
                 // Duration Trend Chart
                 if !sleepSessions.isEmpty {
@@ -112,60 +107,6 @@ struct SleepAnalyticsView: View {
         )
         .preferredColorScheme(resolvedColorScheme)
         .environment(\.analyticsPalette, palette)
-    }
-}
-
-// MARK: - Sleep Score Card
-struct SleepScoreCard: View {
-    let score: Double
-    let sessions: [EnhancedSession]
-    @Environment(\.analyticsPalette) private var palette
-    
-    private var scoreColor: Color {
-        if score >= 80 {
-            return palette.highlight
-        } else if score >= 60 {
-            return palette.accent
-        } else {
-            return palette.accent.opacity(0.7)
-        }
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Average Sleep Score")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(palette.primaryText)
-            
-            HStack(alignment: .lastTextBaseline, spacing: 8) {
-                Text("\(Int(score))")
-                    .font(.system(size: 48, weight: .bold))
-                    .foregroundColor(scoreColor)
-                
-                Text("/ 100")
-                    .font(.system(size: 20, weight: .regular))
-                    .foregroundColor(palette.secondaryText)
-            }
-            
-            // Score breakdown
-            if !sessions.isEmpty {
-                let scores = sessions.compactMap { $0.meta.sleepScore }
-                if !scores.isEmpty {
-                    let excellent = scores.filter { $0 >= 80 }.count
-                    let good = scores.filter { $0 >= 60 && $0 < 80 }.count
-                    let poor = scores.filter { $0 < 60 }.count
-                    
-                    HStack(spacing: 16) {
-                        StatBadge(label: "Excellent", count: excellent, color: palette.highlight)
-                        StatBadge(label: "Good", count: good, color: palette.accent)
-                        StatBadge(label: "Poor", count: poor, color: palette.accent.opacity(0.7))
-                    }
-                }
-            }
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .analyticsCardStyle(palette, shadowRadius: 20, shadowYOffset: 10)
     }
 }
 
@@ -286,10 +227,6 @@ struct SleepEventsCard: View {
     let sessions: [EnhancedSession]
     @Environment(\.analyticsPalette) private var palette
     
-    private var totalSnoreMinutes: Int {
-        sessions.compactMap { $0.meta.snoreMinutes }.reduce(0, +)
-    }
-    
     private var totalWakeups: Int {
         sessions.compactMap { $0.meta.wakeups }.reduce(0, +)
     }
@@ -302,25 +239,25 @@ struct SleepEventsCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Sleep Events")
+            Text("Wake Ups")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(palette.primaryText)
             
             HStack(spacing: 20) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(totalSnoreMinutes)")
+                    Text("\(totalWakeups)")
                         .font(.system(size: 24, weight: .bold))
                         .foregroundColor(palette.highlight)
-                    Text("min snoring")
+                    Text("total wakeups")
                         .font(.system(size: 12, weight: .regular))
                         .foregroundColor(palette.secondaryText)
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(Int(averageWakeups))")
+                    Text("\(String(format: "%.1f", averageWakeups))")
                         .font(.system(size: 24, weight: .bold))
                         .foregroundColor(palette.accent)
-                    Text("avg wakeups")
+                    Text("avg per night")
                         .font(.system(size: 12, weight: .regular))
                         .foregroundColor(palette.secondaryText)
                 }

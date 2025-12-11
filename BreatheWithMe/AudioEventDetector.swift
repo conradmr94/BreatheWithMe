@@ -8,6 +8,7 @@
 
 import Foundation
 import AVFoundation
+import Combine
 
 enum AudioEventType {
     case snore
@@ -23,7 +24,7 @@ struct AudioEvent {
 }
 
 /// Simple audio event detector using energy and frequency analysis
-class AudioEventDetector {
+class AudioEventDetector: ObservableObject {
     private var audioEngine: AVAudioEngine?
     private var isRecording = false
     private var eventCallbacks: [(AudioEvent) -> Void] = []

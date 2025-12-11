@@ -92,7 +92,7 @@ final class HealthKitManager: ObservableObject {
         guard HKHealthStore.isHealthDataAvailable() else {
             throw HealthKitAccessError.unavailable
         }
-        let shareTypes: Set<HKSampleType> = [mindfulType]
+        let shareTypes: Set<HKSampleType> = [mindfulType, sleepType]
         let readTypes: Set<HKObjectType> = [
             sleepType,
             respiratoryRateType,
@@ -104,9 +104,9 @@ final class HealthKitManager: ObservableObject {
         ]
         do {
             try await store.requestAuthorization(toShare: shareTypes, read: readTypes)
-            if store.authorizationStatus(for: stepCountType) == .sharingDenied {
-                throw HealthKitAccessError.authorizationDenied
-            }
+            // Note: HealthKit intentionally doesn't allow reading authorization status for privacy reasons.
+            // The authorizationStatus API often returns .notDetermined even after the user grants access.
+            // We'll assume authorization succeeded if no error was thrown.
         } catch let error as HKError {
             switch error.code {
             case .errorHealthDataUnavailable:
@@ -305,6 +305,39 @@ final class HealthKitManager: ObservableObject {
                 }
             }
             store.execute(query)
+        }
+    }
+
+    // MARK: - Sleep Data
+    
+    func saveSleepSession(start: Date, end: Date) async throws {
+        guard start < end else { return }
+        
+        // Use asleepUnspecified for iOS 16+, inBed for older versions
+        let sleepValue: Int
+        if #available(iOS 16.0, *) {
+            sleepValue = HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue
+        } else {
+            // For older iOS versions, use inBed as a fallback
+            sleepValue = HKCategoryValueSleepAnalysis.inBed.rawValue
+        }
+        
+        let sample = HKCategorySample(
+            type: sleepType,
+            value: sleepValue,
+            start: start,
+            end: end
+        )
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            store.save(sample) { success, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                } else if success {
+                    continuation.resume(returning: ())
+                } else {
+                    continuation.resume(throwing: NSError(domain: "HealthKit", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to save sleep session"]))
+                }
+            }
         }
     }
 

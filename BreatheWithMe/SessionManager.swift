@@ -37,6 +37,23 @@ struct EnhancedSession: Codable, Identifiable {
         var wasoSeconds: Int? // Wake After Sleep Onset
         var bedtimeRegularity: Bool? // Was bedtime close to usual?
         
+        // Sleep self-report fields
+        var preSleepAnxiety: Int? // 1-5 (before sleep)
+        var preSleepReadiness: Int? // 1-5 (before sleep)
+        var postSleepQuality: Int? // 1-5 (after waking)
+        var postSleepRestLevel: Int? // 1-5 (after waking)
+        var postSleepMood: Int? // 1-5 (after waking)
+        
+        // Alarm interaction tracking
+        var snoozeCount: Int?
+        var alarmResponseSeconds: Int? // Time to dismiss alarm
+        var phoneInteractionsDuringSleep: Int? // Background pickups/wakes
+        
+        // Audio detection results
+        var audioEventsDetected: [String: Int]? // e.g., ["snore": 12, "talk": 3]
+        var totalSnoreMinutes: Int?
+        var timeToSilenceMinutes: Int? // How long until sleep sounds stopped
+        
         // Focus-specific
         var plannedDuration: Int? // Planned duration in seconds
         var completed: Bool?
@@ -65,6 +82,17 @@ struct EnhancedSession: Codable, Identifiable {
             self.wakeups = nil
             self.wasoSeconds = nil
             self.bedtimeRegularity = nil
+            self.preSleepAnxiety = nil
+            self.preSleepReadiness = nil
+            self.postSleepQuality = nil
+            self.postSleepRestLevel = nil
+            self.postSleepMood = nil
+            self.snoozeCount = nil
+            self.alarmResponseSeconds = nil
+            self.phoneInteractionsDuringSleep = nil
+            self.audioEventsDetected = nil
+            self.totalSnoreMinutes = nil
+            self.timeToSilenceMinutes = nil
             self.plannedDuration = nil
             self.completed = nil
             self.distractions = nil
@@ -174,6 +202,55 @@ class SessionManager: ObservableObject {
         let stdDev = sqrt(variance)
         
         return (mean: meanDate, stdDev: stdDev)
+    }
+    
+    func bedtimeConsistencyScore(days: Int = 30) -> Double? {
+        guard let regularity = bedtimeRegularity(days: days) else { return nil }
+        
+        // Convert standard deviation to consistency score (0-100)
+        // Lower stdDev = higher consistency
+        // 0-30 min stdDev -> 90-100 score
+        // 30-60 min -> 70-90
+        // 60-120 min -> 40-70
+        // 120+ min -> 0-40
+        let stdDevMinutes = regularity.stdDev / 60
+        
+        if stdDevMinutes < 30 {
+            return 100 - (stdDevMinutes / 30 * 10)
+        } else if stdDevMinutes < 60 {
+            return 90 - ((stdDevMinutes - 30) / 30 * 20)
+        } else if stdDevMinutes < 120 {
+            return 70 - ((stdDevMinutes - 60) / 60 * 30)
+        } else {
+            return max(0, 40 - ((stdDevMinutes - 120) / 120 * 40))
+        }
+    }
+    
+    func averageBedtime(days: Int = 30) -> Date? {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
+        let recent = sessions(ofType: .sleep, from: cutoff)
+        
+        guard !recent.isEmpty else { return nil }
+        
+        let bedtimes = recent.map { $0.start }
+        let meanSeconds = bedtimes.map { Calendar.current.component(.hour, from: $0) * 3600 + Calendar.current.component(.minute, from: $0) * 60 }.reduce(0, +) / bedtimes.count
+        
+        return Calendar.current.date(bySettingHour: meanSeconds / 3600, minute: (meanSeconds % 3600) / 60, second: 0, of: Date())
+    }
+    
+    func sleepDurationConsistency(days: Int = 30) -> TimeInterval? {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
+        let recent = sessions(ofType: .sleep, from: cutoff)
+        
+        guard !recent.isEmpty else { return nil }
+        
+        let durations = recent.map { Double($0.durationSeconds) }
+        let mean = durations.reduce(0, +) / Double(durations.count)
+        
+        let variances = durations.map { pow($0 - mean, 2) }
+        let variance = variances.reduce(0, +) / Double(variances.count)
+        
+        return sqrt(variance) // Returns standard deviation in seconds
     }
     
     // MARK: - Focus Queries
@@ -347,13 +424,20 @@ class SessionManager: ObservableObject {
     }
     
     func dailyReadiness() -> String {
-        guard let sleepScore = averageSleepScore(days: 3) else {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -3, to: Date()) ?? Date()
+        let recent = sessions(ofType: .sleep, from: cutoff)
+        
+        guard !recent.isEmpty else {
             return "Normal"
         }
         
-        if sleepScore > 80 {
+        let totalSeconds = recent.reduce(0) { $0 + $1.durationSeconds }
+        let avgHours = Double(totalSeconds) / Double(recent.count) / 3600.0
+        
+        // Use average sleep duration to determine readiness
+        if avgHours >= 7.0 {
             return "Push"
-        } else if sleepScore > 60 {
+        } else if avgHours >= 6.0 {
             return "Normal"
         } else {
             return "Light"

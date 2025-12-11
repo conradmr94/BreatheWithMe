@@ -65,15 +65,17 @@ struct FeatureSummaryCard: View {
     @Environment(\.analyticsPalette) private var palette
     @StateObject private var sessionManager = SessionManager.shared
     
-    private var sleepStats: (avgScore: Int, totalTime: String, sessions: Int) {
+    private var sleepStats: (avgDuration: String, totalTime: String, sessions: Int) {
         let sessions = sessionManager.sessions(ofType: .sleep, from: Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date())
-        let scores = sessions.compactMap { $0.meta.sleepScore }
-        let avgScore = scores.isEmpty ? 0 : scores.reduce(0, +) / scores.count
         let totalSeconds = sessions.reduce(0) { $0 + Int($1.end.timeIntervalSince($1.start)) }
+        let avgSeconds = sessions.isEmpty ? 0 : totalSeconds / sessions.count
+        let avgHours = avgSeconds / 3600
+        let avgMinutes = (avgSeconds % 3600) / 60
+        let avgDuration = avgHours > 0 ? "\(avgHours)h \(avgMinutes)m" : "\(avgMinutes)m"
         let hours = totalSeconds / 3600
         let minutes = (totalSeconds % 3600) / 60
         let totalTime = hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m"
-        return (avgScore, totalTime, sessions.count)
+        return (avgDuration, totalTime, sessions.count)
     }
     
     private var focusStats: (completionRate: Int, totalTime: String, sessions: Int) {
@@ -131,8 +133,8 @@ struct FeatureSummaryCard: View {
                 icon: "moon.stars.fill",
                 title: "Sleep",
                 color: Color(red: 0.4, green: 0.5, blue: 0.8),
-                primaryStat: "\(sleepStats.avgScore)",
-                primaryLabel: "Avg Score",
+                primaryStat: sleepStats.avgDuration,
+                primaryLabel: "Avg Duration",
                 secondaryStat: sleepStats.totalTime,
                 secondaryLabel: "Total Time",
                 tertiaryStat: "\(sleepStats.sessions)",

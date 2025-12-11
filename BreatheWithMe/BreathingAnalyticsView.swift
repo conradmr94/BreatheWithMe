@@ -42,8 +42,12 @@ struct BreathingAnalyticsView: View {
         sessionManager.breathingStreak()
     }
     
-    private var resolvedColorScheme: ColorScheme {
-        themeManager.colorScheme(for: systemColorScheme)
+    private var resolvedColorScheme: ColorScheme? {
+        // When theme is "System", return nil to let the system control the color scheme
+        if themeManager.currentTheme == .default {
+            return nil
+        }
+        return themeManager.colorScheme(for: systemColorScheme)
     }
     
     private var themeColors: ProfileTheme.Colors {
@@ -51,7 +55,7 @@ struct BreathingAnalyticsView: View {
     }
     
     private var palette: AnalyticsPalette {
-        AnalyticsPalette(colors: themeColors, usesDarkAppearance: resolvedColorScheme == .dark)
+        AnalyticsPalette(colors: themeColors, usesDarkAppearance: (resolvedColorScheme ?? systemColorScheme) == .dark)
     }
     
     var body: some View {

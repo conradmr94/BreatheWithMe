@@ -6,7 +6,6 @@
 
 
 import SwiftUI
-import HealthKit
 import UserNotifications
 import AVFoundation
 
@@ -65,6 +64,7 @@ struct SleepView: View {
     @AppStorage("focusLockUntilTimestamp") private var focusLockUntilTimestamp: Double = 0
     @State private var isPreviewingAlarm = false
     @State private var alarmPreviewWorkItem: DispatchWorkItem?
+    @State private var notificationAuthorizationStatus: UNAuthorizationStatus = .notDetermined
 
     init() {
         let storedAlarm = SleepAlarmStore.shared.load()
@@ -80,6 +80,9 @@ struct SleepView: View {
     // Statistics tracking
     @AppStorage("sleepStats") private var sleepStatsData: Data = Data()
     @StateObject private var userStatsManager = UserStatsManager()
+    
+    // Phone activity monitoring
+    @StateObject private var phoneActivityMonitor = PhoneActivityMonitor()
     
     private var sleepStats: SleepStats {
         get {
@@ -178,8 +181,6 @@ struct SleepView: View {
                 y: isActive ? 10 : 4
             )
     }
-    // HealthKit VM (optional enhancement)
-    @StateObject private var vm = SleepViewModel()
     // Noise Generator for ambient sounds
     @StateObject private var noiseGenerator = NoiseGenerator()
     // Session Manager for enhanced tracking
@@ -779,6 +780,7 @@ struct SleepView: View {
             .zIndex(4)
             .transition(.opacity)
         }
+        
     }
     
     private var baseView: some View {
@@ -811,10 +813,13 @@ struct SleepView: View {
     var body: some View {
         baseView
         .overlay(infoMessageOverlay)
+        .overlay(notificationWarningBanner)
         .overlay(modalsOverlay)
             .onAppear {
-                vm.onAppear()
                 alarmManager.configure(alarmSound: selectedAlarmSound)
+                
+                // Check notification authorization status
+                checkNotificationAuthorization()
                 
                 // Debug: Log current sound state
                 print("🎵 SleepView appeared - Sound state: enabled=\(noiseGenerator.isEnabled), selected=\(noiseGenerator.selectedNoiseTypes), volume=\(noiseGenerator.volume)")
@@ -825,6 +830,10 @@ struct SleepView: View {
                     object: nil,
                     userInfo: ["isPresented": isPresented]
                 )
+            }
+            .onChange(of: isAlarmEnabled) { _ in
+                // Recheck notification status when alarm is toggled
+                checkNotificationAuthorization()
             }
             .onChange(of: selectedAlarmSound) { newValue in
                 persistAlarmSound(newValue)
@@ -857,15 +866,23 @@ struct SleepView: View {
             noiseGenerator.startNoise()
         }
         
+        // Start phone activity monitoring
+        phoneActivityMonitor.startMonitoring()
+        
+        
         // Check for alarm every second
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [self] _ in
             elapsedSeconds += 1
         }
     }
+    
     func stopTimer() {
         isRunning = false
         timer?.invalidate()
         timer = nil
+        
+        // Stop phone monitoring
+        phoneActivityMonitor.stopMonitoring()
         
         // Stop alarm if active
         if alarmManager.isAlarmActive {
@@ -890,68 +907,21 @@ struct SleepView: View {
             // Record in UserStatsManager for streak tracking
             userStatsManager.recordSession(activityType: .sleep, durationSeconds: sessionDuration)
             
-            // Calculate basic metadata
-            let goalDuration = 8 * 3600 // 8 hours default
-            let historicalBedtimes = sessionManager.sessions(ofType: .sleep, from: Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date())
-                .map { $0.start }
-            let isRegular = SleepScoreCalculator.isBedtimeRegular(
-                currentBedtime: startTime,
-                historicalBedtimes: historicalBedtimes,
-                toleranceMinutes: 30
+            // Create simplified session metadata - only start time, end time, and phone pickups
+            var meta = EnhancedSession.SessionMetadata()
+            // Use phone pickups as proxy for wakeups
+            meta.wakeups = phoneActivityMonitor.interactionCount
+            meta.phoneInteractionsDuringSleep = phoneActivityMonitor.interactionCount
+            
+            let enhancedSession = EnhancedSession(
+                type: .sleep,
+                start: startTime,
+                end: endTime,
+                meta: meta
             )
             
-            // Track content usage if noise was enabled
-            var contentId: String? = nil
-            var contentDuration: Int? = nil
-            if noiseGenerator.isEnabled {
-                contentId = noiseGenerator.selectedNoiseDescription
-                contentDuration = sessionDuration
-            }
-            
-            // Try to get wakeups and WASO from HealthKit (async)
-            Task { @MainActor in
-                var wakeups = 0
-                var wasoSeconds = 0
-                
-                // Fetch HealthKit data for this sleep session
-                do {
-                    let hk = HealthKitManager.shared
-                    let (hkWakeups, hkWASO) = try await hk.analyzeSleepEvents(from: startTime, to: endTime)
-                    wakeups = hkWakeups
-                    wasoSeconds = hkWASO
-                } catch {
-                    // If HealthKit fails, use defaults (0)
-                    print("⚠️ Sleep: Could not fetch HealthKit sleep events: \(error)")
-                }
-                
-                // Create enhanced session with metadata
-                var meta = EnhancedSession.SessionMetadata()
-                meta.wakeups = wakeups
-                meta.wasoSeconds = wasoSeconds
-                meta.bedtimeRegularity = isRegular
-                meta.snoreMinutes = nil // TODO: Integrate audio event detector
-                meta.contentId = contentId
-                meta.contentDuration = contentDuration
-                
-                // Calculate sleep score with HealthKit data (or defaults if not available)
-                meta.sleepScore = SleepScoreCalculator.calculateScore(
-                    durationSeconds: sessionDuration,
-                    goalDurationSeconds: goalDuration,
-                    bedtimeRegularity: isRegular,
-                    wakeups: wakeups,
-                    wasoSeconds: wasoSeconds
-                )
-                
-                let enhancedSession = EnhancedSession(
-                    type: .sleep,
-                    start: startTime,
-                    end: endTime,
-                    meta: meta
-                )
-                
-                // Save enhanced session
-                sessionManager.saveSession(enhancedSession)
-            }
+            // Save enhanced session
+            sessionManager.saveSession(enhancedSession)
         }
         
         elapsedSeconds = 0
@@ -963,6 +933,7 @@ struct SleepView: View {
             noiseGenerator.stopNoise()
         }
     }
+    
     func startPulseAnimation() {
         withAnimation(.easeInOut(duration: 4.0).repeatForever(autoreverses: true)) {
             pulseScale = 1.08
@@ -978,6 +949,67 @@ struct SleepView: View {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+    
+    private func checkNotificationAuthorization() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            DispatchQueue.main.async {
+                self.notificationAuthorizationStatus = settings.authorizationStatus
+                if settings.authorizationStatus == .denied {
+                    print("⚠️ SleepView: Notifications are DENIED - showing warning to user")
+                } else if settings.authorizationStatus == .authorized {
+                    print("✅ SleepView: Notifications are authorized")
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var notificationWarningBanner: some View {
+        if isAlarmEnabled && notificationAuthorizationStatus == .denied {
+            VStack(spacing: 8) {
+                HStack(spacing: 12) {
+                    Image(systemName: "bell.slash.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.orange)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Notifications Disabled")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                        Text("Enable notifications in Settings to see alarm on lock screen")
+                            .font(.system(size: 12))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    }) {
+                        Text("Settings")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.white.opacity(0.2))
+                            )
+                    }
+                }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.orange.opacity(0.9))
+                )
+                .padding(.horizontal, 20)
+                .padding(.top, 60)
+            }
+            .transition(.move(edge: .top).combined(with: .opacity))
+        }
     }
 }
 // MARK: - Alarm Time Picker Modal
@@ -1464,6 +1496,142 @@ private struct AlarmSettingsSheet: View {
                 .fill(Color.white)
                 .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
         )
+    }
+}
+
+// MARK: - Sleep Assessment Picker Modal
+private struct SleepAssessmentPickerModal: View {
+    @Binding var isPresented: Bool
+    let title: String
+    let assessmentType: AssessmentType
+    @Binding var selectedLevel: Int?
+    @State private var autoDismissTask: DispatchWorkItem?
+    
+    enum AssessmentType {
+        case preSleepAnxiety
+        case preSleepReadiness
+        case postSleepQuality
+        case postSleepRestLevel
+        case postSleepMood
+        
+        var lowLabel: String {
+            switch self {
+            case .preSleepAnxiety: return "Calm"
+            case .preSleepReadiness: return "Not\nReady"
+            case .postSleepQuality: return "Poor"
+            case .postSleepRestLevel: return "Tired"
+            case .postSleepMood: return "Bad"
+            }
+        }
+        
+        var highLabel: String {
+            switch self {
+            case .preSleepAnxiety: return "Very\nAnxious"
+            case .preSleepReadiness: return "Very\nReady"
+            case .postSleepQuality: return "Great"
+            case .postSleepRestLevel: return "Very\nRested"
+            case .postSleepMood: return "Great"
+            }
+        }
+    }
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            // Header with close button
+            HStack {
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(Color(red: 0.2, green: 0.3, blue: 0.4))
+                    .multilineTextAlignment(.center)
+                
+                Spacer()
+                
+                Button(action: {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        isPresented = false
+                    }
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(Color.black.opacity(0.25))
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            
+            // Compact level buttons
+            HStack(spacing: 8) {
+                ForEach(1...5, id: \.self) { level in
+                    Button(action: {
+                        selectedLevel = level
+                        withAnimation(.easeOut(duration: 0.3)) {
+                            isPresented = false
+                        }
+                    }) {
+                        VStack(spacing: 4) {
+                            Text("\(level)")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(selectedLevel == level ? .white : Color(red: 0.4, green: 0.5, blue: 0.6))
+                                .frame(height: 24)
+                            
+                            // Label for endpoints only
+                            Group {
+                                if level == 1 {
+                                    Text(assessmentType.lowLabel)
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundColor(selectedLevel == level ? .white.opacity(0.9) : Color(red: 0.4, green: 0.5, blue: 0.6))
+                                        .multilineTextAlignment(.center)
+                                        .lineLimit(2)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .frame(minHeight: 20, maxHeight: 24, alignment: .center)
+                                } else if level == 5 {
+                                    Text(assessmentType.highLabel)
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundColor(selectedLevel == level ? .white.opacity(0.9) : Color(red: 0.4, green: 0.5, blue: 0.6))
+                                        .multilineTextAlignment(.center)
+                                        .lineLimit(2)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .frame(minHeight: 20, maxHeight: 24, alignment: .center)
+                                } else {
+                                    // Invisible placeholder for levels 2-4 to maintain alignment
+                                    Text(" ")
+                                        .font(.system(size: 10, weight: .medium))
+                                        .opacity(0)
+                                        .frame(height: 20)
+                                }
+                            }
+                        }
+                        .frame(width: 50, height: 65)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(selectedLevel == level ? Color(red: 0.4, green: 0.5, blue: 0.8) : Color.white.opacity(0.8))
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.15), radius: 20, x: 0, y: 5)
+        )
+        .padding(.horizontal, 16)
+        .padding(.top, 50)
+        .onAppear {
+            // Auto-dismiss after 8 seconds if not interacted with
+            let task = DispatchWorkItem {
+                withAnimation(.easeOut(duration: 0.3)) {
+                    isPresented = false
+                }
+            }
+            autoDismissTask = task
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8.0, execute: task)
+        }
+        .onDisappear {
+            autoDismissTask?.cancel()
+        }
     }
 }
 

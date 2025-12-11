@@ -566,19 +566,19 @@ enum ProfileTheme: String, CaseIterable, Identifiable {
         )
     }
     
-    // Light theme colors (brighter, cleaner white palette)
+    // Light theme colors (matches system light theme)
     private var pureLightColors: Colors {
         Colors(
-            accent: Color(red: 0.78, green: 0.85, blue: 0.96),
-            primaryText: Color(red: 0.23, green: 0.30, blue: 0.40),
-            secondaryText: Color(red: 0.46, green: 0.54, blue: 0.63),
-            subtleText: Color(red: 0.57, green: 0.64, blue: 0.73),
-            highlight: Color(red: 0.98, green: 0.69, blue: 0.36),
+            accent: Color(red: 0.60, green: 0.76, blue: 0.92),
+            primaryText: Color(red: 0.20, green: 0.28, blue: 0.37),
+            secondaryText: Color(red: 0.42, green: 0.50, blue: 0.59),
+            subtleText: Color(red: 0.56, green: 0.63, blue: 0.72),
+            highlight: Color(red: 0.99, green: 0.72, blue: 0.42),
             cardBackground: Color.white,
-            cardShadow: Color.black.opacity(0.04),
-            backgroundTop: Color.white,
-            backgroundBottom: Color(red: 0.98, green: 0.99, blue: 1.0),
-            separator: Color(red: 0.92, green: 0.95, blue: 0.98)
+            cardShadow: Color.black.opacity(0.08),
+            backgroundTop: Color(red: 0.94, green: 0.97, blue: 1.0),
+            backgroundBottom: Color(red: 0.87, green: 0.92, blue: 0.98),
+            separator: Color(red: 0.89, green: 0.93, blue: 0.97)
         )
     }
     
@@ -606,7 +606,7 @@ enum ProfileTheme: String, CaseIterable, Identifiable {
     func colorScheme(for systemColorScheme: ColorScheme) -> ColorScheme {
         switch self {
         case .default:
-            return .light
+            return systemColorScheme
         case .dark:
             return .dark
         case .light:
@@ -652,7 +652,7 @@ struct ProfileSettingsView: View {
                     Section(header: Text("Theme")
                         .foregroundColor(themeColors.secondaryText)
                         .textCase(nil)) {
-                        ForEach(ProfileTheme.allCases.filter { $0 != .default }) { theme in
+                        ForEach(ProfileTheme.allCases) { theme in
                             Button(action: {
                                 selectedTheme = theme
                             }) {
