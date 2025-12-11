@@ -317,14 +317,15 @@ class AlarmManager: ObservableObject {
             return
         }
         currentAlarmSnoozeCount += 1 // Track snooze count
-        let newAlarmTime = Date().addingTimeInterval(TimeInterval(alarm.snoozeMinutes * 60))
+        let snoozeSeconds = TimeInterval(alarm.snoozeMinutes * 60)
+        let newAlarmTime = Date().addingTimeInterval(snoozeSeconds)
         alarm.date = newAlarmTime
         alarm.isEnabled = true
         SleepAlarmStore.shared.save(alarm)
-        snoozeTime = newAlarmTime
-        stopAlarm()
+        stopAlarm() // Stop current alarm (this clears snoozeTime, but we'll set it after)
+        snoozeTime = newAlarmTime // Set snooze time after stopAlarm() so it doesn't get cleared
         schedule(alarm: alarm) // This will restart monitoring with the new time
-        print("✅ AlarmManager: Alarm snoozed until \(newAlarmTime) (snooze count: \(currentAlarmSnoozeCount))")
+        print("✅ AlarmManager: Alarm snoozed for \(alarm.snoozeMinutes) minutes until \(newAlarmTime) (snooze count: \(currentAlarmSnoozeCount))")
     }
     
     func recordAlarmDismissed() -> (snoozes: Int, responseTime: Int) {
