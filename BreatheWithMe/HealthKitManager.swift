@@ -74,18 +74,6 @@ final class HealthKitManager: ObservableObject {
     private var mindfulType: HKCategoryType {
         HKObjectType.categoryType(forIdentifier: .mindfulSession)!
     }
-    private var stepCountType: HKQuantityType {
-        HKObjectType.quantityType(forIdentifier: .stepCount)!
-    }
-    private var walkingDistanceType: HKQuantityType {
-        HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!
-    }
-    private var activeEnergyType: HKQuantityType {
-        HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!
-    }
-    private var heartRateType: HKQuantityType {
-        HKObjectType.quantityType(forIdentifier: .heartRate)!
-    }
 
     // MARK: Authorization
     func requestAuthorization() async throws {
@@ -96,11 +84,7 @@ final class HealthKitManager: ObservableObject {
         let readTypes: Set<HKObjectType> = [
             sleepType,
             respiratoryRateType,
-            mindfulType,
-            stepCountType,
-            walkingDistanceType,
-            activeEnergyType,
-            heartRateType
+            mindfulType
         ]
         do {
             try await store.requestAuthorization(toShare: shareTypes, read: readTypes)
@@ -147,85 +131,6 @@ final class HealthKitManager: ObservableObject {
         }
         store.execute(observer)
         store.enableBackgroundDelivery(for: sleepType, frequency: .hourly) { _, _ in }
-    }
-    
-    // MARK: - Walking & Activity Metrics
-    private func sumQuantity(_ type: HKQuantityType, unit: HKUnit, start: Date, end: Date) async throws -> Double {
-        try await withCheckedThrowingContinuation { continuation in
-            let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
-            let query = HKStatisticsQuery(quantityType: type, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, statistics, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else if let quantity = statistics?.sumQuantity() {
-                    continuation.resume(returning: quantity.doubleValue(for: unit))
-                } else {
-                    continuation.resume(returning: 0)
-                }
-            }
-            store.execute(query)
-        }
-    }
-    
-    private func averageQuantity(_ type: HKQuantityType, unit: HKUnit, start: Date, end: Date) async throws -> Double? {
-        try await withCheckedThrowingContinuation { continuation in
-            let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
-            let query = HKStatisticsQuery(quantityType: type, quantitySamplePredicate: predicate, options: .discreteAverage) { _, statistics, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else if let quantity = statistics?.averageQuantity() {
-                    continuation.resume(returning: quantity.doubleValue(for: unit))
-                } else {
-                    continuation.resume(returning: nil)
-                }
-            }
-            store.execute(query)
-        }
-    }
-    
-    func stepCount(for interval: DateInterval) async throws -> Double {
-        try await sumQuantity(stepCountType, unit: HKUnit.count(), start: interval.start, end: interval.end)
-    }
-    
-    func walkingDistance(for interval: DateInterval) async throws -> Double {
-        try await sumQuantity(walkingDistanceType, unit: HKUnit.meter(), start: interval.start, end: interval.end)
-    }
-    
-    func activeEnergy(for interval: DateInterval) async throws -> Double {
-        try await sumQuantity(activeEnergyType, unit: HKUnit.kilocalorie(), start: interval.start, end: interval.end)
-    }
-    
-    func averageHeartRate(for interval: DateInterval) async throws -> Double? {
-        try await averageQuantity(heartRateType, unit: HKUnit.count().unitDivided(by: HKUnit.minute()), start: interval.start, end: interval.end)
-    }
-    
-    func todayStepCount() async throws -> Double {
-        let calendar = Calendar.current
-        let start = calendar.startOfDay(for: Date())
-        let interval = DateInterval(start: start, duration: 60 * 60 * 24)
-        return try await stepCount(for: interval)
-    }
-    
-    func todayWalkingDistance() async throws -> Double {
-        let calendar = Calendar.current
-        let start = calendar.startOfDay(for: Date())
-        let interval = DateInterval(start: start, end: Date())
-        return try await walkingDistance(for: interval)
-    }
-    
-    func recentStepHistory(days: Int) async throws -> [(date: Date, steps: Double)] {
-        let calendar = Calendar.current
-        var results: [(Date, Double)] = []
-        
-        for offset in 0..<days {
-            guard let day = calendar.date(byAdding: .day, value: -offset, to: Date()) else { continue }
-            let start = calendar.startOfDay(for: day)
-            let end = calendar.date(byAdding: .day, value: 1, to: start)!
-            let interval = DateInterval(start: start, end: end)
-            let steps = try await stepCount(for: interval)
-            results.append((start, steps))
-        }
-        
-        return results.sorted { $0.0 < $1.0 }
     }
     
     // MARK: - Sleep Event Analysis

@@ -697,6 +697,12 @@ struct BreatheView: View {
     }
     
     func stopBreathing() {
+        // Use the tracked elapsed time instead of recalculating from Date() to avoid precision issues
+        let sessionDuration = Int(totalElapsedTime.rounded())
+        
+        // Capture end time for session record (use startTime + tracked duration for accuracy)
+        let endTime = sessionStartTime?.addingTimeInterval(TimeInterval(sessionDuration))
+        
         isBreathing = false
         timer?.invalidate()
         timer = nil
@@ -705,53 +711,50 @@ struct BreatheView: View {
         currentPhase = .inhale
         
         // Track statistics - always track time, only count as completed if session lasted at least 10 seconds
-        var sessionDuration: Int = 0
-        if let startTime = sessionStartTime {
-            let endTime = Date()
-            sessionDuration = Int(endTime.timeIntervalSince(startTime))
-            if sessionDuration > 0 {
-                var stats = breatheStats
+        if sessionDuration > 0 {
+            var stats = breatheStats
+            
+            // Always add time spent
+            stats.totalTimeSeconds += sessionDuration
+            
+            // Only count as completed session if it lasted at least 10 seconds
+            if sessionDuration >= 10 {
+                stats.sessionsCompleted += 1
                 
-                // Always add time spent
-                stats.totalTimeSeconds += sessionDuration
+                // Track session type (4-7-8 vs standard)
+                if use478 {
+                    stats.sessions478 += 1
+                } else {
+                    stats.standardSessions += 1
+                }
                 
-                // Only count as completed session if it lasted at least 10 seconds
-                if sessionDuration >= 10 {
-                    stats.sessionsCompleted += 1
-                    
-                    // Track session type (4-7-8 vs standard)
-                    if use478 {
-                        stats.sessions478 += 1
-                    } else {
-                        stats.standardSessions += 1
-                    }
-                    
-                    // Update longest session if this one is longer
-                    if sessionDuration > stats.longestSessionSeconds {
-                        stats.longestSessionSeconds = sessionDuration
-                    }
-                    
-                    // Record session in UserStatsManager for streak tracking
-                    userStatsManager.recordSession(activityType: .breathe, durationSeconds: sessionDuration)
-                    
-                    // Create enhanced session with metadata
-                    var meta = EnhancedSession.SessionMetadata()
-                    
-                    // Track protocol
-                    if use478 {
-                        meta.protocolId = "478"
-                    } else if inhaleDur == exhaleDur && holdDur == 0 {
-                        meta.protocolId = "equal"
-                    } else if exhaleDur == inhaleDur * 2 {
-                        meta.protocolId = "2_1_exhale"
-                    } else if inhaleDur == holdDur && holdDur == exhaleDur {
-                        meta.protocolId = "box_\(Int(inhaleDur))_\(Int(holdDur))_\(Int(exhaleDur))_\(Int(holdDur))"
-                    }
-                    
-                    // Track stress levels
-                    meta.preStressLevel = preStressLevel
-                    meta.postStressLevel = postStressLevel
-                    
+                // Update longest session if this one is longer
+                if sessionDuration > stats.longestSessionSeconds {
+                    stats.longestSessionSeconds = sessionDuration
+                }
+                
+                // Record session in UserStatsManager for streak tracking
+                userStatsManager.recordSession(activityType: .breathe, durationSeconds: sessionDuration)
+                
+                // Create enhanced session with metadata
+                var meta = EnhancedSession.SessionMetadata()
+                
+                // Track protocol
+                if use478 {
+                    meta.protocolId = "478"
+                } else if inhaleDur == exhaleDur && holdDur == 0 {
+                    meta.protocolId = "equal"
+                } else if exhaleDur == inhaleDur * 2 {
+                    meta.protocolId = "2_1_exhale"
+                } else if inhaleDur == holdDur && holdDur == exhaleDur {
+                    meta.protocolId = "box_\(Int(inhaleDur))_\(Int(holdDur))_\(Int(exhaleDur))_\(Int(holdDur))"
+                }
+                
+                // Track stress levels
+                meta.preStressLevel = preStressLevel
+                meta.postStressLevel = postStressLevel
+                
+                if let startTime = sessionStartTime, let endTime = endTime {
                     let enhancedSession = EnhancedSession(
                         type: .breathing,
                         start: startTime,

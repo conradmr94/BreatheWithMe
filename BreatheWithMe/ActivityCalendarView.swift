@@ -651,14 +651,12 @@ struct DayStatsDetailView: View {
         let focus = sessionsForDay.filter { $0.activityType == .focus }
         let rest = sessionsForDay.filter { $0.activityType == .rest }
         let sleep = sessionsForDay.filter { $0.activityType == .sleep }
-        let walk = sessionsForDay.filter { $0.activityType == .walk }
         
         return [
             (.breathe, breathe.count, breathe.reduce(0) { $0 + $1.durationSeconds }),
             (.focus, focus.count, focus.reduce(0) { $0 + $1.durationSeconds }),
             (.rest, rest.count, rest.reduce(0) { $0 + $1.durationSeconds }),
-            (.sleep, sleep.count, sleep.reduce(0) { $0 + $1.durationSeconds }),
-            (.walk, walk.count, walk.reduce(0) { $0 + $1.durationSeconds })
+            (.sleep, sleep.count, sleep.reduce(0) { $0 + $1.durationSeconds })
         ].filter { $0.count > 0 }
     }
     

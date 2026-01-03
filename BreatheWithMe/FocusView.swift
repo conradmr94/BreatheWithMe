@@ -155,6 +155,8 @@ struct FocusView: View {
     // Statistics tracking
     @AppStorage("focusStats") private var focusStatsData: Data = Data()
     @State private var sessionStartTime: Date?
+    @State private var pauseStartTime: Date?
+    @State private var totalPausedTime: TimeInterval = 0
     @StateObject private var userStatsManager = UserStatsManager()
     @StateObject private var sessionManager = SessionManager.shared
     
@@ -812,8 +814,16 @@ struct FocusView: View {
     func startTimer() {
         isRunning = true
         isPaused = false
-        sessionStartTime = Date()
-        distractionCount = 0 // Reset distraction count for new session
+        
+        // Only set sessionStartTime on initial start, not when resuming
+        if sessionStartTime == nil {
+            sessionStartTime = Date()
+            distractionCount = 0 // Reset distraction count for new session
+        } else if let pauseStart = pauseStartTime {
+            // If resuming from pause, add the pause duration to total paused time
+            totalPausedTime += Date().timeIntervalSince(pauseStart)
+            pauseStartTime = nil
+        }
         
         // Play start bell
         bellPlayer.playBell()
@@ -839,6 +849,7 @@ struct FocusView: View {
     
     func pauseTimer() {
         isPaused = true
+        pauseStartTime = Date() // Track when pause started
         timer?.invalidate()
         timer = nil
         
@@ -862,6 +873,8 @@ struct FocusView: View {
         timer?.invalidate()
         timer = nil
         sessionStartTime = nil
+        pauseStartTime = nil
+        totalPausedTime = 0
         distractionCount = 0
         
         // Stop noise
@@ -880,11 +893,25 @@ struct FocusView: View {
     
     private func trackSessionTime(completed: Bool = false) {
         // Track statistics - always track time, only count as completed if session lasted at least 30 seconds
+        // Use the timer's tracked time instead of Date() differences to avoid precision issues
         if let startTime = sessionStartTime {
-            let endTime = Date()
-            let sessionDuration = Int(endTime.timeIntervalSince(startTime))
+            // Calculate duration from planned duration minus remaining time (more accurate than Date() difference)
+            let plannedDuration = duration(for: currentMode)
+            var sessionDuration = max(0, plannedDuration - timeRemaining)
+            
+            // If currently paused, add the current pause duration
+            if let pauseStart = pauseStartTime {
+                totalPausedTime += Date().timeIntervalSince(pauseStart)
+            }
+            
+            // Subtract total paused time from session duration to get actual active time
+            sessionDuration = max(0, sessionDuration - Int(totalPausedTime))
+            
             if sessionDuration > 0 {
                 var stats = focusStats
+                
+                // Calculate end time for session record (use startTime + tracked duration for accuracy)
+                let endTime = startTime.addingTimeInterval(TimeInterval(sessionDuration))
                 
                 // Always add time spent
                 if currentMode == .work {
@@ -903,7 +930,7 @@ struct FocusView: View {
                         
                         // Create enhanced session with metadata
                         var meta = EnhancedSession.SessionMetadata()
-                        meta.plannedDuration = duration(for: currentMode)
+                        meta.plannedDuration = plannedDuration
                         meta.completed = completed
                         meta.distractions = distractionCount
                         
@@ -974,9 +1001,15 @@ struct FocusView: View {
             completedPomodoros += 1
         }
         
+        // Reset pause tracking for next session
+        pauseStartTime = nil
+        totalPausedTime = 0
+        
         if isAutoCycleMode {
             // Automatically advance to next phase in cycle
             advanceCycle()
+            // Reset session start time for next session
+            sessionStartTime = nil
             // Automatically start the next session
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 self.startTimer()
@@ -984,6 +1017,7 @@ struct FocusView: View {
         } else {
             isRunning = false
             isPaused = false
+            sessionStartTime = nil
             // Manual mode - suggest next mode
             if currentMode == .work {
                 if completedPomodoros % 4 == 0 {

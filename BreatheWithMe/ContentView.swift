@@ -15,7 +15,7 @@ struct ContentView: View {
     @EnvironmentObject var themeManager: AppThemeManager
     @Environment(\.colorScheme) var systemColorScheme
     @State private var selectedTab = 0
-    private let maxTabIndex = 3
+    private let maxTabIndex = 2
     @State private var isSoundModalPresented = false
     @AppStorage("focusLockUntilTimestamp") private var focusLockUntilTimestamp: Double = 0
     @State private var lockNow = Date()
@@ -67,17 +67,13 @@ struct ContentView: View {
                 .tabItem { Label("Breathe", systemImage: "wind") }
                 .tag(0)
 
-            WalkView()
-                .tabItem { Label("Walk", systemImage: "figure.walk") }
-                .tag(1)
-
             FocusView()
                 .tabItem { Label("Focus", systemImage: "brain.head.profile") }
-                .tag(2)
+                .tag(1)
 
             SleepView()
                 .tabItem { Label("Sleep", systemImage: "moon.stars.fill") }
-                .tag(3)
+                .tag(2)
         }
         .accentColor(accentColor(for: selectedTab))
         .tint(accentColor(for: selectedTab))
@@ -238,11 +234,9 @@ struct ContentView: View {
         switch tab {
         case 0: // Breathe - soft blue
             return Color(red: 0.60, green: 0.76, blue: 0.92)
-        case 1: // Walk - light green
-            return Color(red: 0.5, green: 0.8, blue: 0.65)
-        case 2: // Focus - soft orange
+        case 1: // Focus - soft orange
             return Color(red: 0.9, green: 0.6, blue: 0.5)
-        case 3: // Sleep - soft purple/blue
+        case 2: // Sleep - soft purple/blue
             return Color(red: 0.4, green: 0.5, blue: 0.8)
         default:
             let themeColors = themeManager.themeColors(for: systemColorScheme)

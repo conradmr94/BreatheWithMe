@@ -361,24 +361,6 @@ class SessionManager: ObservableObject {
         return streak
     }
     
-    // MARK: - Walk Queries
-    
-    func walkSessions(from startDate: Date, to endDate: Date) -> [EnhancedSession] {
-        sessions(ofType: .walk, from: startDate, to: endDate)
-    }
-    
-    func walkSummary(days: Int = 30) -> (distanceMeters: Double, steps: Int, calories: Double, stress: Double, sessions: Int) {
-        let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
-        let recent = sessions(ofType: .walk, from: cutoff)
-        
-        let distance = recent.reduce(0.0) { $0 + ($1.meta.distanceMeters ?? 0) }
-        let steps = recent.reduce(0) { $0 + ($1.meta.steps ?? 0) }
-        let calories = recent.reduce(0.0) { $0 + ($1.meta.caloriesBurned ?? 0) }
-        let stressScores = recent.compactMap { $0.meta.stressReliefScore }
-        let averageStress = stressScores.isEmpty ? 0.0 : stressScores.reduce(0.0, +) / Double(stressScores.count)
-        return (distanceMeters: distance, steps: steps, calories: calories, stress: averageStress, sessions: recent.count)
-    }
-    
     // MARK: - Cross-Feature Queries
     
     func sleepFocusCorrelation(days: Int = 30) -> (lowSleep: Double, highSleep: Double)? {

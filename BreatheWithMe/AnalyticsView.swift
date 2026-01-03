@@ -35,7 +35,6 @@ struct AnalyticsView: View {
     
     enum AnalyticsTab: CaseIterable {
         case breathing
-        case walk
         case focus
         case sleep
         case insights
@@ -45,7 +44,6 @@ struct AnalyticsView: View {
             case .breathing: return "wind"
             case .focus: return "brain.head.profile"
             case .sleep: return "moon.stars.fill"
-            case .walk: return "figure.walk"
             case .insights: return "sparkles"
             }
         }
@@ -91,8 +89,6 @@ struct AnalyticsView: View {
                     FocusAnalyticsContent()
                 case .breathing:
                     BreathingAnalyticsContent()
-                case .walk:
-                    WalkAnalyticsContent()
                 case .insights:
                     CrossFeatureAnalyticsView()
                 }
@@ -112,15 +108,6 @@ struct AnalyticsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .preferredColorScheme(resolvedColorScheme)
         .environment(\.analyticsPalette, palette)
-    }
-}
-
-struct WalkAnalyticsContent: View {
-    @EnvironmentObject private var themeManager: AppThemeManager
-    
-    var body: some View {
-        WalkStatsView()
-            .environmentObject(themeManager)
     }
 }
 
@@ -876,46 +863,94 @@ struct SleepAnalyticsContent: View {
                 .padding(.top)
                 
                 // MARK: - Stats Section
-                // Local Sleep Stats
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("In-App Sleep Sessions")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(palette.secondaryText)
-                    
-                    HStack {
-                        Text("Completed Sessions")
-                        Spacer()
-                        Text("\(sleepStats.sleepSessionsCompleted)")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundColor(palette.primaryText)
+                if sleepStats.sleepSessionsCompleted > 0 {
+                    // Overview Card
+                    VStack(spacing: 16) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Sleep Sessions")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(palette.secondaryText)
+                                Text("\(sleepStats.sleepSessionsCompleted)")
+                                    .font(.system(size: 36, weight: .bold))
+                                    .foregroundColor(palette.primaryText)
+                            }
+                            
+                            Spacer()
+                            
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text("Total Sleep Time")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(palette.secondaryText)
+                                Text(sleepStats.totalSleepTimeFormatted)
+                                    .font(.system(size: 36, weight: .bold))
+                                    .foregroundColor(palette.primaryText)
+                            }
+                        }
                     }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(palette.cardBackground)
+                            .shadow(color: palette.cardShadow, radius: 20, x: 0, y: 10)
+                    )
+                    .padding(.horizontal, 20)
                     
-                    HStack {
-                        Text("Total Sleep Time")
-                        Spacer()
-                        Text(sleepStats.sleepSessionsCompleted > 0 ? sleepStats.totalSleepTimeFormatted : "—")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundColor(palette.primaryText)
+                    // Average Duration
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: "clock.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(palette.accent)
+                            
+                            Text("Average Duration")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(palette.primaryText)
+                        }
+                        
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(sleepStats.averageSleepTimeFormatted)
+                                .font(.system(size: 28, weight: .bold))
+                                .foregroundColor(palette.primaryText)
+                            
+                            Text("per session")
+                                .font(.system(size: 14, weight: .regular))
+                                .foregroundColor(palette.secondaryText)
+                        }
                     }
-                    
-                    HStack {
-                        Text("Average Session")
-                        Spacer()
-                        Text(sleepStats.averageSleepTimeFormatted)
-                            .font(.system(size: 17, weight: .semibold))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(palette.cardBackground)
+                            .shadow(color: palette.cardShadow, radius: 20, x: 0, y: 10)
+                    )
+                    .padding(.horizontal, 20)
+                } else {
+                    // Empty state
+                    VStack(spacing: 16) {
+                        Image(systemName: "moon.stars.fill")
+                            .font(.system(size: 48))
+                            .foregroundColor(palette.secondaryText)
+                        
+                        Text("No Sessions Yet")
+                            .font(.system(size: 20, weight: .semibold))
                             .foregroundColor(palette.primaryText)
+                        
+                        Text("Complete your first sleep session\nto see your statistics here")
+                            .font(.system(size: 15, weight: .regular))
+                            .foregroundColor(palette.secondaryText)
+                            .multilineTextAlignment(.center)
                     }
+                    .padding(.vertical, 60)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(palette.cardBackground)
+                            .shadow(color: palette.cardShadow, radius: 20, x: 0, y: 10)
+                    )
+                    .padding(.horizontal, 20)
                 }
-                .font(.system(size: 17, weight: .regular))
-                .foregroundColor(palette.secondaryText)
-                .frame(maxWidth: 360)
-                .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(palette.cardBackground)
-                        .shadow(color: palette.cardShadow, radius: 20, x: 0, y: 10)
-                )
-                .padding(.horizontal, 20)
                 
                 // MARK: - Analytics Section
                 if !sleepSessions.isEmpty {
@@ -940,7 +975,6 @@ struct SleepAnalyticsContent: View {
                     SleepSummaryStats(sessions: sleepSessions)
                 }
             }
-            .padding()
             .padding(.bottom, 8)
         }
     }

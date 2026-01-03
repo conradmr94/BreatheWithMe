@@ -29,9 +29,6 @@
 		A1000053000000000000001 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000054000000000000001 /* ProfileView.swift */; };
 		A1000055000000000000001 /* SwipeDownToOpenProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000056000000000000001 /* SwipeDownToOpenProfile.swift */; };
 		A1000057000000000000001 /* TopSlideCover.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000058000000000000001 /* TopSlideCover.swift */; };
-		A1000061000000000000001 /* BreatheStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000060000000000000001 /* BreatheStatsView.swift */; };
-		A1000063000000000000001 /* FocusStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000062000000000000001 /* FocusStatsView.swift */; };
-		A1000065000000000000001 /* SleepStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000064000000000000001 /* SleepStatsView.swift */; };
 		A1000066000000000000001 /* UserStatsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000067000000000000001 /* UserStatsManager.swift */; };
 		A1000069000000000000001 /* ActivityCalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000068000000000000001 /* ActivityCalendarView.swift */; };
 		A1000070000000000000001 /* SessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000071000000000000001 /* SessionManager.swift */; };
@@ -62,10 +59,6 @@
 		A1000122000000000000001 /* yoga.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A1000123000000000000001 /* yoga.mp3 */; };
 		C9E6F5F52EA9BB9700047E58 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9E6F5F42EA9BB9100047E58 /* HealthKitManager.swift */; };
 		C9E6F5F72EA9BBA800047E58 /* SleepViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9E6F5F62EA9BBA300047E58 /* SleepViewModel.swift */; };
-		E1C0B101000000000000001 /* WalkSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C0A001000000000000001 /* WalkSessionManager.swift */; };
-		E1C0B102000000000000001 /* WalkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C0A002000000000000001 /* WalkView.swift */; };
-		E1C0B103000000000000001 /* WalkStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C0A003000000000000001 /* WalkStatsView.swift */; };
-		E1C0B104000000000000001 /* WalkLocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C0A004000000000000001 /* WalkLocationManager.swift */; };
 		E1C0B105000000000000001 /* PhoneActivityMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C0A005000000000000001 /* PhoneActivityMonitor.swift */; };
 		E1C0B106000000000000001 /* SleepTimingAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C0A006000000000000001 /* SleepTimingAnalyzer.swift */; };
 /* End PBXBuildFile section */
@@ -94,9 +87,6 @@
 		A1000054000000000000001 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		A1000056000000000000001 /* SwipeDownToOpenProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeDownToOpenProfile.swift; sourceTree = "<group>"; };
 		A1000058000000000000001 /* TopSlideCover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopSlideCover.swift; sourceTree = "<group>"; };
-		A1000060000000000000001 /* BreatheStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreatheStatsView.swift; sourceTree = "<group>"; };
-		A1000062000000000000001 /* FocusStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusStatsView.swift; sourceTree = "<group>"; };
-		A1000064000000000000001 /* SleepStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepStatsView.swift; sourceTree = "<group>"; };
 		A1000067000000000000001 /* UserStatsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserStatsManager.swift; sourceTree = "<group>"; };
 		A1000068000000000000001 /* ActivityCalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityCalendarView.swift; sourceTree = "<group>"; };
 		A1000071000000000000001 /* SessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionManager.swift; sourceTree = "<group>"; };
@@ -129,10 +119,6 @@
 		C9E6F5F62EA9BBA300047E58 /* SleepViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepViewModel.swift; sourceTree = "<group>"; };
 		C9E6F5F82EA9BC4400047E58 /* BreatheWithMe.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BreatheWithMe.entitlements; sourceTree = "<group>"; };
 		C9E6F5F92EA9BC4500047E59 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		E1C0A001000000000000001 /* WalkSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkSessionManager.swift; sourceTree = "<group>"; };
-		E1C0A002000000000000001 /* WalkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkView.swift; sourceTree = "<group>"; };
-		E1C0A003000000000000001 /* WalkStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkStatsView.swift; sourceTree = "<group>"; };
-		E1C0A004000000000000001 /* WalkLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkLocationManager.swift; sourceTree = "<group>"; };
 		E1C0A005000000000000001 /* PhoneActivityMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneActivityMonitor.swift; sourceTree = "<group>"; };
 		E1C0A006000000000000001 /* SleepTimingAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepTimingAnalyzer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -165,7 +151,6 @@
 				C9E6F5F42EA9BB9100047E58 /* HealthKitManager.swift */,
 				A1000113000000000000001 /* AppThemeManager.swift */,
 				A1000071000000000000001 /* SessionManager.swift */,
-				E1C0A001000000000000001 /* WalkSessionManager.swift */,
 				A1000073000000000000001 /* SleepScoreCalculator.swift */,
 				A1000075000000000000001 /* AudioEventDetector.swift */,
 				A1000077000000000000001 /* BreathingProtocols.swift */,
@@ -183,17 +168,11 @@
 				A1000023000000000000001 /* BreatheView.swift */,
 				A1000025000000000000001 /* FocusView.swift */,
 				A1000027000000000000001 /* SleepView.swift */,
-				E1C0A002000000000000001 /* WalkView.swift */,
 				A1000100000000000000001 /* SoundTileView.swift */,
 				A1000029000000000000001 /* NoiseGenerator.swift */,
 				A100012B000000000000001 /* NoiseOptionsModal.swift */,
 				A1000051000000000000001 /* BellPlayer.swift */,
 				A1000054000000000000001 /* ProfileView.swift */,
-				A1000060000000000000001 /* BreatheStatsView.swift */,
-				A1000062000000000000001 /* FocusStatsView.swift */,
-				A1000064000000000000001 /* SleepStatsView.swift */,
-				E1C0A003000000000000001 /* WalkStatsView.swift */,
-				E1C0A004000000000000001 /* WalkLocationManager.swift */,
 				E1C0A005000000000000001 /* PhoneActivityMonitor.swift */,
 				E1C0A006000000000000001 /* SleepTimingAnalyzer.swift */,
 				A1000068000000000000001 /* ActivityCalendarView.swift */,
@@ -344,14 +323,11 @@
 				A1000053000000000000001 /* ProfileView.swift in Sources */,
 				A1000055000000000000001 /* SwipeDownToOpenProfile.swift in Sources */,
 				A1000057000000000000001 /* TopSlideCover.swift in Sources */,
-				A1000061000000000000001 /* BreatheStatsView.swift in Sources */,
-				A1000063000000000000001 /* FocusStatsView.swift in Sources */,
 				A1000069000000000000001 /* ActivityCalendarView.swift in Sources */,
 				A1000066000000000000001 /* UserStatsManager.swift in Sources */,
 				C9E6F5F72EA9BBA800047E58 /* SleepViewModel.swift in Sources */,
 				C9E6F5F52EA9BB9700047E58 /* HealthKitManager.swift in Sources */,
 				A1000112000000000000001 /* AppThemeManager.swift in Sources */,
-				A1000065000000000000001 /* SleepStatsView.swift in Sources */,
 				A1000070000000000000001 /* SessionManager.swift in Sources */,
 				A1000072000000000000001 /* SleepScoreCalculator.swift in Sources */,
 				A1000074000000000000001 /* AudioEventDetector.swift in Sources */,
@@ -365,10 +341,6 @@
 				A1000090000000000000001 /* AnalyticsView.swift in Sources */,
 				A1000097000000000000001 /* SleepAlarm.swift in Sources */,
 				A1000098000000000000001 /* SleepAlarmStore.swift in Sources */,
-				E1C0B101000000000000001 /* WalkSessionManager.swift in Sources */,
-				E1C0B102000000000000001 /* WalkView.swift in Sources */,
-				E1C0B103000000000000001 /* WalkStatsView.swift in Sources */,
-				E1C0B104000000000000001 /* WalkLocationManager.swift in Sources */,
 				E1C0B105000000000000001 /* PhoneActivityMonitor.swift in Sources */,
 				E1C0B106000000000000001 /* SleepTimingAnalyzer.swift in Sources */,
 			);
@@ -511,8 +483,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = BreatheWithMe/Info.plist;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "This app uses HealthKit to provide personalized breathing exercises based on your health data.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "This app writes mindful minutes to HealthKit so your progress stays in sync.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "BreatheWithMe reads your sleep data to analyze sleep stages (deep, REM, core), track wakeups and sleep disturbances, calculate sleep scores, and monitor bedtime regularity. We also read your respiratory rate to provide health insights in the sleep view, and access your mindful session history to display your breathing practice across all your devices. All data processing happens on your device.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "BreatheWithMe saves your sleep sessions and breathing exercises to HealthKit so they appear in the Health app and sync across your devices. Sleep sessions tracked in the app are saved as sleep analysis data, and breathing sessions are saved as mindful minutes. This allows you to view your complete wellness journey in one place.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to map mindful walks and calculate distance.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "Motion & Fitness access lets us read step counts during your mindful walks.";
 				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "This app needs notifications to alert you when your sleep alarm goes off.";
@@ -548,8 +520,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = BreatheWithMe/Info.plist;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "This app uses HealthKit to provide personalized breathing exercises based on your health data.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "This app writes mindful minutes to HealthKit so your progress stays in sync.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "BreatheWithMe reads your sleep data to analyze sleep stages (deep, REM, core), track wakeups and sleep disturbances, calculate sleep scores, and monitor bedtime regularity. We also read your respiratory rate to provide health insights in the sleep view, and access your mindful session history to display your breathing practice across all your devices. All data processing happens on your device.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "BreatheWithMe saves your sleep sessions and breathing exercises to HealthKit so they appear in the Health app and sync across your devices. Sleep sessions tracked in the app are saved as sleep analysis data, and breathing sessions are saved as mindful minutes. This allows you to view your complete wellness journey in one place.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We use your location to map mindful walks and calculate distance.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "Motion & Fitness access lets us read step counts during your mindful walks.";
 				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "This app needs notifications to alert you when your sleep alarm goes off.";

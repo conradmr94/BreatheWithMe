@@ -877,6 +877,9 @@ struct SleepView: View {
     }
     
     func stopTimer() {
+        // Capture end time FIRST, before any processing that might cause delay
+        let endTime = (sessionStartTime != nil && elapsedSeconds >= 60) ? Date() : nil
+        
         isRunning = false
         timer?.invalidate()
         timer = nil
@@ -890,8 +893,7 @@ struct SleepView: View {
         }
         
         // Track sleep session if it was at least 60 seconds (1 minute)
-        if let startTime = sessionStartTime, elapsedSeconds >= 60 {
-            let endTime = Date()
+        if let startTime = sessionStartTime, let endTime = endTime, elapsedSeconds >= 60 {
             let sessionDuration = Int(endTime.timeIntervalSince(startTime))
             
             // Update local sleep stats
